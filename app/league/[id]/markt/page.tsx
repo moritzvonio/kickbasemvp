@@ -35,33 +35,42 @@ export default async function MarketPage({
   const path = `/league/${leagueId}/markt`;
   const session = await requireSessionOrRedirect(path);
 
-  // Fetch market + per-position player lists (Kickbase oft beschränkt /players
-  // ohne position-Filter auf Top N; per-position garantiert volle Abdeckung)
-  const [marketData, compGK, compDef, compMid, compFwd] = await Promise.all([
-    withKbAuth(path, () => kb.market(session.token, leagueId)).catch(
-      () => ({ it: [] as Awaited<ReturnType<typeof kb.market>>["it"] })
-    ),
-    withKbAuth(path, () => kb.competitionPlayers(session.token, "1", { position: 1 })).catch(
-      () => ({ it: [] as KbCompetitionPlayer[] })
-    ),
-    withKbAuth(path, () => kb.competitionPlayers(session.token, "1", { position: 2 })).catch(
-      () => ({ it: [] as KbCompetitionPlayer[] })
-    ),
-    withKbAuth(path, () => kb.competitionPlayers(session.token, "1", { position: 3 })).catch(
-      () => ({ it: [] as KbCompetitionPlayer[] })
-    ),
-    withKbAuth(path, () => kb.competitionPlayers(session.token, "1", { position: 4 })).catch(
-      () => ({ it: [] as KbCompetitionPlayer[] })
-    ),
-  ]);
-
+  // 1. Get market listings
+  const marketData = await withKbAuth(path, () =>
+    kb.market(session.token, leagueId)
+  ).catch(() => ({ it: [] as Awaited<ReturnType<typeof kb.market>>["it"] }));
   const items = marketData.it ?? [];
-  const allComp: KbCompetitionPlayer[] = [
-    ...(compGK.it ?? []),
-    ...(compDef.it ?? []),
-    ...(compMid.it ?? []),
-    ...(compFwd.it ?? []),
-  ];
+
+  // 2. Per market entry: fetch the league-specific player detail in parallel.
+  //    The detail endpoint returns RICH data (tp = total season points, ap = avg,
+  //    g = goals, a = assists) — guaranteed to have the right fields per player.
+  const detailFetches = await Promise.all(
+    items.map(async (e) => {
+      const pid = marketEntryPid(e);
+      if (!pid) return null;
+      try {
+        const d = await kb.player(session.token, leagueId, pid);
+        return { pid, detail: d };
+      } catch {
+        return { pid, detail: null };
+      }
+    })
+  );
+  const detailMap = new Map<string, Awaited<ReturnType<typeof kb.player>>>();
+  for (const item of detailFetches) {
+    if (item?.detail) detailMap.set(item.pid, item.detail);
+  }
+
+  // 3. Try to also build a Bundesliga-weite player pool for rank computation.
+  //    competitionPlayers is best-effort — if it fails, we skip ranks.
+  const compChunks = await Promise.all(
+    [1, 2, 3, 4].map((pos) =>
+      withKbAuth(path, () =>
+        kb.competitionPlayers(session.token, "1", { position: pos })
+      ).catch(() => ({ it: [] as KbCompetitionPlayer[] }))
+    )
+  );
+  const allComp: KbCompetitionPlayer[] = compChunks.flatMap((c) => c.it ?? []);
 
   // Build ranking maps:
   //   rankByPid       → 1-N across all Bundesliga players (overall)
@@ -90,10 +99,25 @@ export default async function MarketPage({
   const compMap = new Map<string, KbCompetitionPlayer>();
   for (const p of allComp) compMap.set(p.pi, p);
 
+  /**
+   * Resolve player stats with fallback chain:
+   *   1. Player detail (most reliable: tp, ap, g, a)
+   *   2. competitionPlayer entry (p, ap, g, a)
+   *   3. Empty zeros
+   */
+  function statsFor(pid: string) {
+    const d = detailMap.get(pid);
+    const c = compMap.get(pid);
+    return {
+      points: (d?.tp ?? c?.p ?? 0) as number,
+      avg: (d?.ap ?? c?.ap ?? 0) as number,
+      goals: (d?.g ?? c?.g ?? 0) as number,
+      assists: (d?.a ?? c?.a ?? 0) as number,
+    };
+  }
+
   const sorted = items.slice().sort((a, b) => {
-    const pa = compMap.get(marketEntryPid(a))?.p ?? 0;
-    const pb = compMap.get(marketEntryPid(b))?.p ?? 0;
-    return pb - pa;
+    return statsFor(marketEntryPid(b)).points - statsFor(marketEntryPid(a)).points;
   });
 
   return (
@@ -135,11 +159,11 @@ export default async function MarketPage({
             const priceDiff = p.prc - p.mv;
             const priceDiffPct = p.mv > 0 ? (priceDiff / p.mv) * 100 : 0;
 
-            const meta = compMap.get(pid);
-            const points = meta?.p ?? 0;
-            const avg = meta?.ap ?? 0;
-            const goals = meta?.g ?? 0;
-            const assists = meta?.a ?? 0;
+            const s = statsFor(pid);
+            const points = s.points;
+            const avg = s.avg;
+            const goals = s.goals;
+            const assists = s.assists;
             const max = maxByPos[p.pos] ?? 1;
             const maxAvg = maxAvgByPos[p.pos] ?? 1;
             const pct = points > 0 ? points / max : 0;

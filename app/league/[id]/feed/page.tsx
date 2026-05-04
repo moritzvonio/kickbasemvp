@@ -5,10 +5,26 @@ import { requireSessionOrRedirect, withKbAuth } from "@/lib/auth";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { UserAvatar } from "@/components/ui/user-avatar";
+import { PlayerAvatar } from "@/components/ui/player-avatar";
+import { TeamTag } from "@/components/ui/team-tag";
 import { EmptyState } from "@/components/ui/empty-state";
-import { cn, formatEUR } from "@/lib/utils";
-import { Activity, Filter, ArrowRightLeft, Award, Layers, X, Wallet } from "lucide-react";
-import type { KbActivity } from "@/lib/kickbase/types";
+import { cn, formatEUR, formatDelta } from "@/lib/utils";
+import {
+  Activity,
+  Filter,
+  ArrowRightLeft,
+  Award,
+  Layers,
+  X,
+  Wallet,
+  ShoppingCart,
+  Building2,
+} from "lucide-react";
+import type {
+  KbActivity,
+  KbManagerTransfer,
+  KbRankingUser,
+} from "@/lib/kickbase/types";
 import { RefreshButton } from "./RefreshButton";
 
 export const metadata: Metadata = { title: "Liga-Feed" };
@@ -19,48 +35,36 @@ export const fetchCache = "force-no-store";
 const FILTERS = [
   { key: "all", label: "Alle" },
   { key: "transfers", label: "Transfers", icon: ArrowRightLeft },
+  { key: "boni", label: "Boni", icon: Wallet },
   { key: "achievements", label: "Achievements", icon: Award },
 ] as const;
 
 type FilterKey = (typeof FILTERS)[number]["key"];
 
-const isTransfer = (t: number) => t === 1 || t === 2 || t === 3 || t === 15 || t === 16;
 const isAchievement = (t: number) => t === 12 || t === 13;
 const isBonus = (t: number) => t === 22;
 
-/** Inspects activity payload to produce a German-language description. */
-function describeActivityFromData(a: KbActivity): string {
-  const t = a.t;
-  const data = (a.data ?? a.d ?? {}) as Record<string, unknown>;
-  const playerName =
-    (data.pn as string) ?? (data.player as string) ?? (data.name as string);
-  const price = (data.prc as number) ?? (data.pric as number);
-  const bonus = data.bn as number | undefined;
-  const day = data.day as number | undefined;
-
-  // Bonus payout (verified shape: t=22)
-  if (isBonus(t) || bonus !== undefined) {
-    return bonus !== undefined
-      ? `erhielt ${formatEUR(bonus, { compact: true })} Bonus${day ? ` (Spieltag ${day})` : ""}`
-      : "erhielt einen Bonus";
-  }
-
-  // Transfer-shaped activities (data has player + price)
-  if (playerName && price) {
-    // Heuristic: "Verkauf" if t indicates sell, else "Kauf"
-    if (t === 2 || t === 16) return `verkaufte ${playerName} für ${formatEUR(price, { compact: true })}`;
-    return `kaufte ${playerName} für ${formatEUR(price, { compact: true })}`;
-  }
-  if (playerName) {
-    if (t === 2 || t === 16) return `verkaufte ${playerName}`;
-    if (t === 1 || t === 15) return `kaufte ${playerName}`;
-    return `aktivität mit ${playerName}`;
-  }
-  if (t === 3) return "tätigte einen Transfer";
-  if (isAchievement(t)) return "schaltete ein Achievement frei";
-  if (t === 26) return "Liga-Aktivität";
-  return `Aktivität (Typ ${t})`;
+/** Bot/agent name that signals "sold to / bought from the league bank" */
+const BANK_BOT_NAMES = new Set(["Mino Raiola", "KI Spielerverkauf", "KI"]);
+function isBankCounterparty(name?: string): boolean {
+  if (!name) return false;
+  if (BANK_BOT_NAMES.has(name)) return true;
+  // Heuristic: starts with "KI " or contains "Liga"
+  return /^KI(?:\s|$)/i.test(name) || /\bLiga\b/i.test(name);
 }
+
+interface TransferEntry {
+  kind: "transfer";
+  date: Date;
+  user: { i: string; n: string; uim?: string };
+  transfer: KbManagerTransfer;
+}
+interface ActivityEntry {
+  kind: "activity";
+  date: Date;
+  activity: KbActivity;
+}
+type FeedEntry = TransferEntry | ActivityEntry;
 
 export default async function FeedPage({
   params,
@@ -75,29 +79,103 @@ export default async function FeedPage({
   const session = await requireSessionOrRedirect(path);
 
   const filter: FilterKey =
-    sp.filter === "transfers" || sp.filter === "achievements" ? sp.filter : "all";
+    sp.filter === "transfers" ||
+    sp.filter === "boni" ||
+    sp.filter === "achievements"
+      ? sp.filter
+      : "all";
   const userFilter = sp.user;
 
-  const empty = { af: [] as KbActivity[] } as Awaited<ReturnType<typeof kb.activities>>;
-  const data = await withKbAuth(path, () =>
-    kb.activities(session.token, leagueId, { max: 100 })
-  ).catch(() => empty);
+  // Fetch ranking + activities first
+  const [ranking, activitiesData] = await Promise.all([
+    withKbAuth(path, () => kb.ranking(session.token, leagueId)).catch(
+      () => ({} as Awaited<ReturnType<typeof kb.ranking>>)
+    ),
+    withKbAuth(path, () => kb.activities(session.token, leagueId, { max: 200 })).catch(
+      () => ({ af: [] as KbActivity[] } as Awaited<ReturnType<typeof kb.activities>>)
+    ),
+  ]);
 
-  // Kickbase returns activities under `af` (newer) or `it` (legacy)
-  const allActivities = data.af ?? data.it ?? [];
-  const activities = allActivities.filter((a) => {
-    if (filter === "transfers" && !isTransfer(a.t)) return false;
-    if (filter === "achievements" && !isAchievement(a.t)) return false;
-    if (userFilter && a.u?.i !== userFilter) return false;
+  const members: KbRankingUser[] = ranking.us ?? ranking.it ?? [];
+
+  // Per-manager transfer history (parallel)
+  const transferLists = await Promise.all(
+    members.map(async (m) => {
+      try {
+        const r = await kb.managerTransfer(session.token, leagueId, m.i);
+        return { user: m, transfers: r.it ?? [] };
+      } catch {
+        return { user: m, transfers: [] as KbManagerTransfer[] };
+      }
+    })
+  );
+
+  // Build entries
+  const transferEntries: TransferEntry[] = transferLists.flatMap(
+    ({ user, transfers }) =>
+      transfers.map<TransferEntry>((t) => ({
+        kind: "transfer",
+        date: new Date(t.dt),
+        user: { i: user.i, n: user.n, uim: user.uim },
+        transfer: t,
+      }))
+  );
+
+  const allActivities = activitiesData.af ?? activitiesData.it ?? [];
+  const activityEntries: ActivityEntry[] = allActivities
+    .map((a) => ({ kind: "activity" as const, date: pickActivityDate(a), activity: a }))
+    .filter((e): e is ActivityEntry => e.date !== null && e.date !== undefined) as ActivityEntry[];
+
+  // De-duplicate transfers vs activity-feed transfers
+  // (activity feed sometimes contains the same transfer)
+  // We keep the rich transfer entry and drop duplicate activity if t=1/2/3/15/16
+  const transferKeys = new Set(
+    transferEntries.map((e) => `${e.user.i}|${e.transfer.pi}|${e.transfer.dt}`)
+  );
+  const dedupedActivities = activityEntries.filter((e) => {
+    const t = e.activity.t;
+    if (t === 1 || t === 2 || t === 3 || t === 15 || t === 16) {
+      // skip activity-feed transfers — we have the rich version
+      return false;
+    }
     return true;
   });
 
-  const usersInFeed = Array.from(
-    new Map(allActivities.filter((a) => a.u?.i).map((a) => [a.u!.i, a.u!] as const)).values()
+  const merged: FeedEntry[] = [...transferEntries, ...dedupedActivities].sort(
+    (a, b) => b.date.getTime() - a.date.getTime()
   );
 
+  // Apply filters
+  const filtered = merged.filter((e) => {
+    if (userFilter) {
+      if (e.kind === "transfer" && e.user.i !== userFilter) return false;
+      if (e.kind === "activity" && e.activity.u?.i !== userFilter) return false;
+    }
+    if (filter === "transfers" && e.kind !== "transfer") return false;
+    if (filter === "boni") {
+      return e.kind === "activity" && isBonus(e.activity.t);
+    }
+    if (filter === "achievements") {
+      return e.kind === "activity" && isAchievement(e.activity.t);
+    }
+    return true;
+  });
+
+  const display = filtered.slice(0, 80);
+
+  // Derive user list (from transfers + activities) for filter dropdown
+  const userMap = new Map<string, { i: string; n: string; uim?: string }>();
+  for (const m of members) userMap.set(m.i, { i: m.i, n: m.n, uim: m.uim });
+
   const fetchedAt = new Date();
-  const newestActivityDate = pickNewestActivityDate(allActivities);
+
+  // Stats for header
+  const stats = {
+    transfers: merged.filter((e) => e.kind === "transfer").length,
+    boni: merged.filter((e) => e.kind === "activity" && isBonus(e.activity.t)).length,
+    achievements: merged.filter((e) => e.kind === "activity" && isAchievement(e.activity.t))
+      .length,
+  };
 
   return (
     <div className="space-y-6">
@@ -109,22 +187,24 @@ export default async function FeedPage({
             </span>
             Liga-Feed
           </h1>
-          <p className="text-sm text-muted-foreground mt-2">
-            Wer hat was gemacht — {allActivities.length} Aktivitäten
-            {newestActivityDate && (
-              <>
-                {" · "}
-                <span title={newestActivityDate.toLocaleString("de-DE")}>
-                  letzte: {formatRelative(newestActivityDate)}
-                </span>
-              </>
-            )}
+          <p className="text-sm text-muted-foreground mt-2 flex items-center gap-3 flex-wrap">
+            <span>{stats.transfers} Transfers</span>
+            <span>· {stats.boni} Boni</span>
+            <span>· {stats.achievements} Achievements</span>
           </p>
         </div>
         <div className="text-right">
           <RefreshButton />
-          <p className="text-[10px] text-muted-foreground mt-1.5 tabular" suppressHydrationWarning>
-            geladen {fetchedAt.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+          <p
+            className="text-[10px] text-muted-foreground mt-1.5 tabular"
+            suppressHydrationWarning
+          >
+            geladen{" "}
+            {fetchedAt.toLocaleTimeString("de-DE", {
+              hour: "2-digit",
+              minute: "2-digit",
+              second: "2-digit",
+            })}
           </p>
         </div>
       </div>
@@ -159,20 +239,20 @@ export default async function FeedPage({
             href={`?${new URLSearchParams(filter !== "all" ? { filter } : {}).toString()}`}
             className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs border border-primary/40 bg-primary/10 text-primary"
           >
-            {usersInFeed.find((u) => u.i === userFilter)?.n ?? userFilter}
+            {userMap.get(userFilter)?.n ?? userFilter}
             <X className="size-3" />
           </Link>
         )}
       </div>
 
-      {/* User filter as expandable list */}
-      {!userFilter && usersInFeed.length > 0 && (
+      {/* User filter expandable */}
+      {!userFilter && userMap.size > 0 && (
         <details className="text-xs slide-up slide-up-2">
           <summary className="cursor-pointer text-muted-foreground hover:text-foreground inline-flex items-center gap-1">
             Nach Mitspieler filtern …
           </summary>
           <div className="mt-2 flex flex-wrap gap-1.5">
-            {usersInFeed.map((u) => (
+            {Array.from(userMap.values()).map((u) => (
               <Link
                 key={u.i}
                 href={`?${new URLSearchParams({
@@ -189,7 +269,7 @@ export default async function FeedPage({
         </details>
       )}
 
-      {activities.length === 0 ? (
+      {display.length === 0 ? (
         <Card className="slide-up slide-up-2">
           <EmptyState
             icon={<Activity className="size-6" />}
@@ -200,9 +280,20 @@ export default async function FeedPage({
       ) : (
         <Card className="slide-up slide-up-2">
           <div className="divide-y divide-border/40">
-            {activities.map((a) => (
-              <FeedRow key={a.i} activity={a} />
-            ))}
+            {display.map((e, i) =>
+              e.kind === "transfer" ? (
+                <TransferRow
+                  key={`t-${e.user.i}-${e.transfer.pi}-${e.transfer.dt}-${i}`}
+                  entry={e}
+                  leagueId={leagueId}
+                />
+              ) : (
+                <ActivityRowComponent
+                  key={`a-${e.activity.i}-${i}`}
+                  entry={e}
+                />
+              )
+            )}
           </div>
         </Card>
       )}
@@ -210,10 +301,84 @@ export default async function FeedPage({
   );
 }
 
-function FeedRow({ activity: a }: { activity: KbActivity }) {
+function TransferRow({
+  entry,
+  leagueId,
+}: {
+  entry: TransferEntry;
+  leagueId: string;
+}) {
+  const t = entry.transfer;
+  const isBuy = t.tty === 1;
+  const verb = isBuy ? "kaufte" : "verkaufte";
+  const counter = t.othnm;
+  const counterIsBank = isBankCounterparty(counter);
+  const preposition = isBuy ? (counterIsBank ? "aus dem Markt" : counter ? `von ${counter}` : "") : counterIsBank ? "an die Liga" : counter ? `an ${counter}` : "";
+
+  return (
+    <div className="px-5 py-3.5 text-sm flex items-start gap-3">
+      <UserAvatar name={entry.user.n} image={entry.user.uim} size="md" />
+      <div className="flex-1 min-w-0">
+        <div className="text-sm flex flex-wrap items-center gap-x-1 gap-y-0.5">
+          <span className="font-semibold">{entry.user.n}</span>
+          <span className={cn("font-medium", isBuy ? "text-emerald-700" : "text-rose-700")}>
+            {verb}
+          </span>
+          <Link
+            href={`/league/${leagueId}/spieler/${t.pi}`}
+            className="inline-flex items-center gap-1.5 font-semibold text-foreground hover:text-primary transition-colors"
+          >
+            <PlayerAvatar pim={t.pim} tid={t.tid} size={22} />
+            {t.pn}
+          </Link>
+          <TeamTag tid={t.tid} size="xs" />
+          {preposition && (
+            <span className="text-muted-foreground">{preposition}</span>
+          )}
+          <span className="text-muted-foreground">für</span>
+          <span className="font-mono font-semibold tabular">
+            {formatEUR(t.trp, { compact: true })}
+          </span>
+        </div>
+        <div className="flex items-center gap-2 mt-1.5">
+          <Badge
+            variant={isBuy ? "success" : "danger"}
+            className="text-[10px] gap-1"
+          >
+            {isBuy ? <ShoppingCart className="size-3" /> : <ArrowRightLeft className="size-3" />}
+            {isBuy ? "Kauf" : "Verkauf"}
+          </Badge>
+          {counterIsBank && (
+            <Badge variant="muted" className="text-[10px] gap-1">
+              <Building2 className="size-3" />
+              Liga-Bank
+            </Badge>
+          )}
+          <span
+            className="text-xs text-muted-foreground tabular"
+            title={entry.date.toLocaleString("de-DE")}
+          >
+            {formatRelative(entry.date)}
+          </span>
+        </div>
+      </div>
+      <div
+        className={cn(
+          "size-9 rounded-lg flex items-center justify-center shrink-0 mt-0.5",
+          isBuy ? "bg-emerald-500/10 text-emerald-600" : "bg-rose-500/10 text-rose-600"
+        )}
+      >
+        {isBuy ? <ShoppingCart className="size-4" /> : <ArrowRightLeft className="size-4" />}
+      </div>
+    </div>
+  );
+}
+
+function ActivityRowComponent({ entry }: { entry: ActivityEntry }) {
+  const a = entry.activity;
   const Icon = activityIconComp(a.t);
-  const date = pickActivityDate(a);
   const hasUser = !!a.u?.n;
+  const description = describeActivityFromData(a);
   return (
     <div className="px-5 py-3.5 text-sm flex items-start gap-3">
       {hasUser ? (
@@ -228,14 +393,14 @@ function FeedRow({ activity: a }: { activity: KbActivity }) {
           {hasUser && <span className="font-semibold">{a.u!.n}</span>}
           {hasUser ? " " : ""}
           <span className={hasUser ? "text-muted-foreground" : "font-medium"}>
-            {describeActivity(a)}
+            {description}
           </span>
         </div>
         <div className="flex items-center gap-2 mt-1">
-          {isTransfer(a.t) && (
-            <Badge variant="muted" className="text-[10px] gap-1">
-              <ArrowRightLeft className="size-3" />
-              Transfer
+          {isBonus(a.t) && (
+            <Badge variant="default" className="text-[10px] gap-1">
+              <Wallet className="size-3" />
+              Bonus
             </Badge>
           )}
           {isAchievement(a.t) && (
@@ -244,14 +409,12 @@ function FeedRow({ activity: a }: { activity: KbActivity }) {
               Achievement
             </Badge>
           )}
-          {date && (
-            <span
-              className="text-xs text-muted-foreground tabular"
-              title={date.toLocaleString("de-DE")}
-            >
-              {formatRelative(date)}
-            </span>
-          )}
+          <span
+            className="text-xs text-muted-foreground tabular"
+            title={entry.date.toLocaleString("de-DE")}
+          >
+            {formatRelative(entry.date)}
+          </span>
         </div>
       </div>
       {hasUser && Icon && (
@@ -265,17 +428,29 @@ function FeedRow({ activity: a }: { activity: KbActivity }) {
 
 function activityIconComp(t: number) {
   if (isBonus(t)) return Wallet;
-  if (isTransfer(t)) return ArrowRightLeft;
   if (isAchievement(t)) return Award;
   if (t === 15) return Layers;
   return null;
 }
 
-function describeActivity(a: KbActivity): string {
-  return describeActivityFromData(a);
+function describeActivityFromData(a: KbActivity): string {
+  const t = a.t;
+  const data = (a.data ?? a.d ?? {}) as Record<string, unknown>;
+  const bonus = data.bn as number | undefined;
+  const day = data.day as number | undefined;
+  if (isBonus(t) || bonus !== undefined) {
+    return bonus !== undefined
+      ? `erhielt ${formatEUR(bonus, { compact: true })} Bonus${day ? ` (Spieltag ${day})` : ""}`
+      : "erhielt einen Bonus";
+  }
+  if (isAchievement(t)) {
+    const aname = (data.aname as string) ?? (data.name as string) ?? (data.title as string);
+    return aname ? `schaltete »${aname}« frei` : "schaltete ein Achievement frei";
+  }
+  if (t === 26) return "Liga-Aktivität";
+  return `Aktivität (Typ ${t})`;
 }
 
-/** Extract a Date from an activity by trying many possible field names */
 function pickActivityDate(a: KbActivity): Date | null {
   const candidates: unknown[] = [
     a.dt,
@@ -302,20 +477,10 @@ function parseFlexibleDate(v: unknown): Date | null {
     return isNaN(d.getTime()) ? null : d;
   }
   if (typeof v === "number") {
-    // Heuristic: < 1e11 → seconds, else ms
     const d = new Date(v < 1e11 ? v * 1000 : v);
     return isNaN(d.getTime()) ? null : d;
   }
   return null;
-}
-
-function pickNewestActivityDate(activities: KbActivity[]): Date | null {
-  let best: Date | null = null;
-  for (const a of activities) {
-    const d = pickActivityDate(a);
-    if (d && (!best || d > best)) best = d;
-  }
-  return best;
 }
 
 function formatRelative(date: Date): string {
