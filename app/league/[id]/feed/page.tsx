@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { EmptyState } from "@/components/ui/empty-state";
 import { cn, formatEUR } from "@/lib/utils";
-import { Activity, Filter, ArrowRightLeft, Award, Layers, X } from "lucide-react";
+import { Activity, Filter, ArrowRightLeft, Award, Layers, X, Wallet } from "lucide-react";
 import type { KbActivity } from "@/lib/kickbase/types";
 import { RefreshButton } from "./RefreshButton";
 
@@ -24,8 +24,43 @@ const FILTERS = [
 
 type FilterKey = (typeof FILTERS)[number]["key"];
 
-const isTransfer = (t: number) => t === 1 || t === 2 || t === 3;
-const isAchievement = (t: number) => t === 12;
+const isTransfer = (t: number) => t === 1 || t === 2 || t === 3 || t === 15 || t === 16;
+const isAchievement = (t: number) => t === 12 || t === 13;
+const isBonus = (t: number) => t === 22;
+
+/** Inspects activity payload to produce a German-language description. */
+function describeActivityFromData(a: KbActivity): string {
+  const t = a.t;
+  const data = (a.data ?? a.d ?? {}) as Record<string, unknown>;
+  const playerName =
+    (data.pn as string) ?? (data.player as string) ?? (data.name as string);
+  const price = (data.prc as number) ?? (data.pric as number);
+  const bonus = data.bn as number | undefined;
+  const day = data.day as number | undefined;
+
+  // Bonus payout (verified shape: t=22)
+  if (isBonus(t) || bonus !== undefined) {
+    return bonus !== undefined
+      ? `erhielt ${formatEUR(bonus, { compact: true })} Bonus${day ? ` (Spieltag ${day})` : ""}`
+      : "erhielt einen Bonus";
+  }
+
+  // Transfer-shaped activities (data has player + price)
+  if (playerName && price) {
+    // Heuristic: "Verkauf" if t indicates sell, else "Kauf"
+    if (t === 2 || t === 16) return `verkaufte ${playerName} für ${formatEUR(price, { compact: true })}`;
+    return `kaufte ${playerName} für ${formatEUR(price, { compact: true })}`;
+  }
+  if (playerName) {
+    if (t === 2 || t === 16) return `verkaufte ${playerName}`;
+    if (t === 1 || t === 15) return `kaufte ${playerName}`;
+    return `aktivität mit ${playerName}`;
+  }
+  if (t === 3) return "tätigte einen Transfer";
+  if (isAchievement(t)) return "schaltete ein Achievement frei";
+  if (t === 26) return "Liga-Aktivität";
+  return `Aktivität (Typ ${t})`;
+}
 
 export default async function FeedPage({
   params,
@@ -43,11 +78,13 @@ export default async function FeedPage({
     sp.filter === "transfers" || sp.filter === "achievements" ? sp.filter : "all";
   const userFilter = sp.user;
 
+  const empty = { af: [] as KbActivity[] } as Awaited<ReturnType<typeof kb.activities>>;
   const data = await withKbAuth(path, () =>
     kb.activities(session.token, leagueId, { max: 100 })
-  ).catch(() => ({ it: [] as KbActivity[] }));
+  ).catch(() => empty);
 
-  const allActivities = data.it ?? [];
+  // Kickbase returns activities under `af` (newer) or `it` (legacy)
+  const allActivities = data.af ?? data.it ?? [];
   const activities = allActivities.filter((a) => {
     if (filter === "transfers" && !isTransfer(a.t)) return false;
     if (filter === "achievements" && !isAchievement(a.t)) return false;
@@ -176,13 +213,23 @@ export default async function FeedPage({
 function FeedRow({ activity: a }: { activity: KbActivity }) {
   const Icon = activityIconComp(a.t);
   const date = pickActivityDate(a);
+  const hasUser = !!a.u?.n;
   return (
     <div className="px-5 py-3.5 text-sm flex items-start gap-3">
-      <UserAvatar name={a.u?.n ?? "?"} image={a.u?.uim} size="md" />
+      {hasUser ? (
+        <UserAvatar name={a.u!.n} image={a.u!.uim} size="md" />
+      ) : (
+        <span className="size-10 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0 ring-1 ring-primary/20">
+          {Icon ? <Icon className="size-4" /> : <Activity className="size-4" />}
+        </span>
+      )}
       <div className="flex-1 min-w-0">
         <div className="text-sm">
-          <span className="font-semibold">{a.u?.n ?? "Unbekannt"}</span>{" "}
-          <span className="text-muted-foreground">{describeActivity(a)}</span>
+          {hasUser && <span className="font-semibold">{a.u!.n}</span>}
+          {hasUser ? " " : ""}
+          <span className={hasUser ? "text-muted-foreground" : "font-medium"}>
+            {describeActivity(a)}
+          </span>
         </div>
         <div className="flex items-center gap-2 mt-1">
           {isTransfer(a.t) && (
@@ -207,7 +254,7 @@ function FeedRow({ activity: a }: { activity: KbActivity }) {
           )}
         </div>
       </div>
-      {Icon && (
+      {hasUser && Icon && (
         <span className="size-9 rounded-lg bg-primary/10 text-primary inline-flex items-center justify-center shrink-0 mt-0.5">
           <Icon className="size-4" />
         </span>
@@ -217,6 +264,7 @@ function FeedRow({ activity: a }: { activity: KbActivity }) {
 }
 
 function activityIconComp(t: number) {
+  if (isBonus(t)) return Wallet;
   if (isTransfer(t)) return ArrowRightLeft;
   if (isAchievement(t)) return Award;
   if (t === 15) return Layers;
@@ -224,24 +272,7 @@ function activityIconComp(t: number) {
 }
 
 function describeActivity(a: KbActivity): string {
-  const t = a.t;
-  const data = (a.data ?? a.d ?? {}) as Record<string, unknown>;
-  const playerName =
-    (data.pn as string) ?? (data.player as string) ?? (data.name as string);
-  const price = (data.prc as number) ?? (data.pric as number);
-
-  if (t === 1)
-    return playerName
-      ? `kaufte ${playerName}${price ? ` für ${formatEUR(price, { compact: true })}` : ""}`
-      : "tätigte einen Kauf";
-  if (t === 2)
-    return playerName
-      ? `verkaufte ${playerName}${price ? ` für ${formatEUR(price, { compact: true })}` : ""}`
-      : "verkaufte einen Spieler";
-  if (t === 3) return "tätigte einen Transfer";
-  if (t === 12) return "schaltete ein Achievement frei";
-  if (t === 15) return "stellte eine Aufstellung";
-  return `führte eine Aktivität aus (Typ ${t})`;
+  return describeActivityFromData(a);
 }
 
 /** Extract a Date from an activity by trying many possible field names */

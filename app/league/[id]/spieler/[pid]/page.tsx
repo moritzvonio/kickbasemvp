@@ -93,8 +93,13 @@ export default async function PlayerPage({
   const change92 = firstMv && lastMv ? lastMv - firstMv : 0;
   const change92Pct = firstMv ? (change92 / firstMv) * 100 : 0;
 
-  const perfPoints = (perf?.it ?? [])
-    .map((p) => p.p ?? p.pt)
+  // Performance shape: { it: [{ ti: "season", ph: [matchday entries] }, ...] }
+  // Pick the LAST entry (= current season) and flatten its matchdays.
+  const seasons = perf?.it ?? [];
+  const currentSeason = seasons[seasons.length - 1];
+  const matchdays = currentSeason?.ph ?? [];
+  const perfPoints = matchdays
+    .map((m) => m.p)
     .filter((p): p is number => typeof p === "number");
 
   return (
@@ -242,60 +247,101 @@ export default async function PlayerPage({
       {/* Performance per matchday */}
       <Card className="slide-up slide-up-3">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <span className="size-7 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
-              <Target className="size-4" />
+          <CardTitle className="flex items-center gap-2 justify-between">
+            <span className="flex items-center gap-2">
+              <span className="size-7 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
+                <Target className="size-4" />
+              </span>
+              Spieltage
             </span>
-            Spieltage
+            {currentSeason?.ti && (
+              <span className="text-xs text-muted-foreground font-normal">
+                Saison {currentSeason.ti}
+              </span>
+            )}
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {!perf?.it || perf.it.length === 0 ? (
-            <p className="text-sm text-muted-foreground py-6 text-center">Keine Performance-Daten.</p>
+          {matchdays.length === 0 ? (
+            <p className="text-sm text-muted-foreground py-6 text-center">
+              Keine Spieltag-Daten für diese Saison.
+            </p>
           ) : (
             <div className="overflow-x-auto">
               <table className="tbl">
                 <thead>
                   <tr>
-                    <th className="text-left">
+                    <th className="text-left pl-1">
                       <Calendar className="size-3 inline mr-1" />
                       Spieltag
                     </th>
-                    <th className="text-right">Punkte</th>
+                    <th className="text-left">Begegnung</th>
+                    <th className="text-center hidden sm:table-cell">Min</th>
+                    <th className="text-right pr-1">Punkte</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {perf.it.slice(0, 12).map((p, i) => {
-                    const pts = p.p ?? p.pt;
-                    return (
-                      <tr key={i}>
-                        <td className="text-muted-foreground">
-                          {p.d ?? p.date ?? `MD ${i + 1}`}
-                        </td>
-                        <td className="text-right font-mono font-semibold">
-                          {pts !== undefined ? (
-                            <span
-                              className={
-                                pts >= 100
-                                  ? "text-emerald-700"
-                                  : pts >= 70
-                                  ? "text-emerald-600"
-                                  : pts >= 40
-                                  ? "text-amber-600"
-                                  : pts > 0
-                                  ? "text-rose-600"
-                                  : "text-muted-foreground"
-                              }
-                            >
-                              {pts}
-                            </span>
-                          ) : (
-                            "—"
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })}
+                  {matchdays
+                    .slice()
+                    .reverse()
+                    .slice(0, 18)
+                    .map((m, i) => {
+                      const pts = m.p;
+                      const isHome = m.pt === m.t1;
+                      const opp = isHome ? m.t2 : m.t1;
+                      const oppMeta = teamMeta(opp);
+                      const goalsFor = isHome ? m.t1g : m.t2g;
+                      const goalsAg = isHome ? m.t2g : m.t1g;
+                      return (
+                        <tr key={i}>
+                          <td className="pl-1 font-mono tabular text-muted-foreground">
+                            {m.day !== undefined ? `MD ${m.day}` : `#${i + 1}`}
+                          </td>
+                          <td>
+                            <div className="flex items-center gap-1.5 text-xs">
+                              <span className="text-muted-foreground">
+                                {isHome ? "vs" : "@"}
+                              </span>
+                              <span
+                                className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold"
+                                style={{ backgroundColor: `${oppMeta.color}1a`, color: oppMeta.color }}
+                              >
+                                {oppMeta.short}
+                              </span>
+                              {goalsFor !== undefined && goalsAg !== undefined && (
+                                <span className="font-mono tabular text-muted-foreground">
+                                  {goalsFor}:{goalsAg}
+                                </span>
+                              )}
+                            </div>
+                          </td>
+                          <td className="text-center text-xs text-muted-foreground tabular hidden sm:table-cell">
+                            {m.mp ?? "—"}
+                          </td>
+                          <td className="text-right pr-1 font-mono font-semibold">
+                            {pts !== undefined ? (
+                              <span
+                                className={
+                                  pts >= 200
+                                    ? "text-emerald-700"
+                                    : pts >= 100
+                                    ? "text-emerald-600"
+                                    : pts >= 50
+                                    ? "text-amber-600"
+                                    : pts > 0
+                                    ? "text-rose-600"
+                                    : "text-muted-foreground"
+                                }
+                              >
+                                {pts}
+                              </span>
+                            ) : (
+                              "—"
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
                 </tbody>
               </table>
             </div>

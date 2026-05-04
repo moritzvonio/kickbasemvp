@@ -44,7 +44,7 @@ export default async function LeagueDashboard({
 
   const emptyRanking = {} as Awaited<ReturnType<typeof kb.ranking>>;
   const emptySquad = { it: [] } as Awaited<ReturnType<typeof kb.squad>>;
-  const emptyActivities = { it: [] } as Awaited<ReturnType<typeof kb.activities>>;
+  const emptyActivities = { af: [] } as Awaited<ReturnType<typeof kb.activities>>;
 
   const [budget, squad, ranking, activities] = await Promise.all([
     withKbAuth(path, () => kb.meInLeague(session.token, leagueId)).catch(() => null),
@@ -369,13 +369,19 @@ export default async function LeagueDashboard({
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-2.5">
-            {(activities.it ?? []).length === 0 ? (
-              <p className="text-sm text-muted-foreground">Keine Aktivitäten gefunden.</p>
-            ) : (
-              (activities.it ?? []).slice(0, 12).map((a) => (
+            {(() => {
+              const list = activities.af ?? activities.it ?? [];
+              if (list.length === 0) {
+                return (
+                  <p className="text-sm text-muted-foreground">
+                    Keine Aktivitäten gefunden.
+                  </p>
+                );
+              }
+              return list.slice(0, 12).map((a) => (
                 <ActivityRow key={a.i} activity={a} />
-              ))
-            )}
+              ));
+            })()}
           </CardContent>
         </Card>
       </section>
@@ -538,18 +544,28 @@ function MoverRow({
 
 function ActivityRow({ activity }: { activity: import("@/lib/kickbase/types").KbActivity }) {
   const icon = activityIcon(activity.t);
+  const hasUser = !!activity.u?.n;
   return (
     <div className="text-sm border-b border-border/40 pb-2.5 last:border-0 last:pb-0">
       <div className="flex items-start gap-2.5">
-        <UserAvatar name={activity.u?.n ?? "?"} image={activity.u?.uim} size="xs" />
+        {hasUser ? (
+          <UserAvatar name={activity.u!.n} image={activity.u!.uim} size="xs" />
+        ) : (
+          <span className="size-6 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0 ring-1 ring-primary/20">
+            {icon ?? <Activity className="size-3" />}
+          </span>
+        )}
         <div className="flex-1 min-w-0">
           <div className="text-sm">
-            <span className="font-semibold">{activity.u?.n ?? "Unbekannt"}</span>{" "}
-            <span className="text-muted-foreground">{describeActivity(activity)}</span>
+            {hasUser && <span className="font-semibold">{activity.u!.n}</span>}
+            {hasUser ? " " : ""}
+            <span className={hasUser ? "text-muted-foreground" : "font-medium"}>
+              {describeActivity(activity)}
+            </span>
           </div>
         </div>
         <div className="flex items-center gap-1.5 shrink-0">
-          {icon && (
+          {hasUser && icon && (
             <span className="size-5 rounded bg-muted text-muted-foreground inline-flex items-center justify-center">
               {icon}
             </span>
@@ -566,10 +582,11 @@ function ActivityRow({ activity }: { activity: import("@/lib/kickbase/types").Kb
 }
 
 function activityIcon(t: number) {
-  if (t === 1 || t === 2 || t === 3)
+  if (t === 22) return <Wallet className="size-3" />;
+  if (t === 1 || t === 2 || t === 3 || t === 15 || t === 16)
     return <ArrowRightLeft className="size-3" />;
-  if (t === 12) return <Award className="size-3" />;
-  if (t === 15) return <Layers className="size-3" />;
+  if (t === 12 || t === 13) return <Award className="size-3" />;
+  if (t === 26) return <Activity className="size-3" />;
   return null;
 }
 
@@ -579,19 +596,27 @@ function describeActivity(a: import("@/lib/kickbase/types").KbActivity): string 
   const playerName =
     (data.pn as string) ?? (data.player as string) ?? (data.name as string);
   const price = (data.prc as number) ?? (data.pric as number);
+  const bonus = data.bn as number | undefined;
+  const day = data.day as number | undefined;
 
-  if (t === 1)
-    return playerName
-      ? `kaufte ${playerName}${price ? ` für ${formatEUR(price, { compact: true })}` : ""}`
-      : "tätigte einen Kauf";
-  if (t === 2)
-    return playerName
-      ? `verkaufte ${playerName}${price ? ` für ${formatEUR(price, { compact: true })}` : ""}`
-      : "verkaufte einen Spieler";
+  if (t === 22 || bonus !== undefined) {
+    return bonus !== undefined
+      ? `erhielt ${formatEUR(bonus, { compact: true })} Bonus${day ? ` (Spieltag ${day})` : ""}`
+      : "erhielt einen Bonus";
+  }
+  if (playerName && price) {
+    if (t === 2 || t === 16) return `verkaufte ${playerName} für ${formatEUR(price, { compact: true })}`;
+    return `kaufte ${playerName} für ${formatEUR(price, { compact: true })}`;
+  }
+  if (playerName) {
+    if (t === 2 || t === 16) return `verkaufte ${playerName}`;
+    if (t === 1 || t === 15) return `kaufte ${playerName}`;
+    return `Aktivität mit ${playerName}`;
+  }
   if (t === 3) return "tätigte einen Transfer";
-  if (t === 12) return "schaltete ein Achievement frei";
-  if (t === 15) return "stellte eine Aufstellung";
-  return "Aktivität";
+  if (t === 12 || t === 13) return "Achievement freigeschaltet";
+  if (t === 26) return "Liga-Aktivität";
+  return `Aktivität (Typ ${t})`;
 }
 
 function formatActivityDate(dt: number | string): string {
@@ -600,6 +625,7 @@ function formatActivityDate(dt: number | string): string {
   else date = new Date(dt < 1e11 ? dt * 1000 : dt);
   if (isNaN(date.getTime())) return "";
   const diff = Date.now() - date.getTime();
+  if (diff < 0) return date.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit" });
   const minutes = Math.floor(diff / 60_000);
   if (minutes < 1) return "jetzt";
   if (minutes < 60) return `${minutes}m`;

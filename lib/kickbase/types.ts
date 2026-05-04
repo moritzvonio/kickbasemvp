@@ -240,23 +240,41 @@ export interface KbMarketEntry {
   [k: string]: unknown;
 }
 
-/** GET /v4/leagues/{id}/activitiesFeed — wer hat was gemacht */
+/** GET /v4/leagues/{id}/activitiesFeed — wer hat was gemacht
+ * Kickbase returns the array under `af` (activity feed). Some legacy endpoints
+ * use `it` — we accept both for safety.
+ */
 export interface KbActivitiesFeed {
-  it: KbActivity[];
+  /** Primary: activity feed array */
+  af?: KbActivity[];
+  /** Legacy alias used by some responses */
+  it?: KbActivity[];
+  /** Comment count */
+  coc?: number;
+  /** Onboarding feature flag image */
+  onbft?: string;
   cnt?: number;
 }
 
 export interface KbActivity {
   i: string;
-  /** Activity type code. Common: 1=transfer, 12=achievement, etc */
+  /** Activity type code. Known examples:
+   * 22 = bonus payout (data.bn = amount, data.day = matchday)
+   * 26 = generic league activity
+   * 1/2/3 = buy/sell/transfer (heuristic)
+   * 12 = achievement (heuristic)
+   * 15 = lineup change (heuristic)
+   */
   t: number;
-  /** Date (unix seconds or ISO depending on endpoint) */
+  /** Comment count on this activity */
+  coc?: number;
+  /** Date as ISO string ("2026-02-23T18:25:22Z") or unix s/ms */
   dt?: number | string;
   date?: string;
   /** Free-form data payload */
   data?: Record<string, unknown>;
   d?: Record<string, unknown>;
-  /** User who triggered the activity */
+  /** User who triggered the activity (optional — many activity types have no user) */
   u?: { i: string; n: string; uim?: string };
   [k: string]: unknown;
 }
@@ -406,21 +424,59 @@ export interface KbLineupPlayer {
   [k: string]: unknown;
 }
 
-/** GET /v4/leagues/{id}/players/{pid}/performance — points history */
+/** GET /v4/leagues/{id}/players/{pid}/performance
+ * Response shape: { it: [{ ti: "season title", n: "comp", ph: [matchday entries] }] }
+ * The actual matchday-level points live in `it[*].ph[*]`.
+ */
 export interface KbPerformanceResponse {
-  it?: KbPerformancePoint[];
+  it?: KbPerformanceSeason[];
   [k: string]: unknown;
 }
 
+export interface KbPerformanceSeason {
+  /** Season title e.g. "2025/2026" */
+  ti?: string;
+  /** Competition name e.g. "Bundesliga" */
+  n?: string;
+  /** Per-matchday entries */
+  ph?: KbPerformancePoint[];
+}
+
 export interface KbPerformancePoint {
-  /** matchday number */
-  d?: number;
-  /** date label */
-  date?: string;
-  /** points */
+  /** Matchday number */
+  day?: number;
+  /** Points scored this matchday */
   p?: number;
-  /** points (alt key) */
-  pt?: number;
+  /** Minutes played display ("90'", "67'") */
+  mp?: string;
+  /** Match date ISO */
+  md?: string;
+  /** Home team id */
+  t1?: string;
+  /** Away team id */
+  t2?: string;
+  /** Home goals */
+  t1g?: number;
+  /** Away goals */
+  t2g?: number;
+  /** Player's team id */
+  pt?: string;
+  /** Status */
+  st?: number;
+  /** Matchday status */
+  mdst?: number;
+  /** Is current matchday */
+  cur?: boolean;
+  /** Average points (running) */
+  ap?: number;
+  /** Total points (running) */
+  tp?: number;
+  /** Total seconds played (running) */
+  asp?: number;
+  /** Home team image */
+  t1im?: string;
+  /** Away team image */
+  t2im?: string;
   [k: string]: unknown;
 }
 
