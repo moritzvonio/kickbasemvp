@@ -71,6 +71,13 @@ export const kb = {
     return kbFetch<unknown>(`/v4/leagues/${leagueId}/lineup`, { token });
   },
 
+  async lineupOverview(token: string, leagueId: string) {
+    return kbFetch<import("./types").KbLineupOverview>(
+      `/v4/leagues/${leagueId}/lineup/overview`,
+      { token }
+    );
+  },
+
   // ── Market ─────────────────────────────────────────────
   async market(token: string, leagueId: string) {
     return kbFetch<KbMarketResponse>(`/v4/leagues/${leagueId}/market`, { token });

@@ -202,7 +202,8 @@ export interface KbSquadPlayer {
   mvgl?: number; // market value gain/loss (since purchase)
   sdmvt?: number; // same-day MV change (today)
   tfhmvt?: number; // 24h MV change
-  p?: number; // total points
+  p?: number; // current-season points (can be 0 in preseason)
+  tp?: number; // all-time / total points (fallback)
   ap?: number; // avg points
   st?: number; // status (0=fit, 1=injured?, 2=red card?)
   stl?: unknown[]; // status list
@@ -278,19 +279,130 @@ export interface KbMarketValuePoint {
   mv: number;
 }
 
-/** GET /v4/leagues/{id}/players/{pid} — player details */
+/** GET /v4/leagues/{id}/players/{pid} — player details (rich) */
 export interface KbPlayerDetails {
   i: string;
-  n: string;
+  /** First name */
   fn?: string;
-  pos: number;
-  mv: number;
-  mvt?: number;
-  st?: number;
-  p?: number;
-  ap?: number;
+  /** Last name */
+  ln?: string;
+  /** Single-name fallback (some endpoints) */
+  n?: string;
+  /** Shirt number */
+  shn?: number;
+  /** Bundesliga team id */
   tid: string;
+  /** Team display name */
+  tn?: string;
+  /** Owner user id (current owner in league, if any) */
+  oui?: string;
+  /** Status (0 = fit, others = injured/red etc) */
+  st?: number;
+  /** Status list (text reasons) */
+  stl?: unknown[];
+  /** Position 1=GK 2=DEF 3=MID 4=FWD */
+  pos: number;
+  /** Total points season-to-date */
+  tp?: number;
+  /** Average points per matchday */
+  ap?: number;
+  /** Seconds played */
+  sec?: number;
+  /** Goals scored */
+  g?: number;
+  /** Assists */
+  a?: number;
+  /** Yellow cards */
+  y?: number;
+  /** Red cards */
+  r?: number;
+  /** Player history per matchday */
+  ph?: { hp?: boolean; p?: number; md?: string }[];
+  /** Current market value */
+  mv: number;
+  /** Custom value (?) */
+  cv?: number;
+  /** 24h MV trend */
+  tfhmvt?: number;
+  /** MV trend index */
+  mvt?: number;
+  /** Current matchday */
+  day?: number;
+  /** Recent matchday summary with opponents */
+  mdsum?: KbMatchdaySummary[];
+  /** Player image */
   pim?: string;
+  [k: string]: unknown;
+}
+
+export interface KbMatchdaySummary {
+  /** Home team id */
+  t1: string;
+  /** Away team id */
+  t2: string;
+  /** Home goals */
+  t1g?: number;
+  /** Away goals */
+  t2g?: number;
+  /** Matchday number */
+  day: number;
+  /** Match date ISO */
+  md: string;
+  /** Is current matchday */
+  cur?: boolean;
+  /** Player points scored this matchday */
+  p?: number;
+  [k: string]: unknown;
+}
+
+/** GET /v4/leagues/{id}/lineup/overview — current lineup + bench + opponents */
+export interface KbLineupOverview {
+  /** Matchday number this lineup is for */
+  mdln?: string | number;
+  /** Lineup submission deadline (ISO) */
+  lis?: string;
+  /** Budget */
+  b?: number;
+  /** Lineup players (lo=0 bench, lo=1..11 field) */
+  lp?: KbLineupPlayer[];
+  [k: string]: unknown;
+}
+
+export interface KbLineupPlayer {
+  /** Player id */
+  pi: string;
+  /** Name */
+  n: string;
+  /** Status (0=fit, 128=ended career?) */
+  st?: number;
+  /** Lineup status (0=bench, 1=lineup, etc) */
+  lst?: number;
+  /** Matchday status */
+  mdst?: number;
+  /** Position 1-4 */
+  pos: number;
+  /** Lineup order — 0 = bench, 1..11 = field slot */
+  lo?: number;
+  /** Bundesliga team id */
+  tid: string;
+  /** Avg points */
+  ap?: number;
+  /** Total season points (alt) */
+  tp?: number;
+  /** Market value (sometimes 0 if player retired/inactive) */
+  mv?: number;
+  /** Next opponent home team */
+  t1?: string;
+  /** Next opponent away team */
+  t2?: string;
+  /** Next opponent home image */
+  t1im?: string;
+  /** Next opponent away image */
+  t2im?: string;
+  /** Player image */
+  pim?: string;
+  /** Is captain */
+  ictp?: boolean;
   [k: string]: unknown;
 }
 

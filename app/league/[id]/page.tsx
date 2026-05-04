@@ -451,9 +451,7 @@ function PlayerCard({
             >
               {team.short}
             </span>
-            {player.p !== undefined && (
-              <span className="font-mono">{player.p} Pkt</span>
-            )}
+            <PlayerPointsLabel p={player.p} tp={player.tp} ap={player.ap} />
           </div>
         </div>
         <div className="text-right shrink-0">
@@ -468,6 +466,26 @@ function PlayerCard({
       </div>
     </a>
   );
+}
+
+function PlayerPointsLabel({
+  p,
+  tp,
+  ap,
+}: {
+  p?: number;
+  tp?: number;
+  ap?: number;
+}) {
+  // Prefer absolute points; fall back to total or average if 0/undef.
+  const total = (p && p > 0) ? p : (tp && tp > 0) ? tp : undefined;
+  if (total !== undefined) {
+    return <span className="font-mono tabular">{total.toLocaleString("de-DE")} Pkt</span>;
+  }
+  if (ap !== undefined && ap > 0) {
+    return <span className="font-mono tabular">Ø {ap}</span>;
+  }
+  return null;
 }
 
 function MoverRow({

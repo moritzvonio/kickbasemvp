@@ -9,9 +9,12 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { cn, formatEUR } from "@/lib/utils";
 import { Activity, Filter, ArrowRightLeft, Award, Layers, X } from "lucide-react";
 import type { KbActivity } from "@/lib/kickbase/types";
+import { RefreshButton } from "./RefreshButton";
 
 export const metadata: Metadata = { title: "Liga-Feed" };
 export const dynamic = "force-dynamic";
+export const revalidate = 0;
+export const fetchCache = "force-no-store";
 
 const FILTERS = [
   { key: "all", label: "Alle" },
@@ -58,16 +61,19 @@ export default async function FeedPage({
 
   return (
     <div className="space-y-6">
-      <div className="slide-up">
-        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight flex items-center gap-3">
-          <span className="inline-flex size-10 items-center justify-center rounded-xl bg-primary/10 text-primary ring-1 ring-primary/20">
-            <Activity className="size-5" />
-          </span>
-          Liga-Feed
-        </h1>
-        <p className="text-sm text-muted-foreground mt-2">
-          Wer hat was gemacht — letzte {allActivities.length} Aktivitäten
-        </p>
+      <div className="slide-up flex items-end justify-between gap-3 flex-wrap">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight flex items-center gap-3">
+            <span className="inline-flex size-10 items-center justify-center rounded-xl bg-primary/10 text-primary ring-1 ring-primary/20">
+              <Activity className="size-5" />
+            </span>
+            Liga-Feed
+          </h1>
+          <p className="text-sm text-muted-foreground mt-2">
+            Wer hat was gemacht — letzte {allActivities.length} Aktivitäten
+          </p>
+        </div>
+        <RefreshButton />
       </div>
 
       {/* Filter chips */}

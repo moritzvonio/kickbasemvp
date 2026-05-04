@@ -191,13 +191,18 @@ export default async function PlayerPage({
         <StatCard
           icon={<Target className="size-4" />}
           label="Punkte gesamt"
-          value={player.p?.toLocaleString("de-DE") ?? "—"}
+          value={player.tp !== undefined ? player.tp.toLocaleString("de-DE") : "—"}
+          sub={
+            player.g !== undefined || player.a !== undefined
+              ? `${player.g ?? 0} Tore · ${player.a ?? 0} Vorlagen`
+              : undefined
+          }
           accent="success"
         />
         <StatCard
           icon={<Activity className="size-4" />}
           label="Ø pro Spieltag"
-          value={player.ap?.toFixed(1) ?? "—"}
+          value={player.ap !== undefined ? String(player.ap) : "—"}
           accent="info"
         />
       </div>
