@@ -1,7 +1,7 @@
 import { env } from "@/lib/env";
 import type { KbErrorResponse } from "./types";
 
-const USER_AGENT = "BetterBase/0.1 (+https://betterbase.app)";
+const USER_AGENT = "KickbaseMVP/0.1 (+https://kickbasemvp.app)";
 
 export class KickbaseError extends Error {
   status: number;

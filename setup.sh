@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# BetterBase one-shot setup
+# KickbaseMVP one-shot setup
 # Macht: GitHub-Repo + Vercel-Projekt + Env-Vars + Deploy
 # Was du brauchst: nur GitHub- und Vercel-Account (kostenlos)
 # Stripe ist separat (./setup-stripe.sh) — kannst du später machen
@@ -23,12 +23,12 @@ cd "$(dirname "$0")"
 
 cat <<'BANNER'
 
-  ██████╗ ███████╗████████╗████████╗███████╗██████╗ ██████╗  █████╗ ███████╗███████╗
-  ██╔══██╗██╔════╝╚══██╔══╝╚══██╔══╝██╔════╝██╔══██╗██╔══██╗██╔══██╗██╔════╝██╔════╝
-  ██████╔╝█████╗     ██║      ██║   █████╗  ██████╔╝██████╔╝███████║███████╗█████╗
-  ██╔══██╗██╔══╝     ██║      ██║   ██╔══╝  ██╔══██╗██╔══██╗██╔══██║╚════██║██╔══╝
-  ██████╔╝███████╗   ██║      ██║   ███████╗██║  ██║██████╔╝██║  ██║███████║███████╗
-  ╚═════╝ ╚══════╝   ╚═╝      ╚═╝   ╚══════╝╚═╝  ╚═╝╚═════╝ ╚═╝  ╚═╝╚══════╝╚══════╝
+  ██╗  ██╗██╗ ██████╗██╗  ██╗██████╗  █████╗ ███████╗███████╗   ███╗   ███╗██╗   ██╗██████╗
+  ██║ ██╔╝██║██╔════╝██║ ██╔╝██╔══██╗██╔══██╗██╔════╝██╔════╝   ████╗ ████║██║   ██║██╔══██╗
+  █████╔╝ ██║██║     █████╔╝ ██████╔╝███████║███████╗█████╗     ██╔████╔██║██║   ██║██████╔╝
+  ██╔═██╗ ██║██║     ██╔═██╗ ██╔══██╗██╔══██║╚════██║██╔══╝     ██║╚██╔╝██║╚██╗ ██╔╝██╔═══╝
+  ██║  ██╗██║╚██████╗██║  ██╗██████╔╝██║  ██║███████║███████╗   ██║ ╚═╝ ██║ ╚████╔╝ ██║
+  ╚═╝  ╚═╝╚═╝ ╚═════╝╚═╝  ╚═╝╚═════╝ ╚═╝  ╚═╝╚══════╝╚══════╝   ╚═╝     ╚═╝  ╚═══╝  ╚═╝
 
        One-Shot Setup — GitHub + Vercel + Deploy in einem Rutsch
 BANNER
@@ -67,7 +67,7 @@ else
 KICKBASE_API_BASE=https://api.kickbase.com
 SESSION_SECRET=$SS
 NEXT_PUBLIC_APP_URL=http://localhost:3000
-NEXT_PUBLIC_APP_NAME=BetterBase
+NEXT_PUBLIC_APP_NAME=KickbaseMVP
 EOF
   ok ".env.local mit zufälligem SESSION_SECRET geschrieben"
 fi
@@ -88,7 +88,7 @@ else
 
 NEXT_PUBLIC_VAPID_PUBLIC_KEY=$VPK
 VAPID_PRIVATE_KEY=$VPV
-VAPID_SUBJECT=mailto:noreply@betterbase.app
+VAPID_SUBJECT=mailto:noreply@kickbasemvp.app
 EOF
     ok "VAPID-Keys generiert"
   fi
@@ -109,8 +109,8 @@ else
     gh auth login
   fi
 
-  read -r -p "    Repo-Name [betterbase]: " REPO
-  REPO=${REPO:-betterbase}
+  read -r -p "    Repo-Name [kickbasemvp]: " REPO
+  REPO=${REPO:-kickbasemvp}
   read -r -p "    Privates Repo? [j/N]: " PRIVATE_ANS
   PRIVACY="--public"
   case "$PRIVATE_ANS" in [jJyY]*) PRIVACY="--private";; esac
@@ -154,10 +154,10 @@ set_env() {
 info "Setze Production-Env-Vars…"
 set_env "KICKBASE_API_BASE" "https://api.kickbase.com"
 set_env "SESSION_SECRET" "$SS"
-set_env "NEXT_PUBLIC_APP_NAME" "BetterBase"
+set_env "NEXT_PUBLIC_APP_NAME" "KickbaseMVP"
 [ -n "$VPK" ] && set_env "NEXT_PUBLIC_VAPID_PUBLIC_KEY" "$VPK"
 [ -n "$VPV" ] && set_env "VAPID_PRIVATE_KEY" "$VPV"
-[ -n "$VPK" ] && set_env "VAPID_SUBJECT" "mailto:noreply@betterbase.app"
+[ -n "$VPK" ] && set_env "VAPID_SUBJECT" "mailto:noreply@kickbasemvp.app"
 
 # ─── 6. Deploy ──────────────────────────────────────────────────
 step "Schritt 6/6 — Deploy auf Production"
@@ -175,7 +175,7 @@ if [ -n "$URL" ]; then
   cat <<DONE
 
   ${GREEN}${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}
-  ${GREEN}${BOLD}  Deine BetterBase ist live:${NC}
+  ${GREEN}${BOLD}  Deine KickbaseMVP ist live:${NC}
   ${GREEN}${BOLD}  $URL${NC}
   ${GREEN}${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}
 

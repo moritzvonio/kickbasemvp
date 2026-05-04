@@ -3,7 +3,7 @@ import { z } from "zod";
 const Env = z.object({
   KICKBASE_API_BASE: z.string().url().default("https://api.kickbase.com"),
   SESSION_SECRET: z.string().min(32, "SESSION_SECRET must be >= 32 chars"),
-  NEXT_PUBLIC_APP_NAME: z.string().default("BetterBase"),
+  NEXT_PUBLIC_APP_NAME: z.string().default("KickbaseMVP"),
   NEXT_PUBLIC_APP_URL: z.string().default("http://localhost:3000"),
   NEXT_PUBLIC_VAPID_PUBLIC_KEY: z.string().optional(),
   NODE_ENV: z.enum(["development", "production", "test"]).default("development"),

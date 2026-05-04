@@ -3,7 +3,14 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { LayoutDashboard, ShoppingCart, Activity, Star, ClipboardList, Trophy } from "lucide-react";
+import {
+  LayoutDashboard,
+  ShoppingCart,
+  Activity,
+  Star,
+  ClipboardList,
+  Trophy,
+} from "lucide-react";
 
 interface Tab {
   href: string;
@@ -22,27 +29,36 @@ export function LeagueTabs({ leagueId }: { leagueId: string }) {
     { href: `/league/${leagueId}/watchlist`, label: "Watchlist", icon: Star },
     { href: `/league/${leagueId}/feed`, label: "Liga-Feed", icon: Activity },
   ];
+
   return (
-    <nav className="mx-auto max-w-5xl px-4 flex items-center gap-1 -mt-px overflow-x-auto">
-      {tabs.map((t) => {
-        const active = t.exact ? pathname === t.href : pathname.startsWith(t.href);
-        const Icon = t.icon;
-        return (
-          <Link
-            key={t.href}
-            href={t.href}
-            className={cn(
-              "inline-flex items-center gap-1.5 px-3 py-2.5 text-sm border-b-2 transition-colors whitespace-nowrap",
-              active
-                ? "border-primary text-foreground"
-                : "border-transparent text-muted-foreground hover:text-foreground"
-            )}
-          >
-            <Icon className="size-4" />
-            {t.label}
-          </Link>
-        );
-      })}
-    </nav>
+    <div className="mx-auto max-w-5xl px-4 pb-3">
+      <nav
+        className="inline-flex items-center gap-1 p-1 rounded-full bg-muted/60 ring-1 ring-border max-w-full overflow-x-auto scrollbar-none"
+        role="tablist"
+        aria-label="Liga-Navigation"
+      >
+        {tabs.map((t) => {
+          const active = t.exact ? pathname === t.href : pathname.startsWith(t.href);
+          const Icon = t.icon;
+          return (
+            <Link
+              key={t.href}
+              href={t.href}
+              role="tab"
+              aria-selected={active}
+              className={cn(
+                "inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs sm:text-sm font-medium whitespace-nowrap transition-all",
+                active
+                  ? "bg-card text-foreground shadow-sm ring-1 ring-border"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              <Icon className={cn("size-4", active && "text-primary")} />
+              {t.label}
+            </Link>
+          );
+        })}
+      </nav>
+    </div>
   );
 }

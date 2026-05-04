@@ -1,4 +1,4 @@
-# BetterBase — Deploy & Setup-Anleitung
+# KickbaseMVP — Deploy & Setup-Anleitung
 
 Mourice, das hier ist deine Klick-Anleitung. Was **du machst** ist mit 👉 markiert.
 Was **automatisch läuft**, ist mit ⚙️ markiert.
@@ -14,7 +14,7 @@ Du kannst die App gleich lokal testen, bevor sie online geht.
 1. Terminal aufmachen
 2. Dieses Kommando reinkopieren und Enter drücken:
    ```
-   cd ~/betterbase && pnpm dev
+   cd ~/kickbasemvp && pnpm dev
    ```
 3. Browser öffnen: <http://localhost:3000>
 4. Auf "Jetzt mit Kickbase einloggen" klicken
@@ -34,33 +34,33 @@ Wenn das funktioniert → weiter mit Schritt 2.
 👉 **Du machst:**
 
 1. **GitHub-Repo erstellen.** Auf <https://github.com/new>:
-   - Repository name: `betterbase`
+   - Repository name: `kickbasemvp`
    - Private oder Public — egal
    - **Kein** README, **kein** .gitignore (haben wir schon)
    - Auf "Create repository" klicken
 2. GitHub zeigt dir Befehle — kopier nur den `git remote add` und die `git push`-Zeile.
    Im Terminal:
    ```
-   cd ~/betterbase
-   git remote add origin https://github.com/DEIN-USERNAME/betterbase.git
+   cd ~/kickbasemvp
+   git remote add origin https://github.com/DEIN-USERNAME/kickbasemvp.git
    git branch -M main
    git push -u origin main
    ```
 3. **Vercel-Projekt anlegen.** Auf <https://vercel.com/new>:
-   - "Import Git Repository" → dein `betterbase`-Repo wählen
+   - "Import Git Repository" → dein `kickbasemvp`-Repo wählen
    - Framework: **Next.js** (wird auto-erkannt)
    - **NICHT auf "Deploy" klicken — erst Env-Vars setzen!**
 4. Bei "Environment Variables" diese drei eintragen:
    | Name | Wert |
    |------|------|
    | `SESSION_SECRET` | (im Terminal: `openssl rand -hex 32` ausführen, Output kopieren) |
-   | `NEXT_PUBLIC_APP_URL` | `https://DEIN-PROJEKT.vercel.app` (kennst du noch nicht — erstmal `https://betterbase.vercel.app` eintragen, später korrigieren) |
+   | `NEXT_PUBLIC_APP_URL` | `https://DEIN-PROJEKT.vercel.app` (kennst du noch nicht — erstmal `https://kickbasemvp.vercel.app` eintragen, später korrigieren) |
    | `KICKBASE_API_BASE` | `https://api.kickbase.com` |
 5. Jetzt "Deploy" klicken.
 
 ⚙️ **Automatisch:**
 - Vercel baut die App (~2 Min)
-- Du bekommst eine Live-URL wie `https://betterbase-xyz.vercel.app`
+- Du bekommst eine Live-URL wie `https://kickbasemvp-xyz.vercel.app`
 
 👉 **Danach:**
 - Im Vercel-Dashboard → Settings → Environment Variables: `NEXT_PUBLIC_APP_URL` auf die echte Vercel-URL korrigieren
@@ -70,7 +70,7 @@ Wenn das funktioniert → weiter mit Schritt 2.
 
 ## Schritt 3 — Eigene Domain verbinden (optional, 5 Min)
 
-Wenn du `betterbase.app` o.ä. besitzt:
+Wenn du `kickbasemvp.app` o.ä. besitzt:
 
 👉 **Du machst:**
 1. Vercel-Projekt → Settings → Domains
@@ -93,11 +93,11 @@ Damit du Pro-Käufe entgegennehmen kannst.
 2. **API-Keys holen:** Dashboard → Developers → API keys
    - "Secret key" kopieren (beginnt mit `sk_test_…`)
 3. **Produkt anlegen:** Dashboard → Catalog → Products → "+ Add product"
-   - Name: `BetterBase Pro Monatlich`
+   - Name: `KickbaseMVP Pro Monatlich`
    - Pricing: Recurring · 4,99 € · Monthly · EUR
    - Speichern → "API ID" der Price kopieren (beginnt mit `price_…`)
 4. **Zweites Produkt:** "+ Add product"
-   - Name: `BetterBase Pro Saison`
+   - Name: `KickbaseMVP Pro Saison`
    - Pricing: One-time · 19,99 € · EUR
    - Speichern → Price-ID kopieren
 5. **Webhook anlegen:** Developers → Webhooks → "Add endpoint"
@@ -130,7 +130,7 @@ Live-Keys ersetzen.
 
 1. Im Terminal:
    ```
-   cd ~/betterbase
+   cd ~/kickbasemvp
    pnpm dlx web-push generate-vapid-keys
    ```
 2. Du bekommst zwei Strings: **Public Key** und **Private Key**

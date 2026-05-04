@@ -16,14 +16,14 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: "BetterBase — Die smarteste Kickbase-Companion-App",
-    template: "%s · BetterBase",
+    default: "KickbaseMVP — Die smarteste Kickbase-Companion-App",
+    template: "%s · KickbaseMVP",
   },
   description:
     "Liga-Dashboard, Marktwert-Insights und Transfer-Coach für deine Kickbase-Saison. Mit deinem Kickbase-Login einloggen, Passwort wird nicht gespeichert.",
   metadataBase: new URL(env.NEXT_PUBLIC_APP_URL),
   openGraph: {
-    title: "BetterBase",
+    title: "KickbaseMVP",
     description: "Die smarteste Kickbase-Companion-App.",
     type: "website",
     locale: "de_DE",

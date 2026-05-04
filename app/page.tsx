@@ -154,7 +154,7 @@ function HeroPreviewCard() {
           <span className="size-2.5 rounded-full bg-amber-400/60" />
           <span className="size-2.5 rounded-full bg-emerald-400/60" />
           <span className="ml-3 text-[11px] font-mono text-muted-foreground">
-            betterbase.app/league/haramlig
+            kickbasemvp.app/league/haramlig
           </span>
         </div>
         {/* Preview content */}
@@ -517,7 +517,7 @@ function Pricing() {
             name="Free"
             price="0 €"
             period="für immer"
-            tagline="Teste BetterBase ohne Risiko."
+            tagline="Teste KickbaseMVP ohne Risiko."
             features={[
               { ok: true, text: "Liga-Übersicht & Tabelle" },
               { ok: true, text: "Eigenes Team & Marktwerte" },
@@ -663,7 +663,7 @@ function Trust() {
             verschlüsselt in einem httpOnly-Cookie — niemals in unserer Datenbank.
           </TrustItem>
           <TrustItem icon={<ShieldCheck className="size-5" />} title="Nicht offiziell">
-            BetterBase ist nicht mit Kickbase, der DFL oder einem Bundesliga-Verein verbunden.
+            KickbaseMVP ist nicht mit Kickbase, der DFL oder einem Bundesliga-Verein verbunden.
             Die Nutzung erfolgt auf eigene Verantwortung.
           </TrustItem>
           <TrustItem icon={<Sparkles className="size-5" />} title="DSGVO-konform">
@@ -708,7 +708,7 @@ function FAQ() {
           description="Alles was du wissen musst, bevor du loslegst."
         />
         <div className="mt-12 space-y-4">
-          <FaqItem q="Ist BetterBase offiziell von Kickbase?">
+          <FaqItem q="Ist KickbaseMVP offiziell von Kickbase?">
             Nein. Wir nutzen die öffentliche Kickbase-App-API (v4) und sind ein
             unabhängiges Drittanbieter-Tool.
           </FaqItem>
@@ -725,7 +725,7 @@ function FAQ() {
             rückwirkend gültig für die ganze Saison.
           </FaqItem>
           <FaqItem q="Gibt's eine App?">
-            BetterBase ist eine PWA — du installierst sie aus dem Browser auf deinen Home-Screen.
+            KickbaseMVP ist eine PWA — du installierst sie aus dem Browser auf deinen Home-Screen.
             Push-Notifications, Offline-Cache, Vollbild — alles dabei.
           </FaqItem>
           <FaqItem q="Kann ich kündigen?">
@@ -820,7 +820,7 @@ function SiteFooter() {
           </FooterCol>
         </div>
         <div className="mt-8 pt-6 border-t border-border/50 text-xs text-muted-foreground flex items-center justify-between">
-          <span>© 2026 BetterBase</span>
+          <span>© 2026 KickbaseMVP</span>
           <span>Made in Berlin · with ⚽ + 🍺</span>
         </div>
       </div>

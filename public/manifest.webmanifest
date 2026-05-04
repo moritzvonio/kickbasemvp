@@ -1,13 +1,13 @@
 {
-  "name": "BetterBase — Kickbase Companion",
-  "short_name": "BetterBase",
-  "description": "Liga-Sozial-Layer, Marktwert-Insights und Transfer-Coach für Kickbase.",
+  "name": "KickbaseMVP — Kickbase Companion",
+  "short_name": "KickbaseMVP",
+  "description": "Aufstellungs-Planer, Marktwert-Insights und Top-Spieler-Wertung für Kickbase.",
   "start_url": "/leagues",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait",
-  "theme_color": "#0a0a0a",
-  "background_color": "#0a0a0a",
+  "theme_color": "#10b981",
+  "background_color": "#ffffff",
   "lang": "de-DE",
   "categories": ["sports", "lifestyle"],
   "icons": [
