@@ -1,6 +1,7 @@
 import { ImageResponse } from "next/og";
 
 export const runtime = "edge";
+
 export const alt = "BetterBase — die smarteste Kickbase-Companion-App";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
@@ -10,7 +11,7 @@ export default async function Image() {
     (
       <div
         style={{
-          background: "linear-gradient(135deg, #0a0a0a 0%, #1a0608 50%, #0a0a0a 100%)",
+          background: "linear-gradient(135deg, #ffffff 0%, #ecfdf5 50%, #ffffff 100%)",
           width: "100%",
           height: "100%",
           display: "flex",
@@ -28,23 +29,24 @@ export default async function Image() {
             right: 60,
             width: 100,
             height: 100,
-            borderRadius: 16,
-            background: "#d20515",
+            borderRadius: 20,
+            background: "linear-gradient(135deg, #10b981 0%, #059669 100%)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
             color: "white",
             fontSize: 64,
             fontWeight: 800,
+            boxShadow: "0 12px 40px -12px rgba(16, 185, 129, 0.5)",
           }}
         >
           B
         </div>
         <div
           style={{
-            color: "#a1a1aa",
+            color: "#10b981",
             fontSize: 28,
-            fontWeight: 600,
+            fontWeight: 700,
             marginBottom: 12,
             textTransform: "uppercase",
             letterSpacing: 2,
@@ -54,7 +56,7 @@ export default async function Image() {
         </div>
         <div
           style={{
-            color: "#ededed",
+            color: "#0f172a",
             fontSize: 96,
             fontWeight: 800,
             lineHeight: 1.05,
@@ -62,11 +64,11 @@ export default async function Image() {
           }}
         >
           Kickbase,{" "}
-          <span style={{ color: "#d20515" }}>aber besser.</span>
+          <span style={{ color: "#10b981" }}>aber besser.</span>
         </div>
         <div
           style={{
-            color: "#a1a1aa",
+            color: "#64748b",
             fontSize: 32,
             marginTop: 28,
             maxWidth: 920,

@@ -17,47 +17,48 @@ interface Point {
   mv: number;
 }
 
-export function MarketValueChart({ data, color = "#d20515" }: { data: Point[]; color?: string }) {
+export function MarketValueChart({ data, color = "#10b981" }: { data: Point[]; color?: string }) {
   return (
     <div className="h-64 w-full">
       <ResponsiveContainer width="100%" height="100%">
         <AreaChart data={data} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
           <defs>
             <linearGradient id="mvGrad" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor={color} stopOpacity={0.5} />
+              <stop offset="0%" stopColor={color} stopOpacity={0.4} />
               <stop offset="100%" stopColor={color} stopOpacity={0} />
             </linearGradient>
           </defs>
-          <CartesianGrid stroke="#1f1f1f" strokeDasharray="3 3" vertical={false} />
+          <CartesianGrid stroke="#e2e8f0" strokeDasharray="3 3" vertical={false} />
           <XAxis
             dataKey="date"
-            tick={{ fill: "#71717a", fontSize: 11 }}
+            tick={{ fill: "#64748b", fontSize: 11 }}
             interval="preserveStartEnd"
             minTickGap={28}
-            stroke="#3f3f46"
+            stroke="#cbd5e1"
           />
           <YAxis
             domain={["dataMin - 100000", "dataMax + 100000"]}
-            tick={{ fill: "#71717a", fontSize: 11 }}
+            tick={{ fill: "#64748b", fontSize: 11 }}
             tickFormatter={(v) => formatEUR(v, { compact: true })}
             width={70}
-            stroke="#3f3f46"
+            stroke="#cbd5e1"
           />
           <Tooltip
             contentStyle={{
-              background: "#141414",
-              border: "1px solid #262626",
-              borderRadius: 8,
+              background: "#ffffff",
+              border: "1px solid #e2e8f0",
+              borderRadius: 10,
               fontSize: 12,
+              boxShadow: "0 4px 16px -4px rgba(15, 23, 42, 0.08)",
             }}
-            labelStyle={{ color: "#a1a1aa" }}
+            labelStyle={{ color: "#64748b", fontWeight: 500 }}
             formatter={(value) => [formatEUR(Number(value)), "Marktwert"]}
           />
           <Area
             type="monotone"
             dataKey="mv"
             stroke={color}
-            strokeWidth={2}
+            strokeWidth={2.5}
             fill="url(#mvGrad)"
           />
         </AreaChart>

@@ -148,7 +148,7 @@ export default async function PlayerPage({
             </p>
           ) : (
             <>
-              <MarketValueChart data={points} color="#d20515" />
+              <MarketValueChart data={points} color="#10b981" />
               <div className="grid grid-cols-3 gap-3 mt-4 text-xs text-muted-foreground">
                 <div>
                   <div className="text-foreground font-mono">

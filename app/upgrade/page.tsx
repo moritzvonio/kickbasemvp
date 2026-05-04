@@ -66,7 +66,7 @@ export default async function UpgradePage({
           </CardContent>
         </Card>
 
-        <Card className="border-primary/60 shadow-[0_0_0_1px_rgba(210,5,21,0.4)] relative">
+        <Card className="border-primary/60 shadow-[0_0_0_1px_rgba(16,185,129,0.4)] relative">
           <Badge className="absolute -top-3 left-1/2 -translate-x-1/2">Spar 60 %</Badge>
           <CardHeader>
             <CardTitle>Pro Saison</CardTitle>

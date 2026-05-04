@@ -41,7 +41,7 @@ export default function HomePage() {
             className="absolute inset-0 -z-10 opacity-40"
             style={{
               background:
-                "radial-gradient(60% 50% at 50% 0%, rgba(210,5,21,0.25) 0%, transparent 70%)",
+                "radial-gradient(60% 50% at 50% 0%, rgba(16,185,129,0.18) 0%, transparent 70%)",
             }}
           />
           <div className="mx-auto max-w-6xl px-4 pt-16 pb-20 sm:pt-24 sm:pb-28 text-center">
@@ -269,7 +269,7 @@ function PricingCard({
   featured?: boolean;
 }) {
   return (
-    <Card className={featured ? "border-primary/60 shadow-[0_0_0_1px_rgba(210,5,21,0.4),0_8px_24px_-12px_rgba(210,5,21,0.4)] relative" : ""}>
+    <Card className={featured ? "border-primary/60 shadow-[0_0_0_1px_rgba(16,185,129,0.4),0_8px_24px_-12px_rgba(16,185,129,0.4)] relative" : ""}>
       {highlight && (
         <Badge className="absolute -top-3 left-1/2 -translate-x-1/2">{highlight}</Badge>
       )}
