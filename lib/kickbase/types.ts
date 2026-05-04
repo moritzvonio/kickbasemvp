@@ -225,19 +225,31 @@ export interface KbMarketResponse {
 }
 
 export interface KbMarketEntry {
-  i: string; // player id
+  /** Player id (some responses use `i`, others `pi`) */
+  i?: string;
+  /** Alternate player id field used by newer endpoints */
+  pi?: string;
   n: string;
   fn?: string;
   pos: number;
   mv: number;
   mvt?: number;
-  prc: number; // listed price
-  exs?: number; // expiry seconds
-  uoc?: number; // user offer count
+  /** Listed price */
+  prc: number;
+  /** Expiry seconds */
+  exs?: number;
+  /** Offer count */
+  uoc?: number;
   tid: string;
   pim?: string;
-  u?: { i: string; n: string }; // selling user
+  /** Seller (other manager) */
+  u?: { i: string; n: string };
   [k: string]: unknown;
+}
+
+/** Helper: tolerant read of a market entry's player id */
+export function marketEntryPid(e: KbMarketEntry): string {
+  return e.pi ?? e.i ?? "";
 }
 
 /** GET /v4/leagues/{id}/activitiesFeed — wer hat was gemacht
@@ -351,6 +363,117 @@ export interface KbPlayerDetails {
   /** Player image */
   pim?: string;
   [k: string]: unknown;
+}
+
+/** GET /v4/leagues/{id}/managers/{mid}/dashboard */
+export interface KbManagerDashboard {
+  /** User id */
+  u?: string;
+  /** Username */
+  unm?: string;
+  /** Status */
+  st?: number;
+  /** Average points */
+  ap?: number;
+  /** Total/season points */
+  tp?: number;
+  /** Matchday wins count */
+  mdw?: number;
+  /** Placement */
+  pl?: number;
+  /** Team value */
+  tv?: number;
+  /** Profit (?) */
+  prft?: number;
+  /** League name */
+  lnm?: string;
+  /** League id */
+  li?: string;
+  /** Admin flag */
+  adm?: boolean;
+  /** Player history (matchday points last N) */
+  ph?: (number | null)[];
+  /** User image */
+  uim?: string;
+  /** League image */
+  lim?: string;
+  /** Favorite players */
+  fp?: unknown[];
+  /** Matchday summaries */
+  mds?: unknown[];
+}
+
+/** GET /v4/leagues/{id}/managers/{mid}/transfer — manager's transfer history */
+export interface KbManagerTransferResponse {
+  u?: string;
+  unm?: string;
+  it?: KbManagerTransfer[];
+}
+
+export interface KbManagerTransfer {
+  /** Player id */
+  pi: string;
+  /** Player name */
+  pn: string;
+  /** Bundesliga team id */
+  tid: string;
+  /** Transfer type — 1 = bought (cash out), 2 = sold (cash in) */
+  tty: number;
+  /** Other party name (other manager / agent / "Mino Raiola" for AI bot) */
+  othnm?: string;
+  /** Other party user id (when known) */
+  othui?: string;
+  /** Transfer price */
+  trp: number;
+  /** Date ISO */
+  dt: string;
+  /** Player image */
+  pim?: string;
+}
+
+/** GET /v4/leagues/{id}/managers/{mid}/squad — another manager's squad */
+export interface KbManagerSquadResponse {
+  u?: string;
+  unm?: string;
+  uim?: string;
+  st?: number;
+  /** Number of players on squad (?) */
+  nps?: number;
+  it?: KbManagerSquadPlayer[];
+}
+
+export interface KbManagerSquadPlayer {
+  pi: string;
+  pn: string;
+  tid: string;
+  /** Lineup order (0=bench, 1..11=field) */
+  lo?: number;
+  /** Lineup status */
+  lst?: number;
+  /** Position 1..4 */
+  pos: number;
+  /** Status */
+  st?: number;
+  /** Total points */
+  p?: number;
+  /** Average points */
+  ap?: number;
+  /** Is on transfer market */
+  iotm?: boolean;
+  /** Same-day MV change */
+  sdmvt?: number;
+  /** 24h MV change */
+  tfhmvt?: number;
+  /** MV gain/loss since purchase */
+  mvgl?: number;
+  /** MV trend index */
+  mvt?: number;
+  /** Purchase price */
+  prc?: number;
+  /** Current market value */
+  mv?: number;
+  /** Player image */
+  pim?: string;
 }
 
 export interface KbMatchdaySummary {

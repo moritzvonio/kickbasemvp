@@ -148,16 +148,30 @@ export const kb = {
   },
 
   async managerSquad(token: string, leagueId: string, managerId: string) {
-    return kbFetch<KbSquadResponse>(
+    return kbFetch<import("./types").KbManagerSquadResponse>(
       `/v4/leagues/${leagueId}/managers/${managerId}/squad`,
       { token }
     );
   },
 
   async managerTransfer(token: string, leagueId: string, managerId: string) {
-    return kbFetch<unknown>(
+    return kbFetch<import("./types").KbManagerTransferResponse>(
       `/v4/leagues/${leagueId}/managers/${managerId}/transfer`,
       { token }
     );
+  },
+
+  async managerDashboard(token: string, leagueId: string, managerId: string) {
+    return kbFetch<import("./types").KbManagerDashboard>(
+      `/v4/leagues/${leagueId}/managers/${managerId}/dashboard`,
+      { token }
+    );
+  },
+
+  async leagueOverviewWithManagers(token: string, leagueId: string) {
+    return kbFetch<KbLeagueOverview>(`/v4/leagues/${leagueId}/overview`, {
+      token,
+      query: { includeManagersAndBattles: true },
+    });
   },
 };

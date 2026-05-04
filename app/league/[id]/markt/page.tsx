@@ -11,7 +11,7 @@ import { PointBar, BatteryBar, HotBadge } from "@/components/ui/point-bar";
 import { RankBadge, RankNumber } from "@/components/ui/rank-badge";
 import { PlayerAvatar } from "@/components/ui/player-avatar";
 import { formatEUR, cn } from "@/lib/utils";
-import { type KbCompetitionPlayer } from "@/lib/kickbase/types";
+import { marketEntryPid, type KbCompetitionPlayer } from "@/lib/kickbase/types";
 import {
   ArrowDown,
   ArrowUp,
@@ -35,17 +35,33 @@ export default async function MarketPage({
   const path = `/league/${leagueId}/markt`;
   const session = await requireSessionOrRedirect(path);
 
-  const [marketData, compData] = await Promise.all([
+  // Fetch market + per-position player lists (Kickbase oft beschränkt /players
+  // ohne position-Filter auf Top N; per-position garantiert volle Abdeckung)
+  const [marketData, compGK, compDef, compMid, compFwd] = await Promise.all([
     withKbAuth(path, () => kb.market(session.token, leagueId)).catch(
       () => ({ it: [] as Awaited<ReturnType<typeof kb.market>>["it"] })
     ),
-    withKbAuth(path, () => kb.competitionPlayers(session.token, "1")).catch(
+    withKbAuth(path, () => kb.competitionPlayers(session.token, "1", { position: 1 })).catch(
+      () => ({ it: [] as KbCompetitionPlayer[] })
+    ),
+    withKbAuth(path, () => kb.competitionPlayers(session.token, "1", { position: 2 })).catch(
+      () => ({ it: [] as KbCompetitionPlayer[] })
+    ),
+    withKbAuth(path, () => kb.competitionPlayers(session.token, "1", { position: 3 })).catch(
+      () => ({ it: [] as KbCompetitionPlayer[] })
+    ),
+    withKbAuth(path, () => kb.competitionPlayers(session.token, "1", { position: 4 })).catch(
       () => ({ it: [] as KbCompetitionPlayer[] })
     ),
   ]);
 
   const items = marketData.it ?? [];
-  const allComp = (compData.it ?? []).slice();
+  const allComp: KbCompetitionPlayer[] = [
+    ...(compGK.it ?? []),
+    ...(compDef.it ?? []),
+    ...(compMid.it ?? []),
+    ...(compFwd.it ?? []),
+  ];
 
   // Build ranking maps:
   //   rankByPid       → 1-N across all Bundesliga players (overall)
@@ -75,8 +91,8 @@ export default async function MarketPage({
   for (const p of allComp) compMap.set(p.pi, p);
 
   const sorted = items.slice().sort((a, b) => {
-    const pa = compMap.get(a.i)?.p ?? 0;
-    const pb = compMap.get(b.i)?.p ?? 0;
+    const pa = compMap.get(marketEntryPid(a))?.p ?? 0;
+    const pb = compMap.get(marketEntryPid(b))?.p ?? 0;
     return pb - pa;
   });
 
@@ -107,6 +123,7 @@ export default async function MarketPage({
       ) : (
         <div className="grid gap-2.5 slide-up slide-up-1">
           {sorted.map((p) => {
+            const pid = marketEntryPid(p);
             const trend = p.mvt ?? 0;
             const TrendIcon = trend > 0 ? ArrowUp : trend < 0 ? ArrowDown : Minus;
             const trendColor =
@@ -118,7 +135,7 @@ export default async function MarketPage({
             const priceDiff = p.prc - p.mv;
             const priceDiffPct = p.mv > 0 ? (priceDiff / p.mv) * 100 : 0;
 
-            const meta = compMap.get(p.i);
+            const meta = compMap.get(pid);
             const points = meta?.p ?? 0;
             const avg = meta?.ap ?? 0;
             const goals = meta?.g ?? 0;
@@ -126,13 +143,13 @@ export default async function MarketPage({
             const max = maxByPos[p.pos] ?? 1;
             const maxAvg = maxAvgByPos[p.pos] ?? 1;
             const pct = points > 0 ? points / max : 0;
-            const overallRank = rankByPid.get(p.i);
-            const posRank = rankByPidPos.get(p.i);
+            const overallRank = rankByPid.get(pid);
+            const posRank = rankByPidPos.get(pid);
 
             return (
               <Link
-                key={p.i}
-                href={`/league/${leagueId}/spieler/${p.i}`}
+                key={pid}
+                href={`/league/${leagueId}/spieler/${pid}`}
                 className="card-hover block rounded-xl border border-border bg-card p-3.5"
               >
                 <div className="flex items-start gap-3">
