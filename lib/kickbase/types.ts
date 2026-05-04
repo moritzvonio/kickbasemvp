@@ -424,6 +424,56 @@ export interface KbPerformancePoint {
   [k: string]: unknown;
 }
 
+/** GET /v4/competitions/{id}/players — Bundesliga-weite Spielerliste */
+export interface KbCompetitionPlayersResponse {
+  it: KbCompetitionPlayer[];
+}
+
+export interface KbCompetitionPlayer {
+  /** Player id */
+  pi: string;
+  /** Name */
+  n: string;
+  /** First name (sometimes) */
+  fn?: string;
+  /** Bundesliga team id */
+  tid: string;
+  /** Match id (next match) */
+  mi?: string;
+  /** Total/season points */
+  p?: number;
+  /** Average points per matchday */
+  ap?: number;
+  /** Position 1-4 */
+  pos: number;
+  /** Is loaned out */
+  il?: boolean;
+  /** Status (5 = active default) */
+  st?: number;
+  /** Status list (text) */
+  stl?: unknown[];
+  /** Match minutes / availability rating */
+  mt?: number;
+  /** Goals */
+  g?: number;
+  /** Assists */
+  a?: number;
+  /** Yellow cards */
+  y?: number;
+  /** Red cards */
+  r?: number;
+  /** Penalties earned/scored */
+  pes?: number;
+  /** Clean sheets */
+  cs?: number;
+  /** Player image */
+  pim?: string;
+  /** Opposing team for next match */
+  ot?: { i: string; tim?: string };
+  /** Market value (when available) */
+  mv?: number;
+}
+
 /** ─── Domain helpers ─────────────────────────────────────────── */
 
 export const POSITION_LABELS: Record<number, "GK" | "DEF" | "MID" | "FWD"> = {

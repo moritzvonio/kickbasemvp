@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { LayoutDashboard, ShoppingCart, Activity, Star, ClipboardList } from "lucide-react";
+import { LayoutDashboard, ShoppingCart, Activity, Star, ClipboardList, Trophy } from "lucide-react";
 
 interface Tab {
   href: string;
@@ -18,6 +18,7 @@ export function LeagueTabs({ leagueId }: { leagueId: string }) {
     { href: `/league/${leagueId}`, label: "Dashboard", icon: LayoutDashboard, exact: true },
     { href: `/league/${leagueId}/aufstellung`, label: "Aufstellung", icon: ClipboardList },
     { href: `/league/${leagueId}/markt`, label: "Markt", icon: ShoppingCart },
+    { href: `/league/${leagueId}/top-spieler`, label: "Top 50", icon: Trophy },
     { href: `/league/${leagueId}/watchlist`, label: "Watchlist", icon: Star },
     { href: `/league/${leagueId}/feed`, label: "Liga-Feed", icon: Activity },
   ];

@@ -122,6 +122,24 @@ export const kb = {
   },
 
   // ── Manager (other players in the league) ──────────────
+  // ── Competition (Bundesliga-wide) ──────────────────────
+  async competitionPlayers(
+    token: string,
+    competitionId = "1",
+    opts?: { position?: number | string; sorting?: string }
+  ) {
+    return kbFetch<import("./types").KbCompetitionPlayersResponse>(
+      `/v4/competitions/${competitionId}/players`,
+      {
+        token,
+        query: {
+          position: opts?.position,
+          sorting: opts?.sorting,
+        },
+      }
+    );
+  },
+
   async managerSquad(token: string, leagueId: string, managerId: string) {
     return kbFetch<KbSquadResponse>(
       `/v4/leagues/${leagueId}/managers/${managerId}/squad`,

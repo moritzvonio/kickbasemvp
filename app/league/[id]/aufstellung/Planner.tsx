@@ -24,10 +24,7 @@ import { POSITION_LABELS, playerImageUrl, teamMeta } from "@/lib/kickbase/types"
 import {
   Wallet,
   TrendingUp,
-  TrendingDown,
-  Crown,
   ArrowDown,
-  ArrowUp,
   RotateCcw,
   Tag,
   X,
@@ -35,7 +32,6 @@ import {
   AlertTriangle,
   Layers,
   Users,
-  ClipboardList,
 } from "lucide-react";
 
 export interface PlannerPlayer {
@@ -100,8 +96,6 @@ interface PlannerState {
   slots: Record<string, string | null>;
   /** player ids marked for sale */
   sells: string[];
-  /** player id chosen as captain */
-  captain?: string | null;
 }
 
 function detectInitialFormation(players: PlannerPlayer[]): FormationKey {
@@ -141,9 +135,7 @@ function buildInitialState(players: PlannerPlayer[]): PlannerState {
   fillRow(3, "M");
   fillRow(4, "F");
 
-  const captain = lineup.find((p) => p.isCaptain)?.id;
-
-  return { formation, slots, sells: [], captain };
+  return { formation, slots, sells: [] };
 }
 
 export function Planner({
@@ -266,10 +258,6 @@ export function Planner({
     });
   };
 
-  const setCaptain = (playerId: string | null) => {
-    setState((prev) => ({ ...prev, captain: playerId === prev.captain ? null : playerId }));
-  };
-
   const setFormation = (f: FormationKey) => {
     setState((prev) => {
       const newSlotIds = buildSlotIds(f);
@@ -368,10 +356,8 @@ export function Planner({
           formation={state.formation}
           slots={state.slots}
           playerById={playerById}
-          captain={state.captain}
           sells={sellSet}
           onRemoveFromSlot={removeFromSlot}
-          onSetCaptain={setCaptain}
           onToggleSell={toggleSell}
         />
       </section>
@@ -381,9 +367,7 @@ export function Planner({
         <BenchZone
           players={benchPlayers}
           sells={sellSet}
-          captain={state.captain}
           onToggleSell={toggleSell}
-          onSetCaptain={setCaptain}
         />
       </section>
 
@@ -498,20 +482,16 @@ function Pitch({
   formation,
   slots,
   playerById,
-  captain,
   sells,
   onRemoveFromSlot,
-  onSetCaptain,
   onToggleSell,
 }: {
   slotIds: string[];
   formation: FormationKey;
   slots: Record<string, string | null>;
   playerById: Map<string, PlannerPlayer>;
-  captain?: string | null;
   sells: Set<string>;
   onRemoveFromSlot: (slotId: string) => void;
-  onSetCaptain: (id: string | null) => void;
   onToggleSell: (id: string) => void;
 }) {
   const f = FORMATIONS[formation];
@@ -573,9 +553,7 @@ function Pitch({
                   slotId={slotId}
                   player={player ?? null}
                   onRemove={() => onRemoveFromSlot(slotId)}
-                  onSetCaptain={() => player && onSetCaptain(player.id)}
                   onToggleSell={() => player && onToggleSell(player.id)}
-                  isCaptain={!!player && captain === player.id}
                   isSellMarked={!!player && sells.has(player.id)}
                 />
               );
@@ -596,27 +574,17 @@ function SlotTarget({
   slotId,
   player,
   onRemove,
-  onSetCaptain,
   onToggleSell,
-  isCaptain,
   isSellMarked,
 }: {
   slotId: string;
   player: PlannerPlayer | null;
   onRemove: () => void;
-  onSetCaptain: () => void;
   onToggleSell: () => void;
-  isCaptain: boolean;
   isSellMarked: boolean;
 }) {
-  const { setNodeRef, isOver, active } = useDroppable({ id: slotId });
+  const { setNodeRef, isOver } = useDroppable({ id: slotId });
   const requiredPos = POS_FOR_SLOT[slotId];
-  const activePlayerId = active ? String(active.id) : null;
-  const activePlayerPos = activePlayerId
-    ? // we don't have access to playerById here; rely on data-pos attr from drag overlay
-      // For simplicity, just always show "ready" while dragging — validation in onDragEnd
-      requiredPos
-    : null;
 
   return (
     <div
@@ -630,9 +598,7 @@ function SlotTarget({
         <PitchPlayer
           player={player}
           onRemove={onRemove}
-          onSetCaptain={onSetCaptain}
           onToggleSell={onToggleSell}
-          isCaptain={isCaptain}
           isSellMarked={isSellMarked}
         />
       ) : (
@@ -657,16 +623,12 @@ function EmptySlot({ pos }: { pos: number }) {
 function PitchPlayer({
   player,
   onRemove,
-  onSetCaptain,
   onToggleSell,
-  isCaptain,
   isSellMarked,
 }: {
   player: PlannerPlayer;
   onRemove: () => void;
-  onSetCaptain: () => void;
   onToggleSell: () => void;
-  isCaptain: boolean;
   isSellMarked: boolean;
 }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
@@ -695,11 +657,6 @@ function PitchPlayer({
             ) : (
               <span style={{ color: team.color }}>{team.short}</span>
             )}
-            {isCaptain && (
-              <span className="absolute top-1 left-1 size-5 rounded-full bg-amber-400 text-amber-900 flex items-center justify-center text-[9px] font-bold ring-1 ring-white">
-                C
-              </span>
-            )}
             {isSellMarked && (
               <span className="absolute inset-0 bg-rose-500/35 flex items-center justify-center">
                 <Tag className="size-5 text-white drop-shadow" />
@@ -723,19 +680,6 @@ function PitchPlayer({
       </div>
       {/* Action buttons */}
       <div className="absolute -top-1 -right-1 flex gap-0.5 z-10">
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onSetCaptain();
-          }}
-          className={cn(
-            "size-5 rounded-full text-[9px] font-bold ring-1 ring-white transition-colors",
-            isCaptain ? "bg-amber-400 text-amber-900" : "bg-black/60 text-white hover:bg-amber-400 hover:text-amber-900"
-          )}
-          title="Kapitän"
-        >
-          C
-        </button>
         <button
           onClick={(e) => {
             e.stopPropagation();
@@ -769,15 +713,11 @@ function PitchPlayer({
 function BenchZone({
   players,
   sells,
-  captain,
   onToggleSell,
-  onSetCaptain,
 }: {
   players: PlannerPlayer[];
   sells: Set<string>;
-  captain?: string | null;
   onToggleSell: (id: string) => void;
-  onSetCaptain: (id: string) => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: "bench" });
   const grouped = [
@@ -831,9 +771,7 @@ function BenchZone({
                         key={p.id}
                         player={p}
                         isSellMarked={sells.has(p.id)}
-                        isCaptain={captain === p.id}
                         onToggleSell={() => onToggleSell(p.id)}
-                        onSetCaptain={() => onSetCaptain(p.id)}
                       />
                     ))}
                   </div>
@@ -850,16 +788,12 @@ function BenchZone({
 function PlayerCard({
   player,
   isSellMarked,
-  isCaptain,
   onToggleSell,
-  onSetCaptain,
   dragging,
 }: {
   player: PlannerPlayer;
   isSellMarked?: boolean;
-  isCaptain?: boolean;
   onToggleSell?: () => void;
-  onSetCaptain?: () => void;
   dragging?: boolean;
 }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
@@ -896,9 +830,6 @@ function PlayerCard({
         </div>
         <div className="flex-1 min-w-0">
           <div className="text-sm font-semibold truncate flex items-center gap-1">
-            {isCaptain && (
-              <Crown className="size-3 text-amber-500 shrink-0" />
-            )}
             {player.name}
           </div>
           <div className="text-[10px] text-muted-foreground flex items-center gap-1.5 mt-0.5">
@@ -919,40 +850,22 @@ function PlayerCard({
           </div>
         </div>
         {!dragging && (
-          <div className="flex flex-col gap-1 shrink-0">
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onSetCaptain?.();
-              }}
-              className={cn(
-                "size-6 rounded text-[10px] font-bold transition-colors flex items-center justify-center",
-                isCaptain
-                  ? "bg-amber-100 text-amber-700 ring-1 ring-amber-300"
-                  : "bg-muted text-muted-foreground hover:bg-amber-100 hover:text-amber-700"
-              )}
-              title="Kapitän setzen"
-              aria-label="Kapitän"
-            >
-              C
-            </button>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onToggleSell?.();
-              }}
-              className={cn(
-                "size-6 rounded text-[10px] transition-colors flex items-center justify-center",
-                isSellMarked
-                  ? "bg-rose-500 text-white"
-                  : "bg-muted text-muted-foreground hover:bg-rose-100 hover:text-rose-600"
-              )}
-              title="Zum Verkauf markieren"
-              aria-label="Verkaufen"
-            >
-              €
-            </button>
-          </div>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleSell?.();
+            }}
+            className={cn(
+              "size-7 rounded text-xs transition-colors flex items-center justify-center shrink-0",
+              isSellMarked
+                ? "bg-rose-500 text-white"
+                : "bg-muted text-muted-foreground hover:bg-rose-100 hover:text-rose-600"
+            )}
+            title="Zum Verkauf markieren"
+            aria-label="Verkaufen"
+          >
+            €
+          </button>
         )}
       </div>
     </div>
