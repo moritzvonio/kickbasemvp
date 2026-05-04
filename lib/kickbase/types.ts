@@ -47,19 +47,39 @@ export interface KbLeaguesResponse {
 }
 
 export interface KbLeagueListItem {
-  i: string; // league id
-  n: string; // name
-  cpi?: string; // cover photo id
-  b?: number; // budget (own)
-  un?: number; // user/member count
-  lpc?: number; // league player count
-  bs?: number; // budget scale
-  vr?: number; // version
-  adm?: boolean; // admin
-  pl?: number; // player limit
-  tv?: number; // total team value
+  /** League id */
+  i: string;
+  /** League name */
+  n: string;
+  /** Cover photo id (numeric template id) */
+  cpi?: string;
+  /** Cover photo absolute path (newer field) */
+  cpim?: string;
+  /** Custom league image path */
+  lim?: string;
+  /** League flag/banner */
+  f?: string;
+  /** Your current budget in this league */
+  b?: number;
+  /** User/member count */
+  un?: number;
+  /** Your current player count in this league */
+  lpc?: number;
+  /** Budget scale (1=normal, 2=double, etc) */
+  bs?: number;
+  /** League version */
+  vr?: number;
+  /** Are you admin? */
+  adm?: boolean;
+  /** Your placement in this league */
+  pl?: number;
+  /** Your team value */
+  tv?: number;
+  /** Is featured? */
   idf?: boolean;
+  /** Goals per match setting */
   gpm?: number;
+  /** Ranking mode */
   rnkm?: number;
 }
 
@@ -84,35 +104,85 @@ export interface KbManagerSummary {
   [k: string]: unknown;
 }
 
-/** GET /v4/leagues/{id}/me — current user in this league */
+/** GET /v4/leagues/{id}/me/budget — current user's budget in this league */
 export interface KbMeInLeague {
-  b?: number; // budget
-  tv?: number; // team value
-  pt?: number; // points
-  pl?: number; // placement
-  un?: number; // user count
+  /** Current budget (€) */
+  b?: number;
+  /** Budget scale */
+  bs?: number;
+  /** Max players per Bundesliga team */
+  mppu?: number;
+  /** Total user count in league */
+  un?: number;
+  /** Admin */
+  adm?: boolean;
+  /** Cover photo id */
+  cpi?: string;
+  /** League name */
+  lnm?: string;
+  /** Team players count per Bundesliga team */
+  tpc?: { tid: string; npt: number; tim?: string }[];
   [k: string]: unknown;
 }
 
 /** GET /v4/leagues/{id}/ranking — league standings */
 export interface KbRankingResponse {
-  ui?: string; // current user id
+  /** League name */
+  ti?: string;
+  /** Cover photo id */
+  cpi?: string;
+  /** League members (sorted by season placement) */
   us?: KbRankingUser[];
-  it?: KbRankingUser[]; // some endpoints return `it`
+  /** Some legacy endpoints return `it` instead of `us` */
+  it?: KbRankingUser[];
+  /** Current matchday */
+  day?: number;
+  /** Number of matchdays in season */
+  nd?: number;
+  /** Last finished matchday */
+  lfmd?: number;
+  /** Season name like "25/26" */
+  sn?: string;
+  /** Current league player count */
+  clpc?: number;
   [k: string]: unknown;
 }
 
 export interface KbRankingUser {
-  i: string; // user id
-  n: string; // name
-  uim?: string; // user image
-  st?: number; // status
-  pt?: number; // total points
-  spt?: number; // season points
-  mdpt?: number; // matchday points
-  tv?: number; // team value
-  b?: number; // budget
-  pl?: number; // placement
+  /** User id */
+  i: string;
+  /** Display name */
+  n: string;
+  /** User image (relative path) */
+  uim?: string;
+  /** Admin */
+  adm?: boolean;
+  /** Season points (= total points across the season) */
+  sp?: number;
+  /** Matchday points (this matchday) */
+  mdp?: number;
+  /** Show home points / sometimes "shop points" — keep as opaque */
+  shp?: number;
+  /** Team value */
+  tv?: number;
+  /** Season placement (= rank in the league overall) */
+  spl?: number;
+  /** Matchday placement */
+  mdpl?: number;
+  /** Playing actively */
+  pa?: boolean;
+  /** Last 11 matchdays' points */
+  lp?: (number | null)[];
+  /** Lineup-position counts */
+  lipc?: number;
+  /** Player position counts */
+  ppc?: number;
+  /** Has lost lineup (didn't field 11) */
+  hll?: boolean;
+  /** Highest home single-matchday points */
+  hhsp?: number;
+  /** Is on app private list */
+  iapl?: boolean;
   [k: string]: unknown;
 }
 

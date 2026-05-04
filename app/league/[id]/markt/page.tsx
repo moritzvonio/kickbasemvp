@@ -28,8 +28,13 @@ export default async function MarketPage({
     <div className="space-y-6">
       <div className="flex items-end justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Transfermarkt</h1>
-          <p className="text-sm text-muted-foreground">
+          <h1 className="text-2xl font-bold flex items-center gap-2">
+            <span className="inline-flex size-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
+              <ShoppingCart className="size-5" />
+            </span>
+            Transfermarkt
+          </h1>
+          <p className="text-sm text-muted-foreground mt-1">
             {items.length} aktuelle Angebote in deiner Liga
           </p>
         </div>
@@ -50,19 +55,19 @@ export default async function MarketPage({
             const trend = p.mvt ?? 0;
             const TrendIcon = trend > 0 ? ArrowUp : trend < 0 ? ArrowDown : Minus;
             const trendColor =
-              trend > 0 ? "text-emerald-400" : trend < 0 ? "text-destructive" : "text-muted-foreground";
+              trend > 0 ? "text-emerald-600" : trend < 0 ? "text-rose-600" : "text-muted-foreground";
             const priceDiff = p.prc - p.mv;
             const priceDiffPct = p.mv > 0 ? (priceDiff / p.mv) * 100 : 0;
             return (
               <Link
                 key={p.i}
                 href={`/league/${leagueId}/spieler/${p.i}`}
-                className="block rounded-lg border border-border bg-card hover:border-primary/40 transition-colors p-3"
+                className="card-hover block rounded-xl border border-border bg-card p-3"
               >
                 <div className="flex items-center gap-3">
                   <div
-                    className="size-12 rounded-md shrink-0 overflow-hidden flex items-center justify-center text-xs font-bold"
-                    style={{ background: `linear-gradient(135deg, ${team.color}33, ${team.color}11)` }}
+                    className="size-12 rounded-lg shrink-0 overflow-hidden flex items-center justify-center text-xs font-bold ring-1 ring-border"
+                    style={{ background: `linear-gradient(135deg, ${team.color}22, ${team.color}08)` }}
                   >
                     {img ? (
                       // eslint-disable-next-line @next/next/no-img-element
@@ -72,7 +77,7 @@ export default async function MarketPage({
                     )}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <div className="font-medium truncate flex items-center gap-2">
+                    <div className="font-semibold truncate flex items-center gap-2">
                       {p.n}
                       {p.exs !== undefined && p.exs > 0 && (
                         <Badge variant="muted" className="text-[10px]">
@@ -81,9 +86,13 @@ export default async function MarketPage({
                         </Badge>
                       )}
                     </div>
-                    <div className="text-xs text-muted-foreground flex items-center gap-2">
-                      <span>{team.short}</span>
-                      <span>·</span>
+                    <div className="text-xs text-muted-foreground flex items-center gap-1.5 flex-wrap">
+                      <span
+                        className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium"
+                        style={{ backgroundColor: `${team.color}1a`, color: team.color }}
+                      >
+                        {team.short}
+                      </span>
                       <span>{POSITION_LABELS[p.pos]}</span>
                       {p.u?.n && (
                         <>
@@ -94,8 +103,8 @@ export default async function MarketPage({
                     </div>
                   </div>
                   <div className="text-right shrink-0">
-                    <div className="font-mono font-semibold">{formatEUR(p.prc, { compact: true })}</div>
-                    <div className="flex items-center justify-end gap-2 text-xs">
+                    <div className="font-mono font-bold">{formatEUR(p.prc, { compact: true })}</div>
+                    <div className="flex items-center justify-end gap-1.5 text-xs">
                       <span className="text-muted-foreground font-mono">
                         MV {formatEUR(p.mv, { compact: true })}
                       </span>
@@ -105,8 +114,8 @@ export default async function MarketPage({
                     </div>
                     <div
                       className={
-                        "text-[10px] font-mono " +
-                        (priceDiff > 0 ? "text-amber-400" : priceDiff < 0 ? "text-emerald-400" : "text-muted-foreground")
+                        "text-[10px] font-mono mt-0.5 " +
+                        (priceDiff > 0 ? "text-amber-600" : priceDiff < 0 ? "text-emerald-600" : "text-muted-foreground")
                       }
                     >
                       {priceDiff > 0 ? "+" : ""}
