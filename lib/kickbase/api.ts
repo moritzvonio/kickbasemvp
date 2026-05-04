@@ -92,9 +92,11 @@ export const kb = {
     return kbFetch<KbActivitiesFeed>(`/v4/leagues/${leagueId}/activitiesFeed`, {
       token,
       query: {
-        start: opts?.start,
-        max: opts?.max,
+        start: opts?.start ?? 0,
+        max: opts?.max ?? 50,
         filter: opts?.filter,
+        // Cache-bust: force a fresh round-trip every time, ignoring any CDN/edge cache
+        _t: Date.now(),
       },
     });
   },

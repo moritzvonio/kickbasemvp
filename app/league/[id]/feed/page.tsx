@@ -59,6 +59,9 @@ export default async function FeedPage({
     new Map(allActivities.filter((a) => a.u?.i).map((a) => [a.u!.i, a.u!] as const)).values()
   );
 
+  const fetchedAt = new Date();
+  const newestActivityDate = pickNewestActivityDate(allActivities);
+
   return (
     <div className="space-y-6">
       <div className="slide-up flex items-end justify-between gap-3 flex-wrap">
@@ -70,10 +73,23 @@ export default async function FeedPage({
             Liga-Feed
           </h1>
           <p className="text-sm text-muted-foreground mt-2">
-            Wer hat was gemacht — letzte {allActivities.length} Aktivitäten
+            Wer hat was gemacht — {allActivities.length} Aktivitäten
+            {newestActivityDate && (
+              <>
+                {" · "}
+                <span title={newestActivityDate.toLocaleString("de-DE")}>
+                  letzte: {formatRelative(newestActivityDate)}
+                </span>
+              </>
+            )}
           </p>
         </div>
-        <RefreshButton />
+        <div className="text-right">
+          <RefreshButton />
+          <p className="text-[10px] text-muted-foreground mt-1.5 tabular" suppressHydrationWarning>
+            geladen {fetchedAt.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+          </p>
+        </div>
       </div>
 
       {/* Filter chips */}
@@ -159,6 +175,7 @@ export default async function FeedPage({
 
 function FeedRow({ activity: a }: { activity: KbActivity }) {
   const Icon = activityIconComp(a.t);
+  const date = pickActivityDate(a);
   return (
     <div className="px-5 py-3.5 text-sm flex items-start gap-3">
       <UserAvatar name={a.u?.n ?? "?"} image={a.u?.uim} size="md" />
@@ -180,9 +197,12 @@ function FeedRow({ activity: a }: { activity: KbActivity }) {
               Achievement
             </Badge>
           )}
-          {a.dt !== undefined && (
-            <span className="text-xs text-muted-foreground tabular">
-              {formatActivityDate(a.dt)}
+          {date && (
+            <span
+              className="text-xs text-muted-foreground tabular"
+              title={date.toLocaleString("de-DE")}
+            >
+              {formatRelative(date)}
             </span>
           )}
         </div>
@@ -224,18 +244,58 @@ function describeActivity(a: KbActivity): string {
   return `führte eine Aktivität aus (Typ ${t})`;
 }
 
-function formatActivityDate(dt: number | string): string {
-  let date: Date;
-  if (typeof dt === "string") date = new Date(dt);
-  else date = new Date(dt < 1e11 ? dt * 1000 : dt);
-  if (isNaN(date.getTime())) return "";
+/** Extract a Date from an activity by trying many possible field names */
+function pickActivityDate(a: KbActivity): Date | null {
+  const candidates: unknown[] = [
+    a.dt,
+    a.date,
+    (a as Record<string, unknown>).d,
+    (a as Record<string, unknown>).t,
+    (a as Record<string, unknown>).ts,
+    (a as Record<string, unknown>).time,
+    (a as Record<string, unknown>).timestamp,
+    (a as Record<string, unknown>).cdt,
+    (a as Record<string, unknown>).created,
+  ];
+  for (const c of candidates) {
+    const d = parseFlexibleDate(c);
+    if (d) return d;
+  }
+  return null;
+}
+
+function parseFlexibleDate(v: unknown): Date | null {
+  if (v == null) return null;
+  if (typeof v === "string") {
+    const d = new Date(v);
+    return isNaN(d.getTime()) ? null : d;
+  }
+  if (typeof v === "number") {
+    // Heuristic: < 1e11 → seconds, else ms
+    const d = new Date(v < 1e11 ? v * 1000 : v);
+    return isNaN(d.getTime()) ? null : d;
+  }
+  return null;
+}
+
+function pickNewestActivityDate(activities: KbActivity[]): Date | null {
+  let best: Date | null = null;
+  for (const a of activities) {
+    const d = pickActivityDate(a);
+    if (d && (!best || d > best)) best = d;
+  }
+  return best;
+}
+
+function formatRelative(date: Date): string {
   const diff = Date.now() - date.getTime();
+  if (diff < 0) return date.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit" });
   const minutes = Math.floor(diff / 60_000);
   if (minutes < 1) return "jetzt";
-  if (minutes < 60) return `${minutes} Min`;
+  if (minutes < 60) return `vor ${minutes} Min`;
   const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours} Std`;
+  if (hours < 24) return `vor ${hours} Std`;
   const days = Math.floor(hours / 24);
-  if (days < 7) return `${days} d`;
-  return date.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit" });
+  if (days < 7) return `vor ${days} ${days === 1 ? "Tag" : "Tagen"}`;
+  return date.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "2-digit" });
 }
