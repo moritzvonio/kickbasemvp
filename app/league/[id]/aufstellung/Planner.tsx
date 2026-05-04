@@ -781,6 +781,11 @@ function PitchPlayer({
     data: { pos: player.pos },
   });
   const team = teamMeta(player.tid);
+  const teamLogo = team.logo
+    ? team.logo.startsWith("http")
+      ? team.logo
+      : `https://kickbase.b-cdn.net/${team.logo.replace(/^\//, "")}`
+    : undefined;
 
   return (
     <div className={cn("relative", isDragging && "opacity-30")}>
@@ -802,6 +807,22 @@ function PitchPlayer({
               rounded="md"
               className="ring-0 bg-transparent w-full h-full"
             />
+            {/* Team logo overlay (top-left) */}
+            {teamLogo && (
+              <span
+                className="absolute top-1 left-1 size-6 rounded-full bg-white shadow-md ring-1 ring-black/10 flex items-center justify-center overflow-hidden"
+                title={team.name}
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={teamLogo}
+                  alt={team.name}
+                  width={20}
+                  height={20}
+                  className="object-contain"
+                />
+              </span>
+            )}
             {isSellMarked && (
               <span className="absolute inset-0 bg-rose-500/35 flex items-center justify-center">
                 <Tag className="size-5 text-white drop-shadow" />

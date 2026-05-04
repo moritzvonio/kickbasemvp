@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { TeamTag } from "@/components/ui/team-tag";
 import { PositionBadge } from "@/components/ui/position-icon";
 import { EmptyState } from "@/components/ui/empty-state";
-import { PointBar, HotBadge } from "@/components/ui/point-bar";
+import { PointBar, BatteryBar, HotBadge } from "@/components/ui/point-bar";
 import { RankBadge, RankNumber } from "@/components/ui/rank-badge";
 import { PlayerAvatar } from "@/components/ui/player-avatar";
 import { formatEUR, cn } from "@/lib/utils";
@@ -158,19 +158,35 @@ export default async function MarketPage({
                       {p.u?.n && <span className="truncate">von {p.u.n}</span>}
                     </div>
 
-                    {/* Stat bars: Saison + Ø */}
-                    <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs pt-1">
-                      <StatRow
-                        label="Saison"
-                        value={points.toLocaleString("de-DE")}
-                        bar={<PointBar value={points} max={max} width={90} height={6} />}
-                        big
-                      />
-                      <StatRow
-                        label="Ø Spieltag"
-                        value={avg > 0 ? String(avg) : "—"}
-                        bar={<PointBar value={avg} max={maxAvg} width={90} height={6} />}
-                      />
+                    {/* Battery + numbers row */}
+                    <div className="flex items-center gap-3 pt-1.5">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <BatteryBar value={avg} max={maxAvg} width={120} height={18} />
+                        <div className="flex flex-col leading-tight">
+                          <span className="text-base font-bold tabular leading-none">
+                            {avg > 0 ? avg : "—"}
+                          </span>
+                          <span className="text-[9px] uppercase tracking-wider text-muted-foreground font-medium leading-none mt-0.5">
+                            Ø Spieltag
+                          </span>
+                        </div>
+                      </div>
+                      <div className="h-6 w-px bg-border/60 hidden sm:block" />
+                      <div className="flex flex-col leading-tight hidden sm:flex">
+                        <span className="text-sm font-mono font-semibold tabular leading-none text-muted-foreground">
+                          {points.toLocaleString("de-DE")}
+                        </span>
+                        <span className="text-[9px] uppercase tracking-wider text-muted-foreground font-medium leading-none mt-0.5">
+                          Saison
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Mobile-only Saison-Total + Goals/Assists */}
+                    <div className="flex items-center gap-2 text-[11px] text-muted-foreground flex-wrap sm:hidden">
+                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-muted tabular font-mono">
+                        {points.toLocaleString("de-DE")} P Saison
+                      </span>
                     </div>
 
                     {/* Goals + assists pill */}
@@ -227,42 +243,13 @@ export default async function MarketPage({
       )}
 
       <p className="text-xs text-muted-foreground text-center pt-4 leading-relaxed">
-        💡 Bars zeigen Punkte relativ zum besten Spieler der Position.
+        💡 Batterie zeigt den Ø-Saisonpunkt-Stand relativ zum besten Spieler der Position.
         <br />
-        🥇 <span className="font-semibold">TOP 10/25/50/100</span>-Badges = Bundesliga-weite
-        Saison-Wertung. 🔥 = Top 15 % auf seiner Position.
+        💎 <span className="font-semibold">TOP 5</span> Diamant ·{" "}
+        🥇 <span className="font-semibold">TOP 25</span> Gold ·{" "}
+        🥈 <span className="font-semibold">TOP 50</span> Silber ·{" "}
+        🥉 <span className="font-semibold">TOP 100</span> Bronze
       </p>
-    </div>
-  );
-}
-
-function StatRow({
-  label,
-  value,
-  bar,
-  big,
-}: {
-  label: string;
-  value: string;
-  bar: React.ReactNode;
-  big?: boolean;
-}) {
-  return (
-    <div className="flex flex-col gap-0.5">
-      <div className="flex items-baseline justify-between">
-        <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
-          {label}
-        </span>
-        <span
-          className={cn(
-            "font-mono tabular font-semibold",
-            big ? "text-base" : "text-xs"
-          )}
-        >
-          {value}
-        </span>
-      </div>
-      {bar}
     </div>
   );
 }
