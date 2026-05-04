@@ -125,7 +125,7 @@ export default async function LeagueDashboard({
       </section>
 
       {/* Top KPIs */}
-      <section className="grid grid-cols-2 sm:grid-cols-4 gap-3 slide-up slide-up-1">
+      <section className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 slide-up slide-up-1">
         <StatCard
           icon={<Trophy className="size-4" />}
           label="Platz"
@@ -135,7 +135,7 @@ export default async function LeagueDashboard({
         />
         <StatCard
           icon={<TrendingUp className="size-4" />}
-          label="Punkte gesamt"
+          label="Punkte"
           value={meRanking?.sp !== undefined ? meRanking.sp.toLocaleString("de-DE") : "—"}
           sub={
             myMatchdayPts !== undefined ? (
@@ -143,17 +143,11 @@ export default async function LeagueDashboard({
                 <span className="text-emerald-600 font-mono font-medium">
                   +{myMatchdayPts.toLocaleString("de-DE")}
                 </span>
-                <span>letzter Spieltag</span>
+                <span>Spieltag</span>
               </span>
             ) : undefined
           }
           accent="success"
-        />
-        <StatCard
-          icon={<Wallet className="size-4" />}
-          label="Budget"
-          value={budget?.b !== undefined ? formatEUR(budget.b, { compact: true }) : "—"}
-          accent="info"
         />
         <StatCard
           icon={<Users className="size-4" />}
@@ -167,6 +161,23 @@ export default async function LeagueDashboard({
           }
           sub={`${players.length} Spieler`}
           accent="primary"
+        />
+        <StatCard
+          icon={<TrendingUp className="size-4" />}
+          label="Netto-Teamwert"
+          value={(() => {
+            const tv = meRanking?.tv ?? myTeamValue ?? 0;
+            const cash = budget?.b ?? 0;
+            return formatEUR(tv + cash, { compact: true });
+          })()}
+          sub="TV + Cash"
+          accent="success"
+        />
+        <StatCard
+          icon={<Wallet className="size-4" />}
+          label="Budget"
+          value={budget?.b !== undefined ? formatEUR(budget.b, { compact: true }) : "—"}
+          accent="info"
         />
       </section>
 

@@ -47,8 +47,10 @@ export interface ManagerComputedStats {
   transferBalance: number;
   /** Anzahl Transfers */
   transferCount: number;
-  /** Aktueller Squad-Wert */
+  /** Aktueller Squad-Wert (reine Spieler-Summe, ohne Cash) */
   teamValue: number;
+  /** Netto-Teamwert: TV + Cash (also: Gesamt-Vermögen im Liga-Kontext) */
+  netTeamValue: number;
   /** 24h-Veränderung des Squad-Werts (Σ tfhmvt) */
   dayGain: number;
   /** Anzahl Squad-Spieler */
@@ -125,6 +127,7 @@ export function computeManagerStats(inp: ComputeManagerInput): ManagerComputedSt
     transferBalance: totalSold - totalBought,
     transferCount: transfers.length,
     teamValue,
+    netTeamValue: teamValue + cashEstimate,
     dayGain,
     squadSize: squadPlayers.length,
     maxBidSingleSell,

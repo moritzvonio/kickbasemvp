@@ -13,7 +13,7 @@ import {
   SELL_TO_BANK_FACTOR,
   type ManagerComputedStats,
 } from "@/lib/competitor";
-import type { KbActivity } from "@/lib/kickbase/types";
+import type { KbActivity, KbRankingUser } from "@/lib/kickbase/types";
 import {
   Wallet,
   Target,
@@ -26,7 +26,9 @@ import {
   Trophy,
   Info,
   Swords,
+  LineChart as LineChartIcon,
 } from "lucide-react";
+import { TeamValueChart, type TVChartPoint } from "./TeamValueChart";
 
 export const metadata: Metadata = { title: "Wettbewerb" };
 export const dynamic = "force-dynamic";
@@ -44,7 +46,8 @@ export default async function WettbewerbPage({
   const path = `/league/${leagueId}/wettbewerb`;
   const session = await requireSessionOrRedirect(path);
 
-  const sortKey = (sp.sort ?? "cash") as
+  const sortKey = (sp.sort ?? "netto") as
+    | "netto"
     | "cash"
     | "maxbid"
     | "tv"
@@ -97,6 +100,11 @@ export default async function WettbewerbPage({
     })
   );
 
+  const transferLists = memberData.map((d) => ({
+    user: d.manager,
+    transfers: d.transfers,
+  }));
+
   const stats: ManagerComputedStats[] = memberData.map((d) =>
     computeManagerStats({
       userId: d.manager.i,
@@ -115,6 +123,7 @@ export default async function WettbewerbPage({
 
   // Sort others by selected key
   const sorters: Record<typeof sortKey, (a: ManagerComputedStats, b: ManagerComputedStats) => number> = {
+    netto: (a, b) => b.netTeamValue - a.netTeamValue,
     cash: (a, b) => b.cashEstimate - a.cashEstimate,
     maxbid: (a, b) => b.maxBidSingleSell - a.maxBidSingleSell,
     tv: (a, b) => b.teamValue - a.teamValue,
@@ -122,16 +131,30 @@ export default async function WettbewerbPage({
     balance: (a, b) => b.transferBalance - a.transferBalance,
     points: (a, b) => (b.seasonPoints ?? 0) - (a.seasonPoints ?? 0),
   };
-  const sortedOthers = others.slice().sort(sorters[sortKey] ?? sorters.cash);
+  const sortedOthers = others.slice().sort(sorters[sortKey] ?? sorters.netto);
 
   const SORT_TABS: Array<{ key: typeof sortKey; label: string; icon: typeof Wallet }> = [
+    { key: "netto", label: "Netto-Teamwert", icon: TrendingUp },
     { key: "cash", label: "Kontostand", icon: Wallet },
     { key: "maxbid", label: "Max-Gebot", icon: Target },
     { key: "tv", label: "Teamwert", icon: Users },
-    { key: "daygain", label: "Tagesgewinn", icon: TrendingUp },
+    { key: "daygain", label: "Tagesgewinn", icon: ArrowUp },
     { key: "balance", label: "Transferbilanz", icon: ArrowUp },
     { key: "points", label: "Punkte", icon: Trophy },
   ];
+
+  // Step 3: Fetch per-matchday rankings for the team-value chart
+  const currentMatchday =
+    typeof ranking.day === "number" ? ranking.day : undefined;
+  const tvChartData = await buildTeamValueChartData({
+    leagueId,
+    token: session.token,
+    members,
+    transferLists,
+    bonusActivities: allActivities,
+    initialBudget,
+    currentMatchday,
+  });
 
   return (
     <div className="space-y-6">
@@ -147,8 +170,37 @@ export default async function WettbewerbPage({
         </section>
       )}
 
+      {/* Netto-Teamwert chart */}
+      {tvChartData.data.length >= 2 && (
+        <section className="slide-up slide-up-1">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <span className="size-7 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
+                  <LineChartIcon className="size-4" />
+                </span>
+                Netto-Teamwert-Verlauf
+                <Badge variant="muted" className="ml-auto text-[10px]">
+                  {tvChartData.data.length} Spieltage
+                </Badge>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <TeamValueChart
+                data={tvChartData.data}
+                managers={tvChartData.managers}
+                highlightUserId={session.userId}
+              />
+              <p className="text-[10px] text-muted-foreground mt-2 text-center">
+                Pro Spieltag: Σ Marktwert deines Squads + Cash (Initial − Käufe + Verkäufe + Boni bis dahin).
+              </p>
+            </CardContent>
+          </Card>
+        </section>
+      )}
+
       {/* Sort tabs */}
-      <section className="slide-up slide-up-1">
+      <section className="slide-up slide-up-2">
         <div className="flex items-center gap-1.5 flex-wrap mb-3">
           <span className="text-xs uppercase tracking-wider text-muted-foreground font-semibold mr-1">
             Sortieren
@@ -206,6 +258,118 @@ export default async function WettbewerbPage({
   );
 }
 
+/* ─── Chart-Daten: Netto-Teamwert pro Spieltag ───────────────────── */
+async function buildTeamValueChartData(opts: {
+  leagueId: string;
+  token: string;
+  members: KbRankingUser[];
+  transferLists: { user: KbRankingUser; transfers: import("@/lib/kickbase/types").KbManagerTransfer[] }[];
+  bonusActivities: KbActivity[];
+  initialBudget: number;
+  currentMatchday?: number;
+}): Promise<{ data: TVChartPoint[]; managers: { id: string; name: string }[] }> {
+  const cur = opts.currentMatchday ?? 0;
+  if (cur < 2) return { data: [], managers: [] };
+
+  // Letzte 15 Spieltage (oder weniger) — Balance Performance vs Aussagekraft
+  const startDay = Math.max(1, cur - 14);
+  const days: number[] = [];
+  for (let d = startDay; d <= cur; d++) days.push(d);
+
+  // Pre-compute: matchday → latest bonus date (für Transfer-Cutoff)
+  const matchdayEndDate = new Map<number, number>();
+  for (const a of opts.bonusActivities) {
+    if (a.t !== 22) continue;
+    const data = (a.data ?? a.d ?? {}) as Record<string, unknown>;
+    const day = data.day;
+    if (typeof day !== "number") continue;
+    const ts = parseFlexibleDateMs(a.dt);
+    if (ts == null) continue;
+    const existing = matchdayEndDate.get(day);
+    if (!existing || ts > existing) matchdayEndDate.set(day, ts);
+  }
+
+  // Pre-compute: transfers sortiert nach date pro user (timestamp)
+  const userTransfers = new Map<
+    string,
+    { ts: number; tty: number; trp: number }[]
+  >();
+  for (const tl of opts.transferLists) {
+    const sorted = tl.transfers
+      .map((t) => ({ ts: new Date(t.dt).getTime(), tty: t.tty, trp: t.trp }))
+      .filter((t) => !isNaN(t.ts))
+      .sort((a, b) => a.ts - b.ts);
+    userTransfers.set(tl.user.i, sorted);
+  }
+
+  // Pre-compute: bonuses pro user, sortiert nach matchday-day
+  const userBonuses = new Map<string, { day: number; bn: number }[]>();
+  for (const a of opts.bonusActivities) {
+    if (a.t !== 22) continue;
+    if (!a.u?.i) continue;
+    const data = (a.data ?? a.d ?? {}) as Record<string, unknown>;
+    const day = data.day;
+    const bn = data.bn;
+    if (typeof day !== "number" || typeof bn !== "number") continue;
+    const arr = userBonuses.get(a.u.i) ?? [];
+    arr.push({ day, bn });
+    userBonuses.set(a.u.i, arr);
+  }
+
+  // Parallel ranking fetches
+  const rankingPerDay = await Promise.all(
+    days.map((d) =>
+      kb
+        .ranking(opts.token, opts.leagueId, d)
+        .catch(() => ({} as Awaited<ReturnType<typeof kb.ranking>>))
+    )
+  );
+
+  // Build chart points
+  const data: TVChartPoint[] = days.map((d, idx) => {
+    const r = rankingPerDay[idx];
+    const usersAtDay = r.us ?? r.it ?? [];
+    const cutoff = matchdayEndDate.get(d);
+    const point: TVChartPoint = { day: d };
+
+    for (const u of usersAtDay) {
+      const tv = typeof u.tv === "number" ? u.tv : 0;
+
+      let cash = opts.initialBudget;
+      const txs = userTransfers.get(u.i) ?? [];
+      for (const t of txs) {
+        if (cutoff !== undefined && t.ts > cutoff) break;
+        if (t.tty === 1) cash -= t.trp;
+        else if (t.tty === 2) cash += t.trp;
+      }
+      const bs = userBonuses.get(u.i) ?? [];
+      for (const b of bs) {
+        if (b.day <= d) cash += b.bn;
+      }
+
+      point[u.n] = tv + cash;
+    }
+    return point;
+  });
+
+  return {
+    data,
+    managers: opts.members.map((m) => ({ id: m.i, name: m.n })),
+  };
+}
+
+function parseFlexibleDateMs(v: unknown): number | null {
+  if (v == null) return null;
+  if (typeof v === "string") {
+    const t = new Date(v).getTime();
+    return isNaN(t) ? null : t;
+  }
+  if (typeof v === "number") {
+    return v < 1e11 ? v * 1000 : v;
+  }
+  return null;
+}
+
 function Header() {
   return (
     <div className="slide-up">
@@ -256,8 +420,8 @@ function ManagerCard({
         <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-primary to-emerald-300" />
       )}
       <CardContent className="p-4">
-        {/* Header row */}
-        <div className="flex items-center gap-3 mb-4">
+        {/* Header row: avatar + name + Netto-Teamwert hero */}
+        <div className="flex items-start gap-3 mb-4">
           <UserAvatar name={stats.name} image={stats.image} size="md" />
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
@@ -269,43 +433,54 @@ function ManagerCard({
                 <Badge variant="default" className="text-[10px] py-0">Du</Badge>
               )}
             </div>
-            <div className="text-xs text-muted-foreground tabular flex items-center gap-2">
+            <div className="text-xs text-muted-foreground tabular flex items-center gap-2 flex-wrap mt-0.5">
               {stats.placement !== undefined && <span>Platz #{stats.placement}</span>}
               {stats.seasonPoints !== undefined && (
                 <span className="font-mono">{stats.seasonPoints.toLocaleString("de-DE")} Pkt</span>
               )}
+              <span className="text-muted-foreground">·</span>
+              <span>{stats.squadSize} Spieler</span>
             </div>
           </div>
-          {/* Cash hero */}
+          {/* Netto-Teamwert hero */}
           <div className="text-right shrink-0">
             <div
               className={cn(
-                "text-lg sm:text-xl font-bold tabular leading-none",
-                stats.cashEstimate < 0 ? "text-rose-600" : "text-foreground"
+                "text-xl sm:text-2xl font-bold tabular leading-none gradient-text"
               )}
             >
-              {formatEUR(stats.cashEstimate, { compact: true })}
+              {formatEUR(stats.netTeamValue, { compact: true })}
             </div>
             <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mt-1">
-              Kontostand
+              Netto-Teamwert
             </div>
           </div>
         </div>
 
-        {/* Stat grid */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-sm">
+        {/* Stat grid — 2 zeilen × 3 spalten auf mobile, 6 spalten auf desktop */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5 text-sm">
+          <Stat
+            label="Teamwert"
+            value={formatEUR(stats.teamValue, { compact: true })}
+            icon={<Users className="size-3" />}
+            sub="reine Spieler-Σ"
+          />
+          <Stat
+            label="Kontostand"
+            value={
+              <span className={stats.cashEstimate < 0 ? "text-rose-600" : ""}>
+                {formatEUR(stats.cashEstimate, { compact: true })}
+              </span>
+            }
+            icon={<Wallet className="size-3" />}
+            tone={stats.cashEstimate < 0 ? "danger" : undefined}
+          />
           <Stat
             label="Max-Gebot"
             value={formatEUR(stats.maxBidSingleSell, { compact: true })}
             icon={<Target className="size-3" />}
             tone="primary"
-            sub={`bis ${formatEUR(stats.maxBidTotal, { compact: true })} max`}
-          />
-          <Stat
-            label="Teamwert"
-            value={formatEUR(stats.teamValue, { compact: true })}
-            icon={<Users className="size-3" />}
-            sub={`${stats.squadSize} Spieler`}
+            sub={`max ${formatEUR(stats.maxBidTotal, { compact: true })}`}
           />
           <Stat
             label="Tagesgewinn"
@@ -340,6 +515,20 @@ function ManagerCard({
               )
             }
             sub={`${stats.transferCount} Transfers`}
+          />
+          <Stat
+            label="Punkte"
+            value={
+              stats.seasonPoints !== undefined
+                ? stats.seasonPoints.toLocaleString("de-DE")
+                : "—"
+            }
+            icon={<Trophy className="size-3" />}
+            sub={
+              stats.placement !== undefined
+                ? `Platz #${stats.placement}`
+                : undefined
+            }
           />
         </div>
 
