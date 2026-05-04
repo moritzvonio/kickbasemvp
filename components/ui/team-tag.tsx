@@ -2,9 +2,9 @@ import { teamMeta, teamLogoUrl } from "@/lib/kickbase/types";
 import { cn } from "@/lib/utils";
 
 const SIZES = {
-  xs: { logo: 14, text: "text-[9px]", pad: "px-1 py-px gap-0.5" },
-  sm: { logo: 18, text: "text-[10px]", pad: "px-1.5 py-0.5 gap-1" },
-  md: { logo: 22, text: "text-xs", pad: "px-2 py-0.5 gap-1" },
+  xs: { logo: 22, text: "text-[10px]", pad: "px-1 py-px gap-1" },
+  sm: { logo: 28, text: "text-[11px]", pad: "px-1.5 py-0.5 gap-1.5" },
+  md: { logo: 36, text: "text-xs", pad: "px-2 py-0.5 gap-1.5" },
 } as const;
 
 /**
@@ -120,7 +120,8 @@ export function TeamCrest({
           alt={t.name}
           width={size}
           height={size}
-          className="object-contain p-1"
+          className="object-contain"
+          style={{ width: size * 0.92, height: size * 0.92 }}
           loading="lazy"
         />
       </span>

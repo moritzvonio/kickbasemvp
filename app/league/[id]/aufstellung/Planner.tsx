@@ -201,6 +201,18 @@ export function Planner({
     .reduce((s, p) => s + (p.mv ?? 0), 0);
   const projectedBudget = budget + sellValue;
 
+  /** Free-slot count per position (1=GK, 2=DEF, 3=MID, 4=FWD) */
+  const freeSlotByPos = useMemo(() => {
+    const m: Record<number, number> = { 1: 0, 2: 0, 3: 0, 4: 0 };
+    for (const slotId of slotIds) {
+      if (state.slots[slotId] === null) {
+        const p = POS_FOR_SLOT[slotId];
+        if (p) m[p] = (m[p] ?? 0) + 1;
+      }
+    }
+    return m;
+  }, [slotIds, state.slots]);
+
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
     useSensor(TouchSensor, { activationConstraint: { delay: 120, tolerance: 8 } }),
@@ -249,6 +261,26 @@ export function Planner({
     setState((prev) => ({ ...prev, slots: { ...prev.slots, [slotId]: null } }));
   };
 
+  /** Place a bench player into the first free compatible slot. No-op if none. */
+  const placeOnPitch = (playerId: string) => {
+    setState((prev) => {
+      const player = playerById.get(playerId);
+      if (!player) return prev;
+      const slots = { ...prev.slots };
+      for (const k of Object.keys(slots)) {
+        if (slots[k] === playerId) slots[k] = null;
+      }
+      const ids = buildSlotIds(prev.formation);
+      for (const slotId of ids) {
+        if (slots[slotId] === null && POS_FOR_SLOT[slotId] === player.pos) {
+          slots[slotId] = playerId;
+          return { ...prev, slots };
+        }
+      }
+      return prev;
+    });
+  };
+
   const toggleSell = (playerId: string) => {
     setState((prev) => {
       const has = prev.sells.includes(playerId);
@@ -292,99 +324,211 @@ export function Planner({
     setState(initialState);
   };
 
+  const sellPlayers = players.filter((p) => sellSet.has(p.id));
+
   return (
     <DndContext sensors={sensors} onDragStart={onDragStart} onDragEnd={onDragEnd}>
-      {/* KPI bar */}
-      <section className="grid grid-cols-2 sm:grid-cols-5 gap-3 slide-up">
-        <KpiTile
-          icon={<Layers className="size-4" />}
-          label="Aufstellung"
-          value={`${filledCount} / 11`}
-          accent={filledCount === 11 ? "success" : filledCount > 7 ? "warning" : "danger"}
-          sub={filledCount === 11 ? "Komplett" : `${11 - filledCount} fehlen`}
-        />
-        <KpiTile
-          icon={<Wallet className="size-4" />}
-          label="Budget jetzt"
-          value={formatEUR(budget, { compact: true })}
-        />
-        <KpiTile
-          icon={<Tag className="size-4" />}
-          label="+ Verkaufserlös"
-          value={formatEUR(sellValue, { compact: true })}
-          sub={state.sells.length > 0 ? `${state.sells.length} ${state.sells.length === 1 ? "Spieler" : "Spieler"}` : undefined}
-          accent={sellValue > 0 ? "success" : undefined}
-        />
-        <KpiTile
-          icon={<TrendingUp className="size-4" />}
-          label="= Geplantes Budget"
-          value={formatEUR(projectedBudget, { compact: true })}
-          accent="primary"
-        />
-        <DeadlineTile deadline={deadline} matchday={matchday} />
-      </section>
+      <div className="space-y-5">
+        {/* KPI bar — always full width */}
+        <section className="grid grid-cols-2 sm:grid-cols-5 gap-3 slide-up">
+          <KpiTile
+            icon={<Layers className="size-4" />}
+            label="Aufstellung"
+            value={`${filledCount} / 11`}
+            accent={filledCount === 11 ? "success" : filledCount > 7 ? "warning" : "danger"}
+            sub={filledCount === 11 ? "Komplett" : `${11 - filledCount} fehlen`}
+          />
+          <KpiTile
+            icon={<Wallet className="size-4" />}
+            label="Budget jetzt"
+            value={formatEUR(budget, { compact: true })}
+          />
+          <KpiTile
+            icon={<Tag className="size-4" />}
+            label="+ Verkaufserlös"
+            value={formatEUR(sellValue, { compact: true })}
+            sub={state.sells.length > 0 ? `${state.sells.length} markiert` : undefined}
+            accent={sellValue > 0 ? "success" : undefined}
+          />
+          <KpiTile
+            icon={<TrendingUp className="size-4" />}
+            label="= Geplantes Budget"
+            value={formatEUR(projectedBudget, { compact: true })}
+            accent="primary"
+          />
+          <DeadlineTile deadline={deadline} matchday={matchday} />
+        </section>
 
-      {/* Formation picker */}
-      <section className="flex items-center justify-between flex-wrap gap-2 slide-up slide-up-1">
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">
-            Formation
-          </span>
-          {(Object.keys(FORMATIONS) as FormationKey[]).map((f) => (
-            <button
-              key={f}
-              onClick={() => setFormation(f)}
-              className={cn(
-                "px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors tabular",
-                state.formation === f
-                  ? "bg-primary text-primary-foreground border-primary shadow-sm"
-                  : "border-border text-muted-foreground hover:bg-accent hover:text-foreground"
-              )}
-            >
-              {f}
-            </button>
-          ))}
-        </div>
-        <Button onClick={reset} variant="outline" size="sm" className="gap-1.5">
-          <RotateCcw className="size-3.5" /> Zurücksetzen
-        </Button>
-      </section>
+        {/* Mobile-only formation row (desktop has it in sidebar) */}
+        <section className="lg:hidden flex items-center justify-between flex-wrap gap-2 slide-up slide-up-1">
+          <FormationPicker formation={state.formation} onChange={setFormation} />
+          <Button onClick={reset} variant="outline" size="sm" className="gap-1.5">
+            <RotateCcw className="size-3.5" /> Reset
+          </Button>
+        </section>
 
-      {/* Pitch */}
-      <section className="slide-up slide-up-2">
-        <Pitch
-          slotIds={slotIds}
-          formation={state.formation}
-          slots={state.slots}
-          playerById={playerById}
-          sells={sellSet}
-          onRemoveFromSlot={removeFromSlot}
-          onToggleSell={toggleSell}
-        />
-      </section>
+        {/* Main grid: Pitch left, Sidebar right (desktop only) */}
+        <section className="grid gap-4 lg:grid-cols-12 slide-up slide-up-2">
+          <div className="lg:col-span-7">
+            <Pitch
+              slotIds={slotIds}
+              formation={state.formation}
+              slots={state.slots}
+              playerById={playerById}
+              sells={sellSet}
+              onRemoveFromSlot={removeFromSlot}
+              onToggleSell={toggleSell}
+            />
+          </div>
 
-      {/* Bench */}
-      <section className="slide-up slide-up-3">
-        <BenchZone
-          players={benchPlayers}
-          sells={sellSet}
-          onToggleSell={toggleSell}
-        />
-      </section>
+          <aside className="lg:col-span-5 space-y-3">
+            {/* Desktop formation picker + reset */}
+            <Card className="hidden lg:block">
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">
+                    Formation
+                  </span>
+                  <Button onClick={reset} variant="ghost" size="sm" className="h-7 px-2 text-[11px] gap-1">
+                    <RotateCcw className="size-3" /> Reset
+                  </Button>
+                </div>
+                <FormationPicker
+                  formation={state.formation}
+                  onChange={setFormation}
+                  variant="grid"
+                />
+              </CardContent>
+            </Card>
 
-      {/* Sells summary */}
-      {state.sells.length > 0 && (
-        <SellsSummary
-          players={players.filter((p) => sellSet.has(p.id))}
-          totalValue={sellValue}
-          onUntag={toggleSell}
-        />
-      )}
+            {/* Free slots overview */}
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="size-7 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
+                    <Layers className="size-4" />
+                  </span>
+                  <span className="font-semibold text-sm">Freie Plätze</span>
+                </div>
+                <div className="grid grid-cols-4 gap-2">
+                  {[1, 2, 3, 4].map((pos) => {
+                    const free = freeSlotByPos[pos] ?? 0;
+                    return (
+                      <div
+                        key={pos}
+                        className={cn(
+                          "rounded-lg border px-2 py-2 text-center",
+                          free > 0
+                            ? "border-primary/30 bg-primary/[0.04]"
+                            : "border-border bg-muted/40"
+                        )}
+                      >
+                        <div className="flex justify-center mb-1">
+                          <PositionBadge pos={pos} />
+                        </div>
+                        <div
+                          className={cn(
+                            "text-lg font-bold tabular leading-none",
+                            free > 0 ? "text-primary" : "text-muted-foreground"
+                          )}
+                        >
+                          {free}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Sells summary inline */}
+            {sellPlayers.length > 0 && (
+              <SellsSummary
+                players={sellPlayers}
+                totalValue={sellValue}
+                onUntag={toggleSell}
+              />
+            )}
+
+            {/* Quick tip */}
+            <Card className="bg-primary/[0.03] border-primary/20">
+              <CardContent className="p-4 text-xs text-muted-foreground space-y-1.5">
+                <p className="flex items-start gap-1.5">
+                  <span className="text-primary font-bold">+</span>
+                  <span>
+                    Tippe das <span className="font-semibold text-foreground">+</span>{" "}
+                    auf einem Bank-Spieler um ihn auf den nächsten freien Platz zu setzen.
+                  </span>
+                </p>
+                <p className="flex items-start gap-1.5">
+                  <span className="text-primary font-bold">↕</span>
+                  <span>
+                    Drag-Drop funktioniert auch — zwischen Bank und Pitch sowie zwischen Slots.
+                  </span>
+                </p>
+                <p className="flex items-start gap-1.5">
+                  <span className="text-primary font-bold">€</span>
+                  <span>
+                    Verkaufs-Markierung ändert sofort das geplante Budget oben.
+                  </span>
+                </p>
+              </CardContent>
+            </Card>
+          </aside>
+        </section>
+
+        {/* Bench — full width below */}
+        <section className="slide-up slide-up-3">
+          <BenchZone
+            players={benchPlayers}
+            sells={sellSet}
+            freeSlotByPos={freeSlotByPos}
+            onToggleSell={toggleSell}
+            onPlace={placeOnPitch}
+          />
+        </section>
+      </div>
 
       <DragOverlay>
         {activeId ? <PlayerCard player={playerById.get(activeId)!} dragging /> : null}
       </DragOverlay>
     </DndContext>
+  );
+}
+
+/* ─── Formation picker (shared) ────────────────────────── */
+function FormationPicker({
+  formation,
+  onChange,
+  variant = "row",
+}: {
+  formation: FormationKey;
+  onChange: (f: FormationKey) => void;
+  variant?: "row" | "grid";
+}) {
+  return (
+    <div
+      className={cn(
+        "flex flex-wrap gap-1.5",
+        variant === "grid" && "grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-3 gap-2"
+      )}
+    >
+      {(Object.keys(FORMATIONS) as FormationKey[]).map((f) => (
+        <button
+          key={f}
+          onClick={() => onChange(f)}
+          className={cn(
+            "px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors tabular text-center",
+            variant === "grid" && "rounded-md",
+            formation === f
+              ? "bg-primary text-primary-foreground border-primary shadow-sm"
+              : "border-border text-muted-foreground hover:bg-accent hover:text-foreground"
+          )}
+        >
+          {f}
+        </button>
+      ))}
+    </div>
   );
 }
 
@@ -536,7 +680,7 @@ function Pitch({
         }}
       />
 
-      <div className="relative grid grid-rows-4 gap-3 p-4 sm:p-6 min-h-[460px] sm:min-h-[540px]">
+      <div className="relative grid grid-rows-4 gap-2 sm:gap-3 p-3 sm:p-5 min-h-[400px] sm:min-h-[440px] lg:min-h-[460px]">
         {groups.map((g) => (
           <div
             key={g.key}
@@ -591,7 +735,7 @@ function SlotTarget({
     <div
       ref={setNodeRef}
       className={cn(
-        "relative rounded-xl transition-all w-[68px] sm:w-[88px]",
+        "relative rounded-xl transition-all w-[60px] sm:w-[72px] lg:w-[78px]",
         isOver && "ring-2 ring-white scale-105"
       )}
     >
@@ -714,11 +858,15 @@ function PitchPlayer({
 function BenchZone({
   players,
   sells,
+  freeSlotByPos,
   onToggleSell,
+  onPlace,
 }: {
   players: PlannerPlayer[];
   sells: Set<string>;
+  freeSlotByPos: Record<number, number>;
   onToggleSell: (id: string) => void;
+  onPlace: (id: string) => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: "bench" });
   const grouped = [
@@ -744,6 +892,9 @@ function BenchZone({
               {players.length}
             </Badge>
           </div>
+          <span className="text-[10px] text-muted-foreground hidden sm:inline">
+            Drag oder <span className="text-foreground font-medium">+</span> zum Aufstellen
+          </span>
         </div>
         {players.length === 0 ? (
           <p className="text-sm text-muted-foreground py-4 text-center">
@@ -754,6 +905,7 @@ function BenchZone({
             {grouped.map((g) => {
               const list = players.filter((p) => p.pos === g.pos);
               if (list.length === 0) return null;
+              const free = freeSlotByPos[g.pos] ?? 0;
               return (
                 <div key={g.pos}>
                   <div className="flex items-center gap-2 mb-2 px-1">
@@ -765,14 +917,25 @@ function BenchZone({
                         { compact: true }
                       )}
                     </span>
+                    <span className="ml-auto text-[10px] text-muted-foreground">
+                      {free > 0 ? (
+                        <span className="text-primary font-semibold">
+                          {free} {free === 1 ? "freier Platz" : "freie Plätze"}
+                        </span>
+                      ) : (
+                        "alle besetzt"
+                      )}
+                    </span>
                   </div>
-                  <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                  <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                     {list.map((p) => (
                       <PlayerCard
                         key={p.id}
                         player={p}
                         isSellMarked={sells.has(p.id)}
+                        canPlace={free > 0}
                         onToggleSell={() => onToggleSell(p.id)}
+                        onPlace={() => onPlace(p.id)}
                       />
                     ))}
                   </div>
@@ -789,12 +952,16 @@ function BenchZone({
 function PlayerCard({
   player,
   isSellMarked,
+  canPlace,
   onToggleSell,
+  onPlace,
   dragging,
 }: {
   player: PlannerPlayer;
   isSellMarked?: boolean;
+  canPlace?: boolean;
   onToggleSell?: () => void;
+  onPlace?: () => void;
   dragging?: boolean;
 }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
@@ -839,22 +1006,43 @@ function PlayerCard({
           </div>
         </div>
         {!dragging && (
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onToggleSell?.();
-            }}
-            className={cn(
-              "size-7 rounded text-xs transition-colors flex items-center justify-center shrink-0",
-              isSellMarked
-                ? "bg-rose-500 text-white"
-                : "bg-muted text-muted-foreground hover:bg-rose-100 hover:text-rose-600"
+          <div className="flex items-center gap-1 shrink-0">
+            {onPlace && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (canPlace) onPlace();
+                }}
+                disabled={!canPlace}
+                className={cn(
+                  "size-7 rounded text-base font-bold transition-colors flex items-center justify-center",
+                  canPlace
+                    ? "bg-primary/15 text-primary hover:bg-primary hover:text-primary-foreground ring-1 ring-primary/30"
+                    : "bg-muted text-muted-foreground/40 cursor-not-allowed"
+                )}
+                title={canPlace ? "Auf nächsten freien Platz setzen" : "Keine freie Position auf dem Platz"}
+                aria-label="Aufstellen"
+              >
+                +
+              </button>
             )}
-            title="Zum Verkauf markieren"
-            aria-label="Verkaufen"
-          >
-            €
-          </button>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onToggleSell?.();
+              }}
+              className={cn(
+                "size-7 rounded text-xs transition-colors flex items-center justify-center",
+                isSellMarked
+                  ? "bg-rose-500 text-white"
+                  : "bg-muted text-muted-foreground hover:bg-rose-100 hover:text-rose-600"
+              )}
+              title="Zum Verkauf markieren"
+              aria-label="Verkaufen"
+            >
+              €
+            </button>
+          </div>
         )}
       </div>
     </div>

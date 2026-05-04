@@ -62,11 +62,11 @@ export function PlayerAvatar({
         <img
           src={logo}
           alt={team.name}
-          width={Math.round(size * 0.7)}
-          height={Math.round(size * 0.7)}
+          width={Math.round(size * 0.92)}
+          height={Math.round(size * 0.92)}
           className="object-contain"
           loading="lazy"
-          style={{ width: size * 0.7, height: size * 0.7 }}
+          style={{ width: size * 0.92, height: size * 0.92 }}
         />
       ) : (
         <span

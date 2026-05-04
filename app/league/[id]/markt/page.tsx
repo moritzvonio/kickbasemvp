@@ -8,10 +8,19 @@ import { TeamTag } from "@/components/ui/team-tag";
 import { PositionBadge } from "@/components/ui/position-icon";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PointBar, HotBadge } from "@/components/ui/point-bar";
-import { formatEUR } from "@/lib/utils";
-import { type KbCompetitionPlayer } from "@/lib/kickbase/types";
+import { RankBadge, RankNumber } from "@/components/ui/rank-badge";
 import { PlayerAvatar } from "@/components/ui/player-avatar";
-import { ArrowDown, ArrowUp, Minus, Clock, ShoppingCart, Goal, Footprints, Trophy } from "lucide-react";
+import { formatEUR, cn } from "@/lib/utils";
+import { type KbCompetitionPlayer } from "@/lib/kickbase/types";
+import {
+  ArrowDown,
+  ArrowUp,
+  Minus,
+  Clock,
+  ShoppingCart,
+  Goal,
+  Footprints,
+} from "lucide-react";
 
 export const metadata: Metadata = { title: "Transfermarkt" };
 export const dynamic = "force-dynamic";
@@ -36,14 +45,34 @@ export default async function MarketPage({
   ]);
 
   const items = marketData.it ?? [];
-  const compMap = new Map<string, KbCompetitionPlayer>();
-  for (const p of compData.it ?? []) compMap.set(p.pi, p);
+  const allComp = (compData.it ?? []).slice();
 
-  // Compute per-position max points for bar normalization
-  const maxByPos: Record<number, number> = { 1: 1, 2: 1, 3: 1, 4: 1 };
-  for (const cp of compData.it ?? []) {
-    if (typeof cp.p === "number" && cp.p > (maxByPos[cp.pos] ?? 0)) maxByPos[cp.pos] = cp.p;
+  // Build ranking maps:
+  //   rankByPid       → 1-N across all Bundesliga players (overall)
+  //   rankByPidPos    → 1-N within position
+  //   maxByPos        → max points per position (for PointBar normalization)
+  //   maxAvgByPos     → max ap per position (for Ø-bar normalization)
+  const allSorted = allComp.slice().sort((a, b) => (b.p ?? 0) - (a.p ?? 0));
+  const rankByPid = new Map<string, number>();
+  allSorted.forEach((cp, i) => rankByPid.set(cp.pi, i + 1));
+
+  const rankByPidPos = new Map<string, number>();
+  const sortedByPos: Record<number, KbCompetitionPlayer[]> = { 1: [], 2: [], 3: [], 4: [] };
+  for (const cp of allComp) sortedByPos[cp.pos]?.push(cp);
+  for (const list of Object.values(sortedByPos)) {
+    list.sort((a, b) => (b.p ?? 0) - (a.p ?? 0));
+    list.forEach((cp, i) => rankByPidPos.set(cp.pi, i + 1));
   }
+
+  const maxByPos: Record<number, number> = { 1: 1, 2: 1, 3: 1, 4: 1 };
+  const maxAvgByPos: Record<number, number> = { 1: 1, 2: 1, 3: 1, 4: 1 };
+  for (const cp of allComp) {
+    if (typeof cp.p === "number" && cp.p > (maxByPos[cp.pos] ?? 0)) maxByPos[cp.pos] = cp.p;
+    if (typeof cp.ap === "number" && cp.ap > (maxAvgByPos[cp.pos] ?? 0)) maxAvgByPos[cp.pos] = cp.ap;
+  }
+
+  const compMap = new Map<string, KbCompetitionPlayer>();
+  for (const p of allComp) compMap.set(p.pi, p);
 
   const sorted = items.slice().sort((a, b) => {
     const pa = compMap.get(a.i)?.p ?? 0;
@@ -76,7 +105,7 @@ export default async function MarketPage({
           />
         </Card>
       ) : (
-        <div className="grid gap-2 slide-up slide-up-1">
+        <div className="grid gap-2.5 slide-up slide-up-1">
           {sorted.map((p) => {
             const trend = p.mvt ?? 0;
             const TrendIcon = trend > 0 ? ArrowUp : trend < 0 ? ArrowDown : Minus;
@@ -91,11 +120,14 @@ export default async function MarketPage({
 
             const meta = compMap.get(p.i);
             const points = meta?.p ?? 0;
-            const avg = meta?.ap;
+            const avg = meta?.ap ?? 0;
             const goals = meta?.g ?? 0;
             const assists = meta?.a ?? 0;
             const max = maxByPos[p.pos] ?? 1;
+            const maxAvg = maxAvgByPos[p.pos] ?? 1;
             const pct = points > 0 ? points / max : 0;
+            const overallRank = rankByPid.get(p.i);
+            const posRank = rankByPidPos.get(p.i);
 
             return (
               <Link
@@ -103,12 +135,14 @@ export default async function MarketPage({
                 href={`/league/${leagueId}/spieler/${p.i}`}
                 className="card-hover block rounded-xl border border-border bg-card p-3.5"
               >
-                <div className="flex items-center gap-3">
-                  <PlayerAvatar pim={p.pim} tid={p.tid} size={56} />
+                <div className="flex items-start gap-3">
+                  <PlayerAvatar pim={p.pim} tid={p.tid} size={64} />
 
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2 mb-1">
+                  {/* Center column: name + tags + stats grid */}
+                  <div className="min-w-0 flex-1 space-y-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <span className="font-semibold truncate">{p.n}</span>
+                      <RankBadge rank={overallRank} />
                       <HotBadge pct={pct} />
                       {p.exs !== undefined && p.exs > 0 && (
                         <Badge variant="muted" className="text-[10px] gap-1">
@@ -120,38 +154,45 @@ export default async function MarketPage({
                     <div className="text-xs text-muted-foreground flex items-center gap-1.5 flex-wrap">
                       <TeamTag tid={p.tid} size="xs" />
                       <PositionBadge pos={p.pos} className="text-[9px] h-4 px-1" />
+                      {posRank && <RankNumber rank={posRank} />}
                       {p.u?.n && <span className="truncate">von {p.u.n}</span>}
                     </div>
-                    {/* Points + bar */}
-                    <div className="mt-2 flex items-center gap-2">
-                      <PointBar value={points} max={max} width={120} height={6} />
-                      <span className="text-xs font-mono tabular font-semibold">
-                        {points.toLocaleString("de-DE")}
-                      </span>
-                      <span className="text-[10px] text-muted-foreground tabular">
-                        {avg !== undefined ? `Ø ${avg}` : "—"}
-                      </span>
-                      {goals > 0 && (
-                        <span
-                          className="text-[10px] text-muted-foreground inline-flex items-center gap-0.5 tabular"
-                          title={`${goals} Tore`}
-                        >
-                          <Goal className="size-3" />
-                          {goals}
-                        </span>
-                      )}
-                      {assists > 0 && (
-                        <span
-                          className="text-[10px] text-muted-foreground inline-flex items-center gap-0.5 tabular"
-                          title={`${assists} Vorlagen`}
-                        >
-                          <Footprints className="size-3" />
-                          {assists}
-                        </span>
-                      )}
+
+                    {/* Stat bars: Saison + Ø */}
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs pt-1">
+                      <StatRow
+                        label="Saison"
+                        value={points.toLocaleString("de-DE")}
+                        bar={<PointBar value={points} max={max} width={90} height={6} />}
+                        big
+                      />
+                      <StatRow
+                        label="Ø Spieltag"
+                        value={avg > 0 ? String(avg) : "—"}
+                        bar={<PointBar value={avg} max={maxAvg} width={90} height={6} />}
+                      />
                     </div>
+
+                    {/* Goals + assists pill */}
+                    {(goals > 0 || assists > 0) && (
+                      <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+                        {goals > 0 && (
+                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-muted tabular">
+                            <Goal className="size-3" />
+                            {goals} {goals === 1 ? "Tor" : "Tore"}
+                          </span>
+                        )}
+                        {assists > 0 && (
+                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-muted tabular">
+                            <Footprints className="size-3" />
+                            {assists} {assists === 1 ? "Vorlage" : "Vorlagen"}
+                          </span>
+                        )}
+                      </div>
+                    )}
                   </div>
 
+                  {/* Right column: Preis */}
                   <div className="text-right shrink-0">
                     <div className="font-mono font-bold text-base tabular">
                       {formatEUR(p.prc, { compact: true })}
@@ -165,14 +206,14 @@ export default async function MarketPage({
                       </span>
                     </div>
                     <div
-                      className={
-                        "text-[10px] font-mono mt-0.5 font-semibold tabular " +
-                        (priceDiff > 0
+                      className={cn(
+                        "text-[10px] font-mono mt-0.5 font-semibold tabular",
+                        priceDiff > 0
                           ? "text-amber-600"
                           : priceDiff < 0
                           ? "text-emerald-600"
-                          : "text-muted-foreground")
-                      }
+                          : "text-muted-foreground"
+                      )}
                     >
                       {priceDiff > 0 ? "+" : ""}
                       {priceDiffPct.toFixed(0)}% vs MV
@@ -185,9 +226,43 @@ export default async function MarketPage({
         </div>
       )}
 
-      <p className="text-xs text-muted-foreground text-center pt-4">
-        💡 Bar zeigt Punkte relativ zum besten Spieler seiner Position. 🔥 = Top 15 % auf seiner Position.
+      <p className="text-xs text-muted-foreground text-center pt-4 leading-relaxed">
+        💡 Bars zeigen Punkte relativ zum besten Spieler der Position.
+        <br />
+        🥇 <span className="font-semibold">TOP 10/25/50/100</span>-Badges = Bundesliga-weite
+        Saison-Wertung. 🔥 = Top 15 % auf seiner Position.
       </p>
+    </div>
+  );
+}
+
+function StatRow({
+  label,
+  value,
+  bar,
+  big,
+}: {
+  label: string;
+  value: string;
+  bar: React.ReactNode;
+  big?: boolean;
+}) {
+  return (
+    <div className="flex flex-col gap-0.5">
+      <div className="flex items-baseline justify-between">
+        <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
+          {label}
+        </span>
+        <span
+          className={cn(
+            "font-mono tabular font-semibold",
+            big ? "text-base" : "text-xs"
+          )}
+        >
+          {value}
+        </span>
+      </div>
+      {bar}
     </div>
   );
 }
