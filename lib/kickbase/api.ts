@@ -123,6 +123,13 @@ export const kb = {
 
   // ── Manager (other players in the league) ──────────────
   // ── Competition (Bundesliga-wide) ──────────────────────
+  async competitionTable(token: string, competitionId = "1") {
+    return kbFetch<import("./types").KbCompetitionTable>(
+      `/v4/competitions/${competitionId}/table`,
+      { token }
+    );
+  },
+
   async competitionPlayers(
     token: string,
     competitionId = "1",

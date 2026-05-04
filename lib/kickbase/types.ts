@@ -480,6 +480,38 @@ export interface KbPerformancePoint {
   [k: string]: unknown;
 }
 
+/** GET /v4/competitions/{id}/table — Bundesliga-Tabelle (mit Team-Logos!) */
+export interface KbCompetitionTable {
+  it: KbCompetitionTableEntry[];
+}
+
+export interface KbCompetitionTableEntry {
+  /** Team id */
+  tid: string;
+  /** Team name */
+  tn: string;
+  /** Team logo (relative path) */
+  tim?: string;
+  /** Current placement */
+  cpl?: number;
+  /** Previous placement */
+  pcpl?: number;
+  /** Championship points */
+  cp?: number;
+  /** Goal difference */
+  gd?: number;
+  /** Matches played */
+  mc?: number;
+  /** Matchday points (Kickbase) */
+  mdp?: number;
+  /** Season points (Kickbase) */
+  sp?: number;
+  /** Is loaning out */
+  il?: boolean;
+  /** Match id */
+  mi?: string;
+}
+
 /** GET /v4/competitions/{id}/players — Bundesliga-weite Spielerliste */
 export interface KbCompetitionPlayersResponse {
   it: KbCompetitionPlayer[];
@@ -539,35 +571,63 @@ export const POSITION_LABELS: Record<number, "GK" | "DEF" | "MID" | "FWD"> = {
   4: "FWD",
 };
 
-/** Bundesliga teams by Kickbase tid → short name + colour */
-export const BL_TEAMS: Record<string, { short: string; name: string; color: string }> = {
-  "2": { short: "BVB", name: "Borussia Dortmund", color: "#FDE100" },
-  "3": { short: "FCB", name: "Bayern München", color: "#DC052D" },
-  "4": { short: "FCA", name: "FC Augsburg", color: "#BB0036" },
-  "5": { short: "SCF", name: "SC Freiburg", color: "#B8232E" },
-  "7": { short: "B04", name: "Bayer Leverkusen", color: "#E32221" },
-  "8": { short: "S04", name: "Schalke 04", color: "#004D9D" },
-  "9": { short: "VFB", name: "VfB Stuttgart", color: "#E32219" },
-  "10": { short: "WOB", name: "VfL Wolfsburg", color: "#65B32E" },
-  "11": { short: "M05", name: "Mainz 05", color: "#C3141B" },
-  "13": { short: "BMG", name: "Borussia M'gladbach", color: "#000000" },
-  "14": { short: "SGE", name: "Eintracht Frankfurt", color: "#E1000F" },
-  "15": { short: "TSG", name: "TSG Hoffenheim", color: "#1961B5" },
-  "18": { short: "BSC", name: "Hertha BSC", color: "#005CA9" },
-  "20": { short: "SVW", name: "Werder Bremen", color: "#1D9053" },
-  "22": { short: "KOE", name: "1. FC Köln", color: "#ED1C24" },
-  "24": { short: "VFL", name: "VfL Bochum", color: "#005CA9" },
-  "28": { short: "FCU", name: "1. FC Union Berlin", color: "#ED1C24" },
-  "39": { short: "SVD", name: "SV Darmstadt 98", color: "#004F9F" },
-  "40": { short: "FCH", name: "1. FC Heidenheim", color: "#E20613" },
-  "43": { short: "RBL", name: "RB Leipzig", color: "#DC052D" },
-  "50": { short: "FCSP", name: "FC St. Pauli", color: "#612916" },
-  "51": { short: "HSV", name: "Hamburger SV", color: "#0A2D5E" },
+/** Bundesliga teams by Kickbase tid (verified from /v4/competitions/1/table response).
+ *
+ * Each entry: { short, name, color, logo? }
+ * Logo paths are relative to the Kickbase CDN (use playerImageUrl-style helper).
+ */
+export interface BlTeamMeta {
+  short: string;
+  name: string;
+  color: string;
+  /** Relative path on kickbase.b-cdn.net, e.g. "content/file/abc.svg" */
+  logo?: string;
+}
+
+export const BL_TEAMS: Record<string, BlTeamMeta> = {
+  "2":  { short: "FCB",  name: "Bayern München",       color: "#DC052D", logo: "content/file/ff70df040a9f4179a7b45219225a2273.svg" },
+  "3":  { short: "BVB",  name: "Borussia Dortmund",    color: "#FDE100", logo: "content/file/dc3d63ae79bf4282a4107bafcd572b99.svg" },
+  "4":  { short: "SGE",  name: "Eintracht Frankfurt",  color: "#E1000F", logo: "content/file/422de82bee3b47eb898699d6d27095ba.svg" },
+  "5":  { short: "SCF",  name: "SC Freiburg",          color: "#B8232E", logo: "content/file/6c1a9f14b668493283f966834891aa70.svg" },
+  "6":  { short: "HSV",  name: "Hamburger SV",         color: "#0A2D5E", logo: "content/file/c9b7d8772f324f9badeb285af4c5810a.svg" },
+  "7":  { short: "B04",  name: "Bayer Leverkusen",     color: "#E32221", logo: "content/file/e06a055a6eaf4fd7bebfadb35037f957.svg" },
+  "9":  { short: "VFB",  name: "VfB Stuttgart",        color: "#E32219", logo: "content/file/9a1bb78d0ccf45f895797c0c6d8c4d40.svg" },
+  "10": { short: "SVW",  name: "Werder Bremen",        color: "#1D9053", logo: "content/file/a7e609e72fb04c6d8c96e8ed82f0315d.svg" },
+  "11": { short: "WOB",  name: "VfL Wolfsburg",        color: "#65B32E", logo: "content/file/f23d72a0cf2d48a2a29ede777110aece.svg" },
+  "13": { short: "FCA",  name: "FC Augsburg",          color: "#BB0036", logo: "content/file/8d68c946b9774505b8292adfa910d0a0.svg" },
+  "14": { short: "TSG",  name: "TSG Hoffenheim",       color: "#1961B5", logo: "content/file/5212904732a04199aab426e44067347c.svg" },
+  "15": { short: "BMG",  name: "Borussia M'gladbach",  color: "#000000", logo: "content/file/7178ef92ad0747a5ad1a05d0783f5088.svg" },
+  "18": { short: "M05",  name: "1. FSV Mainz 05",      color: "#C3141B", logo: "content/file/d4ac9675b44944039d463837f888cb1c.svg" },
+  "28": { short: "KOE",  name: "1. FC Köln",           color: "#ED1C24", logo: "content/file/dca70c4089fd4623932b245c0e81eaba.svg" },
+  "39": { short: "FCSP", name: "FC St. Pauli",         color: "#612916", logo: "content/file/cae200d5499e43c4a5c382a1fbb25435.svg" },
+  "40": { short: "FCU",  name: "1. FC Union Berlin",   color: "#ED1C24", logo: "content/file/8f4c7c08ee9b4dca85c28260fc5917bd.svg" },
+  "43": { short: "RBL",  name: "RB Leipzig",           color: "#DC052D", logo: "content/file/29ceb88867954b548ca9e27d39d050c2.svg" },
+  "50": { short: "FCH",  name: "1. FC Heidenheim",     color: "#E20613", logo: "content/file/f387dd39aafb47d0b4863381fc4a521c.svg" },
+  // Historical / 2. Bundesliga — kept for older data without logos
+  "8":  { short: "S04",  name: "Schalke 04",           color: "#004D9D" },
+  "24": { short: "VFL",  name: "VfL Bochum",           color: "#005CA9" },
 };
 
-export function teamMeta(tid: string | undefined) {
+/** Runtime override map populated by `loadFreshTeamLogos()` if available */
+const TEAM_LOGOS_OVERRIDE = new Map<string, string>();
+
+export function setTeamLogo(tid: string, logoPath: string) {
+  if (logoPath) TEAM_LOGOS_OVERRIDE.set(tid, logoPath);
+}
+
+export function teamMeta(tid: string | undefined): BlTeamMeta {
   if (!tid) return { short: "?", name: "Unknown", color: "#666" };
-  return BL_TEAMS[tid] ?? { short: tid, name: `Team ${tid}`, color: "#666" };
+  const base = BL_TEAMS[tid] ?? { short: tid, name: `Team ${tid}`, color: "#666" };
+  const override = TEAM_LOGOS_OVERRIDE.get(tid);
+  if (override) return { ...base, logo: override };
+  return base;
+}
+
+export function teamLogoUrl(tid: string | undefined): string | undefined {
+  const meta = teamMeta(tid);
+  if (!meta.logo) return undefined;
+  if (meta.logo.startsWith("http")) return meta.logo;
+  return `${KICKBASE_CDN}/${meta.logo.replace(/^\//, "")}`;
 }
 
 export const KICKBASE_CDN = "https://kickbase.b-cdn.net";

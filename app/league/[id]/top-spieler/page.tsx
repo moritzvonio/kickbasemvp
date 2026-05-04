@@ -9,7 +9,8 @@ import { PositionBadge } from "@/components/ui/position-icon";
 import { PointBar, HotBadge } from "@/components/ui/point-bar";
 import { EmptyState } from "@/components/ui/empty-state";
 import { cn } from "@/lib/utils";
-import { playerImageUrl, teamMeta, POSITION_LABELS, type KbCompetitionPlayer } from "@/lib/kickbase/types";
+import { type KbCompetitionPlayer } from "@/lib/kickbase/types";
+import { PlayerAvatar } from "@/components/ui/player-avatar";
 import { Trophy, Goal, Footprints, ShieldCheck, AlertTriangle } from "lucide-react";
 
 export const metadata: Metadata = { title: "Top-Spieler" };
@@ -151,8 +152,6 @@ function PlayerRow({
   max: number;
   leagueId: string;
 }) {
-  const team = teamMeta(player.tid);
-  const img = playerImageUrl(player.pim);
   const points = player.p ?? 0;
   const pct = points / max;
   const isInjured = player.st !== undefined && player.st !== 5 && player.st !== 0;
@@ -170,19 +169,7 @@ function PlayerRow({
           <span className="text-xs font-mono tabular text-muted-foreground">{rank}</span>
         )}
       </div>
-      <div
-        className="size-12 rounded-lg shrink-0 overflow-hidden flex items-center justify-center text-xs font-bold ring-1 ring-border"
-        style={{
-          background: `linear-gradient(135deg, ${team.color}22, ${team.color}08)`,
-        }}
-      >
-        {img ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={img} alt={player.n} className="w-full h-full object-cover" loading="lazy" />
-        ) : (
-          <span style={{ color: team.color }}>{team.short}</span>
-        )}
-      </div>
+      <PlayerAvatar pim={player.pim} tid={player.tid} size={48} />
 
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2 mb-1">

@@ -9,7 +9,8 @@ import { PositionBadge } from "@/components/ui/position-icon";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PointBar, HotBadge } from "@/components/ui/point-bar";
 import { formatEUR } from "@/lib/utils";
-import { playerImageUrl, teamMeta, type KbCompetitionPlayer } from "@/lib/kickbase/types";
+import { type KbCompetitionPlayer } from "@/lib/kickbase/types";
+import { PlayerAvatar } from "@/components/ui/player-avatar";
 import { ArrowDown, ArrowUp, Minus, Clock, ShoppingCart, Goal, Footprints, Trophy } from "lucide-react";
 
 export const metadata: Metadata = { title: "Transfermarkt" };
@@ -77,8 +78,6 @@ export default async function MarketPage({
       ) : (
         <div className="grid gap-2 slide-up slide-up-1">
           {sorted.map((p) => {
-            const team = teamMeta(p.tid);
-            const img = playerImageUrl(p.pim);
             const trend = p.mvt ?? 0;
             const TrendIcon = trend > 0 ? ArrowUp : trend < 0 ? ArrowDown : Minus;
             const trendColor =
@@ -105,24 +104,7 @@ export default async function MarketPage({
                 className="card-hover block rounded-xl border border-border bg-card p-3.5"
               >
                 <div className="flex items-center gap-3">
-                  <div
-                    className="size-14 rounded-lg shrink-0 overflow-hidden flex items-center justify-center text-xs font-bold ring-1 ring-border"
-                    style={{
-                      background: `linear-gradient(135deg, ${team.color}22, ${team.color}08)`,
-                    }}
-                  >
-                    {img ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={img}
-                        alt={p.n}
-                        className="w-full h-full object-cover"
-                        loading="lazy"
-                      />
-                    ) : (
-                      <span style={{ color: team.color }}>{team.short}</span>
-                    )}
-                  </div>
+                  <PlayerAvatar pim={p.pim} tid={p.tid} size={56} />
 
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2 mb-1">

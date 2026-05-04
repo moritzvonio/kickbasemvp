@@ -11,7 +11,9 @@ import { FormDots } from "@/components/ui/form-dots";
 import { Sparkline } from "@/components/ui/sparkline";
 import { EmptyState } from "@/components/ui/empty-state";
 import { formatEUR, formatDelta } from "@/lib/utils";
-import { POSITION_LABELS, playerImageUrl, teamMeta } from "@/lib/kickbase/types";
+import { POSITION_LABELS, teamMeta } from "@/lib/kickbase/types";
+import { PlayerAvatar } from "@/components/ui/player-avatar";
+import { TeamTag } from "@/components/ui/team-tag";
 import {
   ArrowDown,
   ArrowUp,
@@ -419,8 +421,6 @@ function PlayerCard({
   player: import("@/lib/kickbase/types").KbSquadPlayer;
   leagueId: string;
 }) {
-  const team = teamMeta(player.tid);
-  const img = playerImageUrl(player.pim);
   const trend24 = player.tfhmvt ?? 0;
   const TrendIcon = trend24 > 0 ? ArrowUp : trend24 < 0 ? ArrowDown : Minus;
   const trendColor =
@@ -432,17 +432,7 @@ function PlayerCard({
       className="card-hover block rounded-xl border border-border bg-card p-3 group"
     >
       <div className="flex items-center gap-3">
-        <div
-          className="size-12 rounded-lg shrink-0 overflow-hidden flex items-center justify-center text-xs font-bold ring-1 ring-border"
-          style={{ background: `linear-gradient(135deg, ${team.color}22, ${team.color}08)` }}
-        >
-          {img ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={img} alt={player.n} className="w-full h-full object-cover" loading="lazy" />
-          ) : (
-            <span style={{ color: team.color }}>{team.short}</span>
-          )}
-        </div>
+        <PlayerAvatar pim={player.pim} tid={player.tid} size={48} />
         <div className="min-w-0 flex-1">
           <div className="font-semibold truncate flex items-center gap-1">
             {player.n}
@@ -451,12 +441,7 @@ function PlayerCard({
             )}
           </div>
           <div className="text-xs text-muted-foreground flex items-center gap-1.5 flex-wrap mt-0.5">
-            <span
-              className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold"
-              style={{ backgroundColor: `${team.color}1a`, color: team.color }}
-            >
-              {team.short}
-            </span>
+            <TeamTag tid={player.tid} size="sm" />
             <PlayerPointsLabel p={player.p} tp={player.tp} ap={player.ap} />
           </div>
         </div>
@@ -505,30 +490,17 @@ function MoverRow({
 }) {
   const team = teamMeta(player.tid);
   const trend = player.tfhmvt ?? 0;
-  const img = playerImageUrl(player.pim);
   return (
     <a
       href={`/league/${leagueId}/spieler/${player.i}`}
       className="flex items-center gap-3 px-2 py-2 -mx-2 rounded-lg hover:bg-accent/60 transition-colors"
     >
-      <div
-        className="size-9 rounded-lg shrink-0 overflow-hidden flex items-center justify-center text-[10px] font-bold ring-1 ring-border"
-        style={{
-          background: `linear-gradient(135deg, ${team.color}22, ${team.color}08)`,
-          color: team.color,
-        }}
-      >
-        {img ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={img} alt={player.n} className="w-full h-full object-cover" />
-        ) : (
-          team.short
-        )}
-      </div>
+      <PlayerAvatar pim={player.pim} tid={player.tid} size={36} />
       <div className="min-w-0 flex-1">
         <div className="text-sm font-semibold truncate">{player.n}</div>
-        <div className="text-xs text-muted-foreground tabular">
-          {team.short} · {formatEUR(player.mv, { compact: true })}
+        <div className="text-xs text-muted-foreground tabular flex items-center gap-1.5">
+          <TeamTag tid={player.tid} size="xs" />
+          <span>{formatEUR(player.mv, { compact: true })}</span>
         </div>
       </div>
       <div

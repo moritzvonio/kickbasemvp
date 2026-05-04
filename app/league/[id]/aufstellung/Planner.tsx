@@ -20,7 +20,8 @@ import { Badge } from "@/components/ui/badge";
 import { TeamTag } from "@/components/ui/team-tag";
 import { PositionBadge } from "@/components/ui/position-icon";
 import { formatEUR, formatDelta, cn } from "@/lib/utils";
-import { POSITION_LABELS, playerImageUrl, teamMeta } from "@/lib/kickbase/types";
+import { POSITION_LABELS, teamMeta } from "@/lib/kickbase/types";
+import { PlayerAvatar } from "@/components/ui/player-avatar";
 import {
   Wallet,
   TrendingUp,
@@ -636,7 +637,6 @@ function PitchPlayer({
     data: { pos: player.pos },
   });
   const team = teamMeta(player.tid);
-  const img = playerImageUrl(player.pim);
 
   return (
     <div className={cn("relative", isDragging && "opacity-30")}>
@@ -648,15 +648,16 @@ function PitchPlayer({
       >
         <div className="rounded-xl bg-white shadow-md ring-1 ring-emerald-900/20 overflow-hidden hover:scale-[1.03] transition-transform">
           <div
-            className="aspect-[1/1] flex items-center justify-center text-xs font-bold relative"
+            className="aspect-[1/1] flex items-center justify-center text-xs font-bold relative overflow-hidden"
             style={{ background: `linear-gradient(135deg, ${team.color}26, ${team.color}0a)` }}
           >
-            {img ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={img} alt={player.name} className="w-full h-full object-cover" />
-            ) : (
-              <span style={{ color: team.color }}>{team.short}</span>
-            )}
+            <PlayerAvatar
+              pim={player.pim}
+              tid={player.tid}
+              size={88}
+              rounded="md"
+              className="ring-0 bg-transparent w-full h-full"
+            />
             {isSellMarked && (
               <span className="absolute inset-0 bg-rose-500/35 flex items-center justify-center">
                 <Tag className="size-5 text-white drop-shadow" />
@@ -800,8 +801,6 @@ function PlayerCard({
     id: player.id,
     data: { pos: player.pos },
   });
-  const team = teamMeta(player.tid);
-  const img = playerImageUrl(player.pim);
   const trend = player.tfhmvt ?? 0;
 
   return (
@@ -817,17 +816,7 @@ function PlayerCard({
       )}
     >
       <div className="flex items-center gap-2.5">
-        <div
-          className="size-10 rounded-lg shrink-0 overflow-hidden flex items-center justify-center text-[10px] font-bold ring-1 ring-border"
-          style={{ background: `linear-gradient(135deg, ${team.color}22, ${team.color}08)` }}
-        >
-          {img ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={img} alt={player.name} className="w-full h-full object-cover" />
-          ) : (
-            <span style={{ color: team.color }}>{team.short}</span>
-          )}
-        </div>
+        <PlayerAvatar pim={player.pim} tid={player.tid} size={40} />
         <div className="flex-1 min-w-0">
           <div className="text-sm font-semibold truncate flex items-center gap-1">
             {player.name}
@@ -907,18 +896,12 @@ function SellsSummary({
         </div>
         <div className="grid gap-1.5">
           {players.map((p) => {
-            const team = teamMeta(p.tid);
             return (
               <div
                 key={p.id}
                 className="flex items-center gap-2 py-1 px-2 rounded bg-white/60 ring-1 ring-rose-100"
               >
-                <span
-                  className="size-5 rounded font-bold flex items-center justify-center text-[8px]"
-                  style={{ background: `${team.color}1a`, color: team.color }}
-                >
-                  {team.short}
-                </span>
+                <TeamTag tid={p.tid} size="xs" />
                 <span className="text-sm font-medium truncate flex-1">{p.name}</span>
                 <span className="text-xs font-mono text-emerald-700 tabular">
                   + {formatEUR(p.mv, { compact: true })}
