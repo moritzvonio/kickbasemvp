@@ -3,13 +3,15 @@ import { kb } from "@/lib/kickbase/api";
 import { requireSessionOrRedirect, withKbAuth } from "@/lib/auth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { StatCard } from "@/components/ui/stat-card";
+import { UserAvatar } from "@/components/ui/user-avatar";
+import { TeamCrest } from "@/components/ui/team-tag";
+import { PositionBadge } from "@/components/ui/position-icon";
+import { FormDots } from "@/components/ui/form-dots";
+import { Sparkline } from "@/components/ui/sparkline";
+import { EmptyState } from "@/components/ui/empty-state";
 import { formatEUR, formatDelta } from "@/lib/utils";
-import {
-  POSITION_LABELS,
-  playerImageUrl,
-  teamMeta,
-  KICKBASE_CDN,
-} from "@/lib/kickbase/types";
+import { POSITION_LABELS, playerImageUrl, teamMeta } from "@/lib/kickbase/types";
 import {
   ArrowDown,
   ArrowUp,
@@ -20,10 +22,12 @@ import {
   Users,
   Crown,
   Activity,
-  Sparkles,
   Calendar,
   Flame,
   ShoppingCart,
+  ArrowRightLeft,
+  Award,
+  Layers,
 } from "lucide-react";
 
 export const metadata: Metadata = { title: "Dashboard" };
@@ -50,7 +54,9 @@ export default async function LeagueDashboard({
   ]);
 
   const players = squad.it ?? [];
-  const members = (ranking.us ?? ranking.it ?? []).slice().sort((a, b) => (a.spl ?? 99) - (b.spl ?? 99));
+  const members = (ranking.us ?? ranking.it ?? [])
+    .slice()
+    .sort((a, b) => (a.spl ?? 99) - (b.spl ?? 99));
   const meRanking = members.find((m) => m.i === session.userId);
   const leagueName = ranking.ti ?? budget?.lnm ?? "Liga";
   const seasonName = ranking.sn;
@@ -59,7 +65,7 @@ export default async function LeagueDashboard({
 
   const myTeamValue = players.reduce((s, p) => s + (p.mv ?? 0), 0);
   const myMatchdayPts = meRanking?.mdp;
-  const myLastPts = meRanking?.lp?.filter((p): p is number => typeof p === "number").slice(-3) ?? [];
+  const myLastPoints = meRanking?.lp ?? [];
 
   const positionOrder = [1, 2, 3, 4];
   const grouped = positionOrder.map((pos) => ({
@@ -76,99 +82,150 @@ export default async function LeagueDashboard({
 
   return (
     <div className="space-y-8">
-      {/* League header strip */}
-      <section>
+      {/* League header */}
+      <section className="slide-up">
         <div className="flex items-end justify-between flex-wrap gap-3">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight flex items-center gap-2">
-              <span className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight flex items-center gap-3">
+              <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary ring-1 ring-primary/20">
                 <Trophy className="size-5" />
               </span>
               {leagueName}
             </h1>
-            <p className="text-sm text-muted-foreground mt-1 flex items-center gap-3">
+            <div className="text-sm text-muted-foreground mt-2 flex items-center gap-3 flex-wrap">
               {seasonName && (
-                <span className="inline-flex items-center gap-1">
+                <span className="inline-flex items-center gap-1.5">
                   <Calendar className="size-3.5" />
                   Saison {seasonName}
                 </span>
               )}
               {matchday !== undefined && (
-                <span className="inline-flex items-center gap-1">
-                  <Flame className="size-3.5" />
+                <span className="inline-flex items-center gap-1.5">
+                  <Flame className="size-3.5 text-amber-500" />
                   Spieltag {matchday}
                   {totalMatchdays && ` / ${totalMatchdays}`}
                 </span>
               )}
               {members.length > 0 && (
-                <span className="inline-flex items-center gap-1">
+                <span className="inline-flex items-center gap-1.5">
                   <Users className="size-3.5" />
                   {members.length} Manager
                 </span>
               )}
-            </p>
+            </div>
           </div>
           {meRanking && meRanking.spl === 1 && (
-            <Badge variant="success" className="gap-1">
-              <Crown className="size-3" /> Tabellenführer
+            <Badge variant="success" className="gap-1.5 py-1 px-3">
+              <Crown className="size-3.5" /> Tabellenführer
             </Badge>
           )}
         </div>
       </section>
 
       {/* Top KPIs */}
-      <section className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <Kpi
+      <section className="grid grid-cols-2 sm:grid-cols-4 gap-3 slide-up slide-up-1">
+        <StatCard
           icon={<Trophy className="size-4" />}
           label="Platz"
           value={meRanking?.spl !== undefined ? `#${meRanking.spl}` : "—"}
           sub={members.length ? `von ${members.length}` : undefined}
           accent="primary"
         />
-        <Kpi
+        <StatCard
           icon={<TrendingUp className="size-4" />}
           label="Punkte gesamt"
           value={meRanking?.sp !== undefined ? meRanking.sp.toLocaleString("de-DE") : "—"}
-          sub={myMatchdayPts !== undefined ? `+${myMatchdayPts.toLocaleString("de-DE")} Spieltag ${matchday ?? ""}`.trim() : undefined}
+          sub={
+            myMatchdayPts !== undefined ? (
+              <span className="inline-flex items-center gap-1">
+                <span className="text-emerald-600 font-mono font-medium">
+                  +{myMatchdayPts.toLocaleString("de-DE")}
+                </span>
+                <span>letzter Spieltag</span>
+              </span>
+            ) : undefined
+          }
+          accent="success"
         />
-        <Kpi
+        <StatCard
           icon={<Wallet className="size-4" />}
           label="Budget"
           value={budget?.b !== undefined ? formatEUR(budget.b, { compact: true }) : "—"}
+          accent="info"
         />
-        <Kpi
+        <StatCard
           icon={<Users className="size-4" />}
           label="Teamwert"
-          value={meRanking?.tv !== undefined ? formatEUR(meRanking.tv, { compact: true }) : (myTeamValue ? formatEUR(myTeamValue, { compact: true }) : "—")}
+          value={
+            meRanking?.tv !== undefined
+              ? formatEUR(meRanking.tv, { compact: true })
+              : myTeamValue
+              ? formatEUR(myTeamValue, { compact: true })
+              : "—"
+          }
           sub={`${players.length} Spieler`}
+          accent="primary"
         />
       </section>
 
+      {/* Form (last 5 matchdays) */}
+      {myLastPoints.filter((p) => p !== null && p !== undefined).length > 0 && (
+        <Card className="slide-up slide-up-2">
+          <CardContent className="p-5 flex flex-wrap items-center gap-5 justify-between">
+            <div>
+              <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-2">
+                Form letzte 5 Spieltage
+              </div>
+              <FormDots points={myLastPoints} />
+            </div>
+            <div className="flex-1 min-w-[140px]">
+              <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-1 text-right">
+                Punkte-Trend
+              </div>
+              <Sparkline
+                values={myLastPoints}
+                width={200}
+                height={36}
+                color="#10b981"
+                className="w-full"
+              />
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Mein Team */}
-      <section className="space-y-3">
+      <section className="space-y-3 slide-up slide-up-3">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold flex items-center gap-2">
-            <Users className="size-5 text-primary" /> Mein Team
+            <Layers className="size-5 text-primary" /> Mein Team
           </h2>
-          <span className="text-xs text-muted-foreground">
+          <span className="text-xs text-muted-foreground tabular">
             {players.length} Spieler · Σ {formatEUR(myTeamValue, { compact: true })}
           </span>
         </div>
         {players.length === 0 ? (
           <Card>
-            <CardContent className="py-12 text-center text-muted-foreground text-sm">
-              Noch keine Spieler im Kader.
-            </CardContent>
+            <EmptyState
+              icon={<Layers className="size-6" />}
+              title="Noch keine Spieler im Kader"
+              description="Geh in die Kickbase-App und kauf deine ersten Spieler."
+            />
           </Card>
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-5">
             {grouped.map((g) =>
               g.players.length === 0 ? null : (
                 <div key={g.pos}>
-                  <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 px-1 flex items-center gap-2">
-                    <span className="inline-block w-1 h-3 bg-primary rounded-full" />
-                    {g.label}
-                    <span className="font-normal normal-case tracking-normal">({g.players.length})</span>
+                  <div className="flex items-center gap-2 mb-2 px-1">
+                    <PositionBadge pos={g.pos} />
+                    <span className="text-xs text-muted-foreground">
+                      {g.players.length} Spieler · Σ{" "}
+                      {formatEUR(
+                        g.players.reduce((s, p) => s + (p.mv ?? 0), 0),
+                        { compact: true }
+                      )}
+                    </span>
                   </div>
                   <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
                     {g.players.map((p) => (
@@ -184,12 +241,15 @@ export default async function LeagueDashboard({
 
       {/* Top Movers */}
       {(topGainers.length > 0 || topLosers.length > 0) && (
-        <section className="grid gap-4 md:grid-cols-2">
+        <section className="grid gap-4 md:grid-cols-2 slide-up slide-up-4">
           <Card className="card-hover overflow-hidden relative">
             <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-emerald-500 to-emerald-300" />
             <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-emerald-600">
-                <ArrowUp className="size-4" /> Gewinner heute
+              <CardTitle className="flex items-center gap-2 text-emerald-700">
+                <span className="size-7 rounded-lg bg-emerald-500/15 flex items-center justify-center">
+                  <ArrowUp className="size-4" />
+                </span>
+                Gewinner heute
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-1">
@@ -205,8 +265,11 @@ export default async function LeagueDashboard({
           <Card className="card-hover overflow-hidden relative">
             <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-rose-500 to-rose-300" />
             <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-rose-600">
-                <ArrowDown className="size-4" /> Verlierer heute
+              <CardTitle className="flex items-center gap-2 text-rose-700">
+                <span className="size-7 rounded-lg bg-rose-500/15 flex items-center justify-center">
+                  <ArrowDown className="size-4" />
+                </span>
+                Verlierer heute
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-1">
@@ -223,7 +286,7 @@ export default async function LeagueDashboard({
       )}
 
       {/* Liga-Tabelle + Activity */}
-      <section className="grid gap-4 lg:grid-cols-5">
+      <section className="grid gap-4 lg:grid-cols-5 slide-up slide-up-4">
         <Card className="lg:col-span-3">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -243,52 +306,49 @@ export default async function LeagueDashboard({
               </p>
             ) : (
               <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead className="text-xs text-muted-foreground bg-muted/40">
+                <table className="tbl">
+                  <thead>
                     <tr>
-                      <th className="text-left font-medium px-5 py-2 w-10">#</th>
-                      <th className="text-left font-medium px-2 py-2">Manager</th>
-                      <th className="text-right font-medium px-2 py-2">Punkte</th>
-                      <th className="text-right font-medium px-2 py-2 hidden sm:table-cell">Spieltag</th>
-                      <th className="text-right font-medium px-5 py-2">Teamwert</th>
+                      <th className="text-left w-12 pl-5">#</th>
+                      <th className="text-left">Manager</th>
+                      <th className="text-right">Punkte</th>
+                      <th className="text-right hidden sm:table-cell">Spieltag</th>
+                      <th className="text-right pr-5">Teamwert</th>
                     </tr>
                   </thead>
                   <tbody>
                     {members.map((m) => {
                       const isMe = m.i === session.userId;
-                      const lastTwo = (m.lp ?? []).filter((p): p is number => typeof p === "number").slice(-2);
                       return (
-                        <tr
-                          key={m.i}
-                          className={
-                            "border-b border-border/40 last:border-0 transition-colors hover:bg-accent/40 " +
-                            (isMe ? "bg-primary/[0.06]" : "")
-                          }
-                        >
-                          <td className="px-5 py-2.5 font-mono text-muted-foreground">
-                            {placementBadge(m.spl)}
-                          </td>
-                          <td className="px-2 py-2.5">
-                            <div className="flex items-center gap-2 min-w-0">
-                              <UserAvatar name={m.n} image={m.uim} />
-                              <div className="min-w-0">
-                                <span className={"truncate " + (isMe ? "font-semibold" : "")}>{m.n}</span>
+                        <tr key={m.i} className={isMe ? "bg-primary/[0.06]" : ""}>
+                          <td className="pl-5">{placementBadge(m.spl)}</td>
+                          <td>
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <UserAvatar name={m.n} image={m.uim} size="sm" />
+                              <div className="min-w-0 flex items-center gap-2">
+                                <span className={"truncate " + (isMe ? "font-semibold" : "")}>
+                                  {m.n}
+                                </span>
                                 {isMe && (
-                                  <Badge variant="default" className="ml-2 text-[10px]">Du</Badge>
+                                  <Badge variant="default" className="text-[10px] py-0">
+                                    Du
+                                  </Badge>
                                 )}
                                 {m.adm && (
-                                  <Badge variant="muted" className="ml-1 text-[10px]">Admin</Badge>
+                                  <Badge variant="muted" className="text-[10px] py-0">
+                                    Admin
+                                  </Badge>
                                 )}
                               </div>
                             </div>
                           </td>
-                          <td className="px-2 py-2.5 text-right font-mono font-medium">
+                          <td className="text-right font-mono font-semibold">
                             {m.sp?.toLocaleString("de-DE") ?? "—"}
                           </td>
-                          <td className="px-2 py-2.5 text-right font-mono text-muted-foreground hidden sm:table-cell">
+                          <td className="text-right font-mono text-emerald-700 hidden sm:table-cell">
                             {m.mdp !== undefined ? `+${m.mdp.toLocaleString("de-DE")}` : "—"}
                           </td>
-                          <td className="px-5 py-2.5 text-right font-mono text-muted-foreground">
+                          <td className="text-right font-mono text-muted-foreground pr-5">
                             {m.tv ? formatEUR(m.tv, { compact: true }) : "—"}
                           </td>
                         </tr>
@@ -308,29 +368,12 @@ export default async function LeagueDashboard({
               Liga-Aktivität
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-3">
+          <CardContent className="space-y-2.5">
             {(activities.it ?? []).length === 0 ? (
-              <p className="text-sm text-muted-foreground">
-                Keine Aktivitäten gefunden.
-              </p>
+              <p className="text-sm text-muted-foreground">Keine Aktivitäten gefunden.</p>
             ) : (
               (activities.it ?? []).slice(0, 12).map((a) => (
-                <div key={a.i} className="text-sm border-b border-border/40 pb-2 last:border-0 last:pb-0">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex-1 flex items-start gap-2 min-w-0">
-                      <UserAvatar name={a.u?.n ?? "?"} image={a.u?.uim} size="xs" />
-                      <div className="min-w-0">
-                        <span className="font-medium truncate">{a.u?.n ?? "Unbekannt"}</span>{" "}
-                        <span className="text-muted-foreground">{describeActivity(a)}</span>
-                      </div>
-                    </div>
-                    {a.dt && (
-                      <span className="text-xs text-muted-foreground whitespace-nowrap shrink-0">
-                        {formatActivityDate(a.dt)}
-                      </span>
-                    )}
-                  </div>
-                </div>
+                <ActivityRow key={a.i} activity={a} />
               ))
             )}
           </CardContent>
@@ -341,65 +384,26 @@ export default async function LeagueDashboard({
 }
 
 function placementBadge(pl?: number) {
-  if (pl === undefined) return "—";
-  if (pl === 1) return <span className="inline-flex items-center justify-center size-7 rounded-full bg-amber-100 text-amber-700 text-xs font-bold">🥇</span>;
-  if (pl === 2) return <span className="inline-flex items-center justify-center size-7 rounded-full bg-slate-100 text-slate-600 text-xs font-bold">🥈</span>;
-  if (pl === 3) return <span className="inline-flex items-center justify-center size-7 rounded-full bg-orange-100 text-orange-700 text-xs font-bold">🥉</span>;
-  return pl;
-}
-
-function UserAvatar({ name, image, size = "sm" }: { name: string; image?: string; size?: "xs" | "sm" }) {
-  const px = size === "xs" ? "size-6 text-[10px]" : "size-7 text-[11px]";
-  if (image) {
-    const url = image.startsWith("http") ? image : `${KICKBASE_CDN}/${image.replace(/^\//, "")}`;
+  if (pl === undefined) return <span className="text-muted-foreground">—</span>;
+  if (pl === 1)
     return (
-      // eslint-disable-next-line @next/next/no-img-element
-      <img
-        src={url}
-        alt={name}
-        className={`${px} rounded-full shrink-0 object-cover bg-muted`}
-        loading="lazy"
-      />
+      <span className="inline-flex items-center justify-center size-7 rounded-lg bg-amber-100 text-base ring-1 ring-amber-200">
+        🥇
+      </span>
     );
-  }
-  const initial = (name?.[0] ?? "?").toUpperCase();
-  return (
-    <span className={`${px} rounded-full shrink-0 bg-primary/15 text-primary inline-flex items-center justify-center font-semibold`}>
-      {initial}
-    </span>
-  );
-}
-
-function Kpi({
-  icon,
-  label,
-  value,
-  sub,
-  accent,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  value: string;
-  sub?: string;
-  accent?: "primary";
-}) {
-  return (
-    <Card className="card-hover overflow-hidden relative">
-      {accent === "primary" && (
-        <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-primary to-emerald-300" />
-      )}
-      <CardContent className="p-4">
-        <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1.5">
-          <span className="inline-flex size-6 rounded-md bg-primary/10 text-primary items-center justify-center">
-            {icon}
-          </span>
-          {label}
-        </div>
-        <div className="text-2xl font-bold tracking-tight">{value}</div>
-        {sub && <div className="text-xs text-muted-foreground mt-1">{sub}</div>}
-      </CardContent>
-    </Card>
-  );
+  if (pl === 2)
+    return (
+      <span className="inline-flex items-center justify-center size-7 rounded-lg bg-slate-100 text-base ring-1 ring-slate-200">
+        🥈
+      </span>
+    );
+  if (pl === 3)
+    return (
+      <span className="inline-flex items-center justify-center size-7 rounded-lg bg-orange-100 text-base ring-1 ring-orange-200">
+        🥉
+      </span>
+    );
+  return <span className="font-mono text-sm text-muted-foreground">{pl}</span>;
 }
 
 function PlayerCard({
@@ -437,30 +441,26 @@ function PlayerCard({
           <div className="font-semibold truncate flex items-center gap-1">
             {player.n}
             {player.iotm && (
-              <ShoppingCart className="size-3 text-primary shrink-0" aria-label="Auf Markt" />
+              <ShoppingCart className="size-3 text-primary shrink-0" />
             )}
           </div>
-          <div className="text-xs text-muted-foreground flex items-center gap-1.5 flex-wrap">
+          <div className="text-xs text-muted-foreground flex items-center gap-1.5 flex-wrap mt-0.5">
             <span
-              className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium"
+              className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold"
               style={{ backgroundColor: `${team.color}1a`, color: team.color }}
             >
               {team.short}
             </span>
-            <span>{POSITION_LABELS[player.pos]}</span>
             {player.p !== undefined && (
-              <>
-                <span>·</span>
-                <span className="font-mono">{player.p} Pkt</span>
-              </>
+              <span className="font-mono">{player.p} Pkt</span>
             )}
           </div>
         </div>
         <div className="text-right shrink-0">
-          <div className="font-mono text-sm font-semibold">
+          <div className="font-mono text-sm font-bold tabular">
             {formatEUR(player.mv, { compact: true })}
           </div>
-          <div className={`text-xs flex items-center justify-end gap-0.5 font-mono ${trendColor}`}>
+          <div className={`text-xs flex items-center justify-end gap-0.5 font-mono tabular ${trendColor}`}>
             <TrendIcon className="size-3" />
             <span>{trend24 ? formatDelta(trend24) : "0"}</span>
           </div>
@@ -485,11 +485,14 @@ function MoverRow({
   return (
     <a
       href={`/league/${leagueId}/spieler/${player.i}`}
-      className="flex items-center gap-3 px-2 py-2 -mx-2 rounded-lg hover:bg-accent transition-colors"
+      className="flex items-center gap-3 px-2 py-2 -mx-2 rounded-lg hover:bg-accent/60 transition-colors"
     >
       <div
         className="size-9 rounded-lg shrink-0 overflow-hidden flex items-center justify-center text-[10px] font-bold ring-1 ring-border"
-        style={{ background: `linear-gradient(135deg, ${team.color}22, ${team.color}08)`, color: team.color }}
+        style={{
+          background: `linear-gradient(135deg, ${team.color}22, ${team.color}08)`,
+          color: team.color,
+        }}
       >
         {img ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -500,25 +503,73 @@ function MoverRow({
       </div>
       <div className="min-w-0 flex-1">
         <div className="text-sm font-semibold truncate">{player.n}</div>
-        <div className="text-xs text-muted-foreground">
+        <div className="text-xs text-muted-foreground tabular">
           {team.short} · {formatEUR(player.mv, { compact: true })}
         </div>
       </div>
-      <div className={`text-right font-mono text-sm font-semibold ${positive ? "text-emerald-600" : "text-rose-600"}`}>
+      <div
+        className={`text-right font-mono text-sm font-bold tabular ${
+          positive ? "text-emerald-600" : "text-rose-600"
+        }`}
+      >
         {formatDelta(trend)}
       </div>
     </a>
   );
 }
 
+function ActivityRow({ activity }: { activity: import("@/lib/kickbase/types").KbActivity }) {
+  const icon = activityIcon(activity.t);
+  return (
+    <div className="text-sm border-b border-border/40 pb-2.5 last:border-0 last:pb-0">
+      <div className="flex items-start gap-2.5">
+        <UserAvatar name={activity.u?.n ?? "?"} image={activity.u?.uim} size="xs" />
+        <div className="flex-1 min-w-0">
+          <div className="text-sm">
+            <span className="font-semibold">{activity.u?.n ?? "Unbekannt"}</span>{" "}
+            <span className="text-muted-foreground">{describeActivity(activity)}</span>
+          </div>
+        </div>
+        <div className="flex items-center gap-1.5 shrink-0">
+          {icon && (
+            <span className="size-5 rounded bg-muted text-muted-foreground inline-flex items-center justify-center">
+              {icon}
+            </span>
+          )}
+          {activity.dt !== undefined && (
+            <span className="text-xs text-muted-foreground whitespace-nowrap tabular">
+              {formatActivityDate(activity.dt)}
+            </span>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function activityIcon(t: number) {
+  if (t === 1 || t === 2 || t === 3)
+    return <ArrowRightLeft className="size-3" />;
+  if (t === 12) return <Award className="size-3" />;
+  if (t === 15) return <Layers className="size-3" />;
+  return null;
+}
+
 function describeActivity(a: import("@/lib/kickbase/types").KbActivity): string {
   const t = a.t;
   const data = (a.data ?? a.d ?? {}) as Record<string, unknown>;
-  const playerName = (data.pn as string) ?? (data.player as string) ?? (data.name as string);
+  const playerName =
+    (data.pn as string) ?? (data.player as string) ?? (data.name as string);
   const price = (data.prc as number) ?? (data.pric as number);
 
-  if (t === 1) return playerName ? `kaufte ${playerName}${price ? ` für ${formatEUR(price, { compact: true })}` : ""}` : "tätigte einen Kauf";
-  if (t === 2) return playerName ? `verkaufte ${playerName}${price ? ` für ${formatEUR(price, { compact: true })}` : ""}` : "verkaufte einen Spieler";
+  if (t === 1)
+    return playerName
+      ? `kaufte ${playerName}${price ? ` für ${formatEUR(price, { compact: true })}` : ""}`
+      : "tätigte einen Kauf";
+  if (t === 2)
+    return playerName
+      ? `verkaufte ${playerName}${price ? ` für ${formatEUR(price, { compact: true })}` : ""}`
+      : "verkaufte einen Spieler";
   if (t === 3) return "tätigte einen Transfer";
   if (t === 12) return "schaltete ein Achievement frei";
   if (t === 15) return "stellte eine Aufstellung";
@@ -533,10 +584,10 @@ function formatActivityDate(dt: number | string): string {
   const diff = Date.now() - date.getTime();
   const minutes = Math.floor(diff / 60_000);
   if (minutes < 1) return "jetzt";
-  if (minutes < 60) return `${minutes} Min`;
+  if (minutes < 60) return `${minutes}m`;
   const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours} Std`;
+  if (hours < 24) return `${hours}h`;
   const days = Math.floor(hours / 24);
-  if (days < 7) return `${days} d`;
+  if (days < 7) return `${days}d`;
   return date.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit" });
 }

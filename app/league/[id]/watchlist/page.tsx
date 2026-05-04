@@ -3,10 +3,13 @@ import Link from "next/link";
 import { kb } from "@/lib/kickbase/api";
 import { requireSessionOrRedirect, withKbAuth } from "@/lib/auth";
 import { getWatched } from "@/lib/watchlist";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { TeamTag } from "@/components/ui/team-tag";
+import { PositionBadge } from "@/components/ui/position-icon";
+import { EmptyState } from "@/components/ui/empty-state";
 import { formatEUR, formatDelta } from "@/lib/utils";
-import { POSITION_LABELS, playerImageUrl, teamMeta } from "@/lib/kickbase/types";
+import { playerImageUrl, teamMeta } from "@/lib/kickbase/types";
 import { ArrowDown, ArrowUp, Minus, Star } from "lucide-react";
 
 export const metadata: Metadata = { title: "Watchlist" };
@@ -30,30 +33,37 @@ export default async function WatchlistPage({
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Watchlist</h1>
-        <p className="text-sm text-muted-foreground">
-          {ids.length} beobachtete Spieler
+      <div className="slide-up">
+        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight flex items-center gap-3">
+          <span className="inline-flex size-10 items-center justify-center rounded-xl bg-primary/10 text-primary ring-1 ring-primary/20">
+            <Star className="size-5" />
+          </span>
+          Watchlist
+        </h1>
+        <p className="text-sm text-muted-foreground mt-2">
+          {ids.length === 0
+            ? "Du beobachtest noch keine Spieler"
+            : `${ids.length} ${ids.length === 1 ? "Spieler" : "Spieler"} im Blick`}
         </p>
       </div>
 
       {ids.length === 0 ? (
-        <Card>
-          <CardContent className="py-12 text-center text-sm text-muted-foreground">
-            <Star className="size-8 mx-auto mb-3 opacity-40" />
-            Noch keine Spieler beobachtet. Öffne einen Spieler und tippe auf{" "}
-            <span className="text-foreground font-medium">Beobachten</span>.
-          </CardContent>
+        <Card className="slide-up slide-up-1">
+          <EmptyState
+            icon={<Star className="size-6" />}
+            title="Noch leer"
+            description="Öffne einen Spieler und tippe auf »Beobachten«, um ihn hier zu sehen. Push wenn der Marktwert sich bewegt."
+          />
         </Card>
       ) : (
-        <div className="grid gap-2">
+        <div className="grid gap-2 slide-up slide-up-1">
           {players.map((p, idx) => {
             if (!p) {
               return (
                 <Card key={ids[idx]}>
-                  <CardContent className="py-3 text-sm text-muted-foreground">
+                  <div className="py-3 px-4 text-sm text-muted-foreground">
                     Spieler {ids[idx]} konnte nicht geladen werden.
-                  </CardContent>
+                  </div>
                 </Card>
               );
             }
@@ -62,44 +72,60 @@ export default async function WatchlistPage({
             const trend24 = (p as { tfhmvt?: number }).tfhmvt ?? 0;
             const TrendIcon = trend24 > 0 ? ArrowUp : trend24 < 0 ? ArrowDown : Minus;
             const trendColor =
-              trend24 > 0 ? "text-emerald-400" : trend24 < 0 ? "text-destructive" : "text-muted-foreground";
+              trend24 > 0
+                ? "text-emerald-600"
+                : trend24 < 0
+                ? "text-rose-600"
+                : "text-muted-foreground";
             return (
               <Link
                 key={p.i}
                 href={`/league/${leagueId}/spieler/${p.i}`}
-                className="block rounded-lg border border-border bg-card hover:border-primary/40 transition-colors p-3"
+                className="card-hover block rounded-xl border border-border bg-card p-3"
               >
                 <div className="flex items-center gap-3">
                   <div
-                    className="size-12 rounded-md shrink-0 overflow-hidden flex items-center justify-center text-xs font-bold"
-                    style={{ background: `linear-gradient(135deg, ${team.color}33, ${team.color}11)` }}
+                    className="size-12 rounded-lg shrink-0 overflow-hidden flex items-center justify-center text-xs font-bold ring-1 ring-border"
+                    style={{
+                      background: `linear-gradient(135deg, ${team.color}22, ${team.color}08)`,
+                    }}
                   >
                     {img ? (
                       // eslint-disable-next-line @next/next/no-img-element
-                      <img src={img} alt={p.n} className="w-full h-full object-cover" loading="lazy" />
+                      <img
+                        src={img}
+                        alt={p.n}
+                        className="w-full h-full object-cover"
+                        loading="lazy"
+                      />
                     ) : (
                       <span style={{ color: team.color }}>{team.short}</span>
                     )}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <div className="font-medium truncate flex items-center gap-2">
+                    <div className="font-semibold truncate flex items-center gap-2">
                       {p.fn ? `${p.fn} ` : ""}
                       {p.n}
                       {(p as { iotm?: boolean }).iotm && (
-                        <Badge variant="default" className="text-[10px]">Auf Markt</Badge>
+                        <Badge variant="default" className="text-[10px]">
+                          Auf Markt
+                        </Badge>
                       )}
                     </div>
-                    <div className="text-xs text-muted-foreground flex items-center gap-2">
-                      <span>{team.short}</span>
-                      <span>·</span>
-                      <span>{POSITION_LABELS[p.pos]}</span>
+                    <div className="text-xs text-muted-foreground flex items-center gap-1.5 mt-0.5">
+                      <TeamTag tid={p.tid} size="xs" />
+                      <PositionBadge pos={p.pos} className="text-[9px] h-4 px-1" />
                     </div>
                   </div>
                   <div className="text-right">
-                    <div className="font-mono text-sm">{formatEUR(p.mv, { compact: true })}</div>
-                    <div className={`text-xs flex items-center justify-end gap-0.5 ${trendColor}`}>
+                    <div className="font-mono text-sm font-bold tabular">
+                      {formatEUR(p.mv, { compact: true })}
+                    </div>
+                    <div
+                      className={`text-xs flex items-center justify-end gap-0.5 font-mono tabular ${trendColor}`}
+                    >
                       <TrendIcon className="size-3" />
-                      <span className="font-mono">{trend24 ? formatDelta(trend24) : "0"}</span>
+                      <span>{trend24 ? formatDelta(trend24) : "0"}</span>
                     </div>
                   </div>
                 </div>

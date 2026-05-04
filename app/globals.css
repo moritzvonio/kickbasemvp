@@ -22,64 +22,91 @@
   --color-ring: var(--ring);
   --color-success: var(--success);
   --color-warning: var(--warning);
+  --color-pitch: var(--pitch);
+  --color-pitch-line: var(--pitch-line);
+
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
 }
 
-/* Default = Light Mode (clean weiss-gruen). Dark is opt-in via .dark class. */
+/* ─── Light (default) — clean white + emerald football vibe ─── */
 :root {
   --background: #ffffff;
-  --foreground: #0f172a;            /* slate-900 */
+  --foreground: #0f172a;
   --card: #ffffff;
   --card-foreground: #0f172a;
   --popover: #ffffff;
   --popover-foreground: #0f172a;
-  --primary: #10b981;               /* emerald-500 — clean, modern, vibrant */
+
+  --primary: #10b981;            /* emerald-500 */
   --primary-foreground: #ffffff;
-  --secondary: #f1f5f9;              /* slate-100 */
+  --primary-light: #d1fae5;      /* emerald-100 */
+  --primary-strong: #047857;     /* emerald-700 */
+
+  --secondary: #f1f5f9;
   --secondary-foreground: #0f172a;
-  --muted: #f8fafc;                  /* slate-50 */
-  --muted-foreground: #64748b;       /* slate-500 */
-  --accent: #ecfdf5;                 /* emerald-50 */
-  --accent-foreground: #047857;      /* emerald-700 */
+  --muted: #f8fafc;
+  --muted-foreground: #64748b;
+  --accent: #ecfdf5;
+  --accent-foreground: #047857;
   --destructive: #ef4444;
   --destructive-foreground: #ffffff;
-  --border: #e2e8f0;                 /* slate-200 */
+  --border: #e2e8f0;
   --input: #e2e8f0;
   --ring: #10b981;
+
   --success: #10b981;
   --warning: #f59e0b;
+  --info: #3b82f6;
+
+  --pitch: #064e3b;
+  --pitch-line: rgba(255, 255, 255, 0.18);
+
   --radius: 0.875rem;
+
+  --shadow-soft: 0 1px 2px rgba(15, 23, 42, 0.04), 0 4px 12px rgba(15, 23, 42, 0.04);
+  --shadow-card: 0 1px 3px rgba(15, 23, 42, 0.05), 0 8px 24px -8px rgba(15, 23, 42, 0.08);
+  --shadow-glow: 0 0 0 1px rgba(16, 185, 129, 0.15), 0 8px 32px -8px rgba(16, 185, 129, 0.3);
 }
 
 .dark {
-  --background: #0a0a0a;
+  --background: #0a0f0c;
   --foreground: #ededed;
-  --card: #141414;
+  --card: #11171a;
   --card-foreground: #ededed;
-  --popover: #141414;
+  --popover: #11171a;
   --popover-foreground: #ededed;
+
   --primary: #10b981;
   --primary-foreground: #ffffff;
-  --secondary: #1f1f1f;
+  --primary-light: rgba(16, 185, 129, 0.15);
+  --primary-strong: #34d399;
+
+  --secondary: #1f2937;
   --secondary-foreground: #ededed;
-  --muted: #1f1f1f;
-  --muted-foreground: #a1a1aa;
-  --accent: #1f1f1f;
-  --accent-foreground: #ededed;
+  --muted: #161c20;
+  --muted-foreground: #94a3b8;
+  --accent: rgba(16, 185, 129, 0.1);
+  --accent-foreground: #34d399;
   --destructive: #ef4444;
   --destructive-foreground: #ffffff;
-  --border: #262626;
-  --input: #262626;
+  --border: #1f2937;
+  --input: #1f2937;
   --ring: #10b981;
 }
 
 * {
   border-color: var(--border);
+}
+
+html {
+  scrollbar-gutter: stable;
 }
 
 body {
@@ -88,23 +115,28 @@ body {
   font-family: var(--font-sans), system-ui, -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  /* subtle dot-grid for "lebendig" feel */
-  background-image: radial-gradient(circle at 1px 1px, rgba(16, 185, 129, 0.06) 1px, transparent 0);
+  font-feature-settings: "cv11", "ss01", "ss03", "cv01";
+
+  /* Subtle dot grid for depth */
+  background-image:
+    radial-gradient(circle at 1px 1px, rgba(16, 185, 129, 0.05) 1px, transparent 0);
   background-size: 28px 28px;
   background-attachment: fixed;
 }
 
-/* Prevent layout shift from scrollbar on dialogs */
-html {
-  scrollbar-gutter: stable;
+/* ─── Numbers should align nicely ─── */
+.tabular {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
 }
 
-/* Smooth transitions across the app */
+/* ─── Smooth interactions ─── */
 button, a, [role="button"] {
-  transition: all 0.18s ease;
+  transition: background-color 0.18s ease, color 0.18s ease, border-color 0.18s ease,
+    box-shadow 0.18s ease, transform 0.18s ease, opacity 0.18s ease;
 }
 
-/* Subtle utility for skeletons */
+/* ─── Skeleton ─── */
 @keyframes pulse-soft {
   50% { opacity: 0.55; }
 }
@@ -114,20 +146,127 @@ button, a, [role="button"] {
   animation: pulse-soft 1.4s ease-in-out infinite;
 }
 
-/* Card hover glow */
+/* ─── Card hover (lift + glow) ─── */
 .card-hover {
-  transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+  transition: border-color 0.18s ease, box-shadow 0.22s ease, transform 0.22s ease;
 }
 .card-hover:hover {
   border-color: rgba(16, 185, 129, 0.4);
-  box-shadow: 0 8px 24px -12px rgba(16, 185, 129, 0.25);
+  box-shadow: var(--shadow-card);
   transform: translateY(-2px);
 }
+.card-glow {
+  box-shadow: var(--shadow-glow);
+}
 
-/* Gradient text utility */
+/* ─── Gradient text ─── */
 .gradient-text {
-  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  background: linear-gradient(135deg, #10b981 0%, #059669 50%, #047857 100%);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
+}
+
+/* ─── Football pitch background (subtle) ─── */
+.pitch-bg {
+  background-color: #064e3b;
+  background-image:
+    /* center circle */
+    radial-gradient(circle at center, transparent 60px, rgba(255,255,255,0.18) 60px, rgba(255,255,255,0.18) 62px, transparent 62px),
+    /* center line */
+    linear-gradient(to right, transparent calc(50% - 1px), rgba(255,255,255,0.18) calc(50% - 1px), rgba(255,255,255,0.18) calc(50% + 1px), transparent calc(50% + 1px)),
+    /* grass stripes */
+    linear-gradient(180deg, rgba(255,255,255,0.04) 0%, transparent 50%, rgba(0,0,0,0.05) 100%);
+}
+
+/* ─── Animated background blob (hero) ─── */
+@keyframes blob {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(30px, -50px) scale(1.1); }
+  66% { transform: translate(-20px, 20px) scale(0.95); }
+}
+.blob {
+  animation: blob 20s ease-in-out infinite;
+}
+.blob-delay-1 { animation-delay: -7s; }
+.blob-delay-2 { animation-delay: -14s; }
+
+/* ─── Marquee (stats ticker) ─── */
+@keyframes marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+.marquee {
+  animation: marquee 40s linear infinite;
+}
+
+/* ─── Subtle pulse for live indicators ─── */
+@keyframes pulse-ring {
+  0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.5); }
+  70% { box-shadow: 0 0 0 8px rgba(16, 185, 129, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+}
+.pulse-dot {
+  animation: pulse-ring 2s infinite;
+}
+
+/* ─── Slide-up entrance ─── */
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.slide-up { animation: slide-up 0.4s ease-out both; }
+.slide-up-1 { animation-delay: 0.05s; }
+.slide-up-2 { animation-delay: 0.1s; }
+.slide-up-3 { animation-delay: 0.15s; }
+.slide-up-4 { animation-delay: 0.2s; }
+
+/* ─── Numeric gradient bars (form indicator etc) ─── */
+.score-good { background: linear-gradient(135deg, #10b981, #059669); color: white; }
+.score-mid  { background: linear-gradient(135deg, #f59e0b, #d97706); color: white; }
+.score-bad  { background: linear-gradient(135deg, #ef4444, #dc2626); color: white; }
+.score-zero { background: #e2e8f0; color: #64748b; }
+
+/* ─── Soft chip ─── */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.125rem 0.5rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  border-radius: 9999px;
+  background: var(--primary-light);
+  color: var(--primary-strong);
+  letter-spacing: 0.02em;
+}
+
+/* ─── Table polish ─── */
+table.tbl {
+  width: 100%;
+  font-size: 0.875rem;
+  font-variant-numeric: tabular-nums;
+}
+table.tbl thead th {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted-foreground);
+  padding: 0.5rem 0.5rem;
+  background: color-mix(in srgb, var(--muted) 50%, transparent);
+}
+table.tbl tbody tr {
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
+  transition: background-color 0.15s ease;
+}
+table.tbl tbody tr:hover { background: color-mix(in srgb, var(--accent) 50%, transparent); }
+table.tbl tbody tr:last-child { border-bottom: 0; }
+table.tbl td { padding: 0.625rem 0.5rem; }
+
+/* ─── Glass card ─── */
+.glass {
+  background: color-mix(in srgb, var(--card) 80%, transparent);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
 }

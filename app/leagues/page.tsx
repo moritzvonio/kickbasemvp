@@ -5,6 +5,8 @@ import { requireSessionOrRedirect, withKbAuth } from "@/lib/auth";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { LogoutButton } from "@/components/logout-button";
+import { EmptyState } from "@/components/ui/empty-state";
+import { Logo } from "@/components/ui/logo";
 import { formatEUR } from "@/lib/utils";
 import {
   ChevronRight,
@@ -15,6 +17,7 @@ import {
   Sparkles,
   Crown,
   ShieldCheck,
+  Layers,
 } from "lucide-react";
 
 export const metadata: Metadata = { title: "Deine Ligen" };
@@ -27,19 +30,16 @@ export default async function LeaguesPage() {
 
   return (
     <div className="flex-1 flex flex-col">
-      <header className="border-b border-border/50 backdrop-blur-md bg-background/80 sticky top-0 z-40">
+      <header className="sticky top-0 z-40 border-b border-border/60 glass">
         <div className="mx-auto max-w-3xl px-4 h-14 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2 font-bold">
-            <span className="inline-flex h-7 w-7 items-center justify-center rounded-md bg-primary text-primary-foreground text-sm shadow-sm shadow-emerald-500/20">
-              B
-            </span>
-            BetterBase
+          <Link href="/" className="hover:opacity-90 transition-opacity">
+            <Logo size={28} />
           </Link>
           <div className="flex items-center gap-3 text-sm">
             {session.name && (
               <Link
                 href="/account"
-                className="text-muted-foreground hidden sm:inline hover:text-foreground transition"
+                className="text-muted-foreground hidden sm:inline hover:text-foreground transition px-2 py-1 rounded hover:bg-accent"
               >
                 {session.name}
               </Link>
@@ -48,50 +48,50 @@ export default async function LeaguesPage() {
           </div>
         </div>
       </header>
-      <main className="flex-1 mx-auto max-w-3xl w-full px-4 py-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
-            <span className="inline-flex size-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
+
+      <main className="flex-1 mx-auto max-w-3xl w-full px-4 py-10">
+        <div className="mb-8 slide-up">
+          <h1 className="text-3xl sm:text-4xl font-bold tracking-tight flex items-center gap-3">
+            <span className="inline-flex size-10 items-center justify-center rounded-xl bg-primary/10 text-primary ring-1 ring-primary/20">
               <Trophy className="size-5" />
             </span>
-            Deine Ligen
+            Servus{session.name ? `, ${session.name.split(" ")[0]}` : ""}
           </h1>
-          <p className="text-sm text-muted-foreground mt-2">
-            Wähle eine Liga, um dein Dashboard zu öffnen.
-            {leagues.length > 0 && ` ${leagues.length} ${leagues.length === 1 ? "Liga" : "Ligen"} aktiv.`}
+          <p className="text-sm text-muted-foreground mt-2.5">
+            {leagues.length === 0
+              ? "Lass uns deine Ligen verbinden."
+              : `${leagues.length} ${leagues.length === 1 ? "Liga" : "Ligen"} aktiv. Wähle eine, um dein Dashboard zu öffnen.`}
           </p>
         </div>
 
         {leagues.length === 0 ? (
-          <Card>
-            <CardContent className="py-14 text-center">
-              <div className="size-14 mx-auto rounded-2xl bg-primary/10 text-primary flex items-center justify-center mb-4">
-                <Sparkles className="size-6" />
-              </div>
-              <h3 className="font-semibold mb-1">Noch keine Ligen</h3>
-              <p className="text-sm text-muted-foreground mb-5 max-w-sm mx-auto">
-                Wir haben keine Ligen für dich gefunden. Leg zuerst in der Kickbase-App eine
-                Liga an oder tritt einer bei.
-              </p>
-              <a
-                href="https://www.kickbase.com"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline"
-              >
-                Zur Kickbase-App <ChevronRight className="size-4" />
-              </a>
-            </CardContent>
+          <Card className="slide-up slide-up-1">
+            <EmptyState
+              icon={<Sparkles className="size-6" />}
+              title="Noch keine Ligen"
+              description="Wir haben keine Ligen für dich gefunden. Leg zuerst in der Kickbase-App eine Liga an oder tritt einer bei."
+              cta={
+                <a
+                  href="https://www.kickbase.com"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline"
+                >
+                  Zur Kickbase-App <ChevronRight className="size-4" />
+                </a>
+              }
+            />
           </Card>
         ) : (
           <div className="grid gap-3 sm:grid-cols-2">
-            {leagues.map((l) => {
+            {leagues.map((l, i) => {
               const place = l.pl;
+              const animClass = `slide-up slide-up-${Math.min(i + 1, 4)}`;
               return (
-                <Link key={l.i} href={`/league/${l.i}`} className="group block">
+                <Link key={l.i} href={`/league/${l.i}`} className={`group block ${animClass}`}>
                   <Card className="card-hover h-full overflow-hidden relative">
                     {place === 1 && (
-                      <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-amber-400 to-amber-200" />
+                      <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-amber-400 via-amber-500 to-amber-400" />
                     )}
                     <CardContent className="p-5">
                       <div className="flex items-start justify-between gap-2 mb-3">
@@ -99,23 +99,26 @@ export default async function LeaguesPage() {
                           <div className="font-semibold text-base truncate flex items-center gap-2">
                             {l.n}
                             {l.adm && (
-                              <span className="inline-flex items-center" title="Du bist Admin">
+                              <span title="Du bist Admin">
                                 <ShieldCheck className="size-3.5 text-primary" />
                               </span>
                             )}
                           </div>
-                          {place !== undefined && (
-                            <div className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1">
-                              {place === 1 ? (
-                                <>
-                                  <Crown className="size-3 text-amber-500" />
-                                  <span className="text-amber-600 font-medium">Tabellenführer</span>
-                                </>
-                              ) : (
-                                <span>Platz #{place} von {l.un ?? "?"}</span>
-                              )}
-                            </div>
-                          )}
+                          <div className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1">
+                            {place === 1 ? (
+                              <>
+                                <Crown className="size-3 text-amber-500" />
+                                <span className="text-amber-600 font-medium">Tabellenführer</span>
+                              </>
+                            ) : place !== undefined ? (
+                              <span>
+                                Platz <span className="font-semibold text-foreground">#{place}</span>
+                                {l.un !== undefined && ` von ${l.un}`}
+                              </span>
+                            ) : (
+                              <span>Liga-Übersicht</span>
+                            )}
+                          </div>
                         </div>
                         <ChevronRight className="size-4 text-muted-foreground group-hover:text-primary group-hover:translate-x-0.5 transition-all" />
                       </div>
@@ -137,7 +140,7 @@ export default async function LeaguesPage() {
                           </Stat>
                         )}
                         {l.lpc !== undefined && (
-                          <Stat icon={<Trophy className="size-3.5" />} label="Spieler">
+                          <Stat icon={<Layers className="size-3.5" />} label="Spieler">
                             {l.lpc}
                           </Stat>
                         )}
@@ -150,9 +153,15 @@ export default async function LeaguesPage() {
           </div>
         )}
 
-        <p className="text-xs text-muted-foreground text-center mt-10">
-          BetterBase ist nicht offiziell mit Kickbase verbunden.
-        </p>
+        <div className="text-center mt-12">
+          <Badge variant="muted" className="text-[10px] gap-1.5 py-1 px-2">
+            <span className="size-1.5 rounded-full bg-emerald-500 pulse-dot" />
+            Live mit Kickbase verbunden
+          </Badge>
+          <p className="text-xs text-muted-foreground mt-3">
+            BetterBase ist nicht offiziell mit Kickbase verbunden.
+          </p>
+        </div>
       </main>
     </div>
   );
@@ -173,7 +182,7 @@ function Stat({
         {icon}
         {label}
       </div>
-      <div className="font-mono font-semibold text-sm">{children}</div>
+      <div className="font-mono font-semibold text-sm tabular">{children}</div>
     </div>
   );
 }
