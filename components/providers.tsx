@@ -2,6 +2,7 @@
 
 import { useState, type ReactNode } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { ServiceWorkerRegister } from "./sw-register";
 
 export function Providers({ children }: { children: ReactNode }) {
   const [client] = useState(
@@ -16,5 +17,10 @@ export function Providers({ children }: { children: ReactNode }) {
         },
       })
   );
-  return <QueryClientProvider client={client}>{children}</QueryClientProvider>;
+  return (
+    <QueryClientProvider client={client}>
+      <ServiceWorkerRegister />
+      {children}
+    </QueryClientProvider>
+  );
 }

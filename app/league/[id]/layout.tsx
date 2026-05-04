@@ -29,6 +29,12 @@ export default async function LeagueLayout({
             >
               Liga wechseln
             </Link>
+            <Link
+              href="/account"
+              className="text-xs text-muted-foreground hover:text-foreground transition"
+            >
+              Account
+            </Link>
             <LogoutButton />
           </div>
         </div>

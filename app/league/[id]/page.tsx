@@ -38,6 +38,13 @@ export default async function LeagueDashboard({
     players: players.filter((p) => p.pos === pos),
   }));
 
+  // Top movers (mein Squad, 24h)
+  const movers = players
+    .filter((p) => typeof p.tfhmvt === "number" && p.tfhmvt !== 0)
+    .sort((a, b) => Math.abs(b.tfhmvt!) - Math.abs(a.tfhmvt!));
+  const topGainers = movers.filter((p) => p.tfhmvt! > 0).slice(0, 3);
+  const topLosers = movers.filter((p) => p.tfhmvt! < 0).slice(0, 3);
+
   return (
     <div className="space-y-8">
       {/* Top KPIs */}
@@ -99,6 +106,44 @@ export default async function LeagueDashboard({
           </div>
         )}
       </section>
+
+      {/* Top Movers (24h, mein Squad) */}
+      {(topGainers.length > 0 || topLosers.length > 0) && (
+        <section className="grid gap-4 md:grid-cols-2">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-emerald-400">
+                <ArrowUp className="size-4" /> Top Gewinner (24h)
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {topGainers.length === 0 ? (
+                <p className="text-sm text-muted-foreground">Heute kein Gewinner.</p>
+              ) : (
+                topGainers.map((p) => (
+                  <MoverRow key={p.i} player={p} leagueId={leagueId} positive />
+                ))
+              )}
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-destructive">
+                <ArrowDown className="size-4" /> Top Verlierer (24h)
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {topLosers.length === 0 ? (
+                <p className="text-sm text-muted-foreground">Heute kein Verlierer.</p>
+              ) : (
+                topLosers.map((p) => (
+                  <MoverRow key={p.i} player={p} leagueId={leagueId} />
+                ))
+              )}
+            </CardContent>
+          </Card>
+        </section>
+      )}
 
       {/* League standings + recent activity, side-by-side on lg */}
       <section className="grid gap-4 lg:grid-cols-5">
@@ -283,6 +328,41 @@ function PlayerCard({
             <span className="font-mono">{trend24 ? formatDelta(trend24) : "0"}</span>
           </div>
         </div>
+      </div>
+    </a>
+  );
+}
+
+function MoverRow({
+  player,
+  leagueId,
+  positive,
+}: {
+  player: import("@/lib/kickbase/types").KbSquadPlayer;
+  leagueId: string;
+  positive?: boolean;
+}) {
+  const team = teamMeta(player.tid);
+  const trend = player.tfhmvt ?? 0;
+  return (
+    <a
+      href={`/league/${leagueId}/spieler/${player.i}`}
+      className="flex items-center gap-3 px-2 py-1.5 -mx-2 rounded-md hover:bg-accent transition-colors"
+    >
+      <div
+        className="size-8 rounded shrink-0 flex items-center justify-center text-[10px] font-bold"
+        style={{ background: `linear-gradient(135deg, ${team.color}33, ${team.color}11)`, color: team.color }}
+      >
+        {team.short}
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="text-sm font-medium truncate">{player.n}</div>
+        <div className="text-xs text-muted-foreground">
+          {formatEUR(player.mv, { compact: true })}
+        </div>
+      </div>
+      <div className={`text-right font-mono text-sm ${positive ? "text-emerald-400" : "text-destructive"}`}>
+        {formatDelta(trend)}
       </div>
     </a>
   );

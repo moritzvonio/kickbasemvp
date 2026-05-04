@@ -30,7 +30,11 @@ export default async function LeaguesPage() {
             BetterBase
           </Link>
           <div className="flex items-center gap-3 text-sm">
-            {session.name && <span className="text-muted-foreground hidden sm:inline">{session.name}</span>}
+            {session.name && (
+              <Link href="/account" className="text-muted-foreground hidden sm:inline hover:text-foreground transition">
+                {session.name}
+              </Link>
+            )}
             <LogoutButton />
           </div>
         </div>

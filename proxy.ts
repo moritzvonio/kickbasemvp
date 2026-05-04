@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 
-const PROTECTED_PREFIXES = ["/leagues", "/league", "/account"];
+const PROTECTED_PREFIXES = ["/leagues", "/league", "/account", "/upgrade"];
 const SESSION_COOKIE = "bb_session";
 
 export function proxy(req: NextRequest) {
@@ -19,5 +19,5 @@ export function proxy(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/leagues/:path*", "/league/:path*", "/account/:path*"],
+  matcher: ["/leagues/:path*", "/league/:path*", "/account/:path*", "/upgrade/:path*"],
 };

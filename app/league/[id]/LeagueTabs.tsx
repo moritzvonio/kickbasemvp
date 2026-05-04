@@ -3,15 +3,22 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { LayoutDashboard, ShoppingCart, Activity, Star, Lock } from "lucide-react";
+import { LayoutDashboard, ShoppingCart, Activity, Star } from "lucide-react";
+
+interface Tab {
+  href: string;
+  label: string;
+  icon: typeof LayoutDashboard;
+  exact?: boolean;
+}
 
 export function LeagueTabs({ leagueId }: { leagueId: string }) {
   const pathname = usePathname();
-  const tabs = [
+  const tabs: Tab[] = [
     { href: `/league/${leagueId}`, label: "Dashboard", icon: LayoutDashboard, exact: true },
     { href: `/league/${leagueId}/markt`, label: "Markt", icon: ShoppingCart },
     { href: `/league/${leagueId}/watchlist`, label: "Watchlist", icon: Star },
-    { href: `/league/${leagueId}/feed`, label: "Liga-Feed", icon: Activity, soon: true },
+    { href: `/league/${leagueId}/feed`, label: "Liga-Feed", icon: Activity },
   ];
   return (
     <nav className="mx-auto max-w-5xl px-4 flex items-center gap-1 -mt-px overflow-x-auto">
@@ -23,7 +30,7 @@ export function LeagueTabs({ leagueId }: { leagueId: string }) {
             key={t.href}
             href={t.href}
             className={cn(
-              "inline-flex items-center gap-1.5 px-3 py-2.5 text-sm border-b-2 transition-colors",
+              "inline-flex items-center gap-1.5 px-3 py-2.5 text-sm border-b-2 transition-colors whitespace-nowrap",
               active
                 ? "border-primary text-foreground"
                 : "border-transparent text-muted-foreground hover:text-foreground"
@@ -31,11 +38,6 @@ export function LeagueTabs({ leagueId }: { leagueId: string }) {
           >
             <Icon className="size-4" />
             {t.label}
-            {t.soon && (
-              <span className="text-[10px] text-muted-foreground">
-                <Lock className="size-3 inline -mt-0.5" />
-              </span>
-            )}
           </Link>
         );
       })}
