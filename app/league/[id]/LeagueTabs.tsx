@@ -3,13 +3,14 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { LayoutDashboard, ShoppingCart, Activity, Lock } from "lucide-react";
+import { LayoutDashboard, ShoppingCart, Activity, Star, Lock } from "lucide-react";
 
 export function LeagueTabs({ leagueId }: { leagueId: string }) {
   const pathname = usePathname();
   const tabs = [
     { href: `/league/${leagueId}`, label: "Dashboard", icon: LayoutDashboard, exact: true },
-    { href: `/league/${leagueId}/markt`, label: "Markt", icon: ShoppingCart, soon: true },
+    { href: `/league/${leagueId}/markt`, label: "Markt", icon: ShoppingCart },
+    { href: `/league/${leagueId}/watchlist`, label: "Watchlist", icon: Star },
     { href: `/league/${leagueId}/feed`, label: "Liga-Feed", icon: Activity, soon: true },
   ];
   return (
