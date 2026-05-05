@@ -106,6 +106,22 @@ export default async function WettbewerbPage({
     transfers: d.transfers,
   }));
 
+  // Per-Matchday-Rankings einmal fetchen (für Chart UND Matchday-Bonus-Berechnung)
+  const currentMatchday =
+    typeof ranking.day === "number" ? ranking.day : undefined;
+  const matchdaysToFetch: number[] = [];
+  if (currentMatchday && currentMatchday >= 1) {
+    for (let d = 1; d <= currentMatchday; d++) matchdaysToFetch.push(d);
+  }
+  const perMatchdayRankings = await Promise.all(
+    matchdaysToFetch.map((d) =>
+      kb
+        .ranking(session.token, leagueId, d)
+        .then((r) => r.us ?? r.it ?? [])
+        .catch(() => [] as KbRankingUser[])
+    )
+  );
+
   const stats: ManagerComputedStats[] = memberData.map((d) =>
     computeManagerStats({
       userId: d.manager.i,
@@ -116,6 +132,7 @@ export default async function WettbewerbPage({
       squad: d.squad,
       activities: allActivities,
       rankingEntry: d.manager,
+      perMatchdayRankings,
     })
   );
 
@@ -144,17 +161,14 @@ export default async function WettbewerbPage({
     { key: "points", label: "Punkte", icon: Trophy },
   ];
 
-  // Step 3: Fetch per-matchday rankings for the team-value chart
-  const currentMatchday =
-    typeof ranking.day === "number" ? ranking.day : undefined;
-  const tvChartData = await buildTeamValueChartData({
-    leagueId,
-    token: session.token,
+  // Step 3: Build chart data using already-fetched per-matchday rankings
+  const tvChartData = buildTeamValueChartData({
     members,
     transferLists,
     bonusActivities: allActivities,
     initialBudget,
-    currentMatchday,
+    matchdaysToFetch,
+    perMatchdayRankings,
   });
 
   return (
@@ -235,24 +249,37 @@ export default async function WettbewerbPage({
 
       {/* Methodik-Hinweis */}
       <Card className="bg-primary/[0.04] border-primary/20 slide-up slide-up-2">
-        <CardContent className="p-4 text-xs text-muted-foreground space-y-2">
+        <CardContent className="p-4 text-xs text-muted-foreground space-y-2.5">
           <div className="flex items-center gap-2 text-foreground font-semibold">
             <Info className="size-3.5 text-primary" />
-            Methodik
+            Methodik der Cash-Berechnung
           </div>
-          <p>
-            <span className="font-medium text-foreground">Kontostand</span> wird zurückgerechnet:
-            Initial-Budget (
-            <span className="font-mono">{formatEUR(initialBudget, { compact: true })}</span>) − Σ
-            Käufe + Σ Verkäufe + Σ Boni (Spieltag-Bonus + Achievements). Manche Boni vor unserem
-            Aktivitäts-Window können fehlen, daher Schätzung.
-          </p>
-          <p>
+          <div>
+            <span className="font-medium text-foreground">Initial-Budget</span>:{" "}
+            <span className="font-mono text-foreground">{formatEUR(initialBudget, { compact: true })}</span>{" "}
+            (aus Liga-Setting). Cash = Initial − Käufe + Verkäufe + alle Boni.
+          </div>
+          <div className="grid sm:grid-cols-2 gap-x-4 gap-y-1.5">
+            <div>
+              <span className="font-medium text-foreground">📊 Erfasst (paginiert):</span>
+              <ul className="list-disc ml-4 mt-1">
+                <li>Alle Käufe + Verkäufe seit Liga-Start (managerTransfer + dedup)</li>
+                <li>Alle Bonus-Aktivitäten mit <code className="font-mono">data.bn</code> (Spieltag, Achievements)</li>
+              </ul>
+            </div>
+            <div>
+              <span className="font-medium text-foreground">🧮 Geschätzt:</span>
+              <ul className="list-disc ml-4 mt-1">
+                <li><span className="text-sky-700">Login-Bonus</span> = 100k × Tage seit erstem Transfer</li>
+                <li><span className="text-violet-700">Spieltagsbonus</span>: 1 Mio (1.) / 500k (2.) / 250k (3.) + 500k bei ≥1500 Pkt</li>
+              </ul>
+            </div>
+          </div>
+          <div>
             <span className="font-medium text-foreground">Max-Gebot</span> nach 33 %-Regel:
-            Verkauf an die Liga-Bank gibt nur 67 % des Marktwerts.{" "}
-            <span className="font-mono">Cash + 0,67 × MV</span> des teuersten verkaufbaren
-            Spielers. (Theoretischer Max: gesamter Squad liquidiert.)
-          </p>
+            Verkauf an Liga-Bank gibt 67 % des MV.{" "}
+            <span className="font-mono">Cash + 0,67 × MV teuerster Spieler</span> = realistischer Max-Bid.
+          </div>
         </CardContent>
       </Card>
     </div>
@@ -260,24 +287,25 @@ export default async function WettbewerbPage({
 }
 
 /* ─── Chart-Daten: Netto-Teamwert pro Spieltag ───────────────────── */
-async function buildTeamValueChartData(opts: {
-  leagueId: string;
-  token: string;
+function buildTeamValueChartData(opts: {
   members: KbRankingUser[];
   transferLists: { user: KbRankingUser; transfers: import("@/lib/kickbase/types").KbManagerTransfer[] }[];
   bonusActivities: KbActivity[];
   initialBudget: number;
-  currentMatchday?: number;
-}): Promise<{ data: TVChartPoint[]; managers: { id: string; name: string }[] }> {
-  const cur = opts.currentMatchday ?? 0;
-  if (cur < 2) return { data: [], managers: [] };
+  /** Spieltag-Nummern parallel zu perMatchdayRankings */
+  matchdaysToFetch: number[];
+  perMatchdayRankings: KbRankingUser[][];
+}): { data: TVChartPoint[]; managers: { id: string; name: string }[] } {
+  if (opts.matchdaysToFetch.length < 2) return { data: [], managers: [] };
 
-  // Letzte 15 Spieltage (oder weniger) — Balance Performance vs Aussagekraft
-  const startDay = Math.max(1, cur - 14);
-  const days: number[] = [];
-  for (let d = startDay; d <= cur; d++) days.push(d);
+  // Cap on chart resolution — show only last 15 days for legibility
+  const total = opts.matchdaysToFetch.length;
+  const cap = 15;
+  const startIdx = Math.max(0, total - cap);
+  const days = opts.matchdaysToFetch.slice(startIdx);
+  const rankings = opts.perMatchdayRankings.slice(startIdx);
 
-  // Pre-compute: matchday → latest bonus date (für Transfer-Cutoff)
+  // matchday → latest bonus date (für Transfer-Cutoff)
   const matchdayEndDate = new Map<number, number>();
   for (const a of opts.bonusActivities) {
     if (a.t !== 22) continue;
@@ -290,7 +318,7 @@ async function buildTeamValueChartData(opts: {
     if (!existing || ts > existing) matchdayEndDate.set(day, ts);
   }
 
-  // Pre-compute: transfers sortiert nach date pro user (timestamp)
+  // transfers per user (sorted by ts)
   const userTransfers = new Map<
     string,
     { ts: number; tty: number; trp: number }[]
@@ -303,33 +331,21 @@ async function buildTeamValueChartData(opts: {
     userTransfers.set(tl.user.i, sorted);
   }
 
-  // Pre-compute: bonuses pro user, sortiert nach matchday-day
+  // bonuses (with day attribution)
   const userBonuses = new Map<string, { day: number; bn: number }[]>();
   for (const a of opts.bonusActivities) {
-    if (a.t !== 22) continue;
-    if (!a.u?.i) continue;
     const data = (a.data ?? a.d ?? {}) as Record<string, unknown>;
-    const day = data.day;
     const bn = data.bn;
+    const day = data.day;
     if (typeof day !== "number" || typeof bn !== "number") continue;
+    if (!a.u?.i) continue;
     const arr = userBonuses.get(a.u.i) ?? [];
     arr.push({ day, bn });
     userBonuses.set(a.u.i, arr);
   }
 
-  // Parallel ranking fetches
-  const rankingPerDay = await Promise.all(
-    days.map((d) =>
-      kb
-        .ranking(opts.token, opts.leagueId, d)
-        .catch(() => ({} as Awaited<ReturnType<typeof kb.ranking>>))
-    )
-  );
-
-  // Build chart points
   const data: TVChartPoint[] = days.map((d, idx) => {
-    const r = rankingPerDay[idx];
-    const usersAtDay = r.us ?? r.it ?? [];
+    const usersAtDay = rankings[idx] ?? [];
     const cutoff = matchdayEndDate.get(d);
     const point: TVChartPoint = { day: d };
 
@@ -535,22 +551,37 @@ function ManagerCard({
 
         {/* Cash composition mini-bar */}
         <div className="mt-4 pt-3 border-t border-border/50">
-          <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-1.5">
-            Wie sich der Kontostand zusammensetzt
+          <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-1.5 flex items-center gap-2">
+            Cash-Komposition
+            <span className="text-muted-foreground/70 normal-case tracking-normal">
+              ({stats.daysActive} Tage aktiv · {stats.transferCount} Transfers)
+            </span>
           </div>
-          <div className="flex items-center gap-2 text-[10px] text-muted-foreground tabular">
+          <div className="flex items-center gap-x-2 gap-y-0.5 text-[10px] text-muted-foreground tabular flex-wrap">
             <span>
               Start <span className="text-foreground font-mono">{formatEUR(budget, { compact: true })}</span>
             </span>
             <span className="text-rose-600">
-              − {formatEUR(stats.totalBought, { compact: true })}
+              − {formatEUR(stats.totalBought, { compact: true })} Käufe
             </span>
             <span className="text-emerald-600">
-              + {formatEUR(stats.totalSold, { compact: true })}
+              + {formatEUR(stats.totalSold, { compact: true })} Verkäufe
             </span>
-            <span className="text-amber-600">
-              + {formatEUR(stats.totalBonus, { compact: true })} Bonus
-            </span>
+            {stats.totalBonus > 0 && (
+              <span className="text-amber-600">
+                + {formatEUR(stats.totalBonus, { compact: true })} Boni
+              </span>
+            )}
+            {stats.estimatedLoginBonus > 0 && (
+              <span className="text-sky-600">
+                + {formatEUR(stats.estimatedLoginBonus, { compact: true })} Login
+              </span>
+            )}
+            {stats.estimatedMatchdayBonus > 0 && (
+              <span className="text-violet-600">
+                + {formatEUR(stats.estimatedMatchdayBonus, { compact: true })} Spieltag
+              </span>
+            )}
             {stats.cashUncertain && (
               <Badge variant="muted" className="text-[9px]">
                 ungenau

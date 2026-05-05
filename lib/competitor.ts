@@ -30,6 +30,24 @@ import type {
 
 export const SELL_TO_BANK_FACTOR = 0.67;
 
+/**
+ * Kickbase-Bonus-Konstanten (Bundesliga-Default)
+ * Werte sind aus der App reverse-engineered und können pro Liga konfigurierbar sein.
+ */
+export const BONUS_RULES = {
+  /** Tagesbonus für Login (≈ 100k pro Tag) */
+  LOGIN_PER_DAY: 100_000,
+  /** Spieltagssieger (1. Platz an einem Spieltag) */
+  MATCHDAY_WIN: 1_000_000,
+  /** 2. Platz am Spieltag */
+  MATCHDAY_2ND: 500_000,
+  /** 3. Platz am Spieltag */
+  MATCHDAY_3RD: 250_000,
+  /** Bonus für ≥ 1500 Punkte am Spieltag */
+  HIGH_SCORE_THRESHOLD: 1500,
+  HIGH_SCORE_BONUS: 500_000,
+};
+
 export interface ManagerComputedStats {
   userId: string;
   name: string;
@@ -39,9 +57,15 @@ export interface ManagerComputedStats {
   totalBought: number;
   /** Σ Verkaufssummen */
   totalSold: number;
-  /** Σ Bonus-Auszahlungen (Spieltag + Achievements) */
+  /** Σ explizite Bonus-Auszahlungen aus Activity-Feed */
   totalBonus: number;
-  /** Berechneter aktueller Cash-Stand */
+  /** Geschätzter Login-Bonus (100k × Tage) */
+  estimatedLoginBonus: number;
+  /** Tage seit erster Aktivität in der Liga */
+  daysActive: number;
+  /** Σ geschätzte Spieltagsboni aus Ranking-History (optional) */
+  estimatedMatchdayBonus: number;
+  /** Berechneter aktueller Cash-Stand (alle Komponenten) */
   cashEstimate: number;
   /** Nettoergebnis aus allen Transfers (Sells - Buys) */
   transferBalance: number;
@@ -80,6 +104,8 @@ export interface ComputeManagerInput {
   activities?: KbActivity[];
   /** Optional: ranking-Eintrag für sp/spl */
   rankingEntry?: KbRankingUser;
+  /** Pro-Spieltag-Rankings: für Berechnung der Spieltagsboni */
+  perMatchdayRankings?: KbRankingUser[][];
 }
 
 export function computeManagerStats(inp: ComputeManagerInput): ManagerComputedStats {
@@ -87,22 +113,64 @@ export function computeManagerStats(inp: ComputeManagerInput): ManagerComputedSt
 
   let totalBought = 0;
   let totalSold = 0;
+  let earliestTxMs = Number.POSITIVE_INFINITY;
   for (const t of transfers) {
     if (t.tty === 1) totalBought += t.trp ?? 0;
     else if (t.tty === 2) totalSold += t.trp ?? 0;
+    const ts = new Date(t.dt).getTime();
+    if (!isNaN(ts) && ts < earliestTxMs) earliestTxMs = ts;
   }
 
-  const myBonusActivities = (inp.activities ?? []).filter(
-    (a) => a.u?.i === inp.userId && (a.t === 22 || a.t === 12)
-  );
+  // Permissive bonus detection: any activity with data.bn (numeric > 0).
+  // The Kickbase activity feed has multiple t-codes for bonuses (22 + others)
+  // and `u` attribution is sometimes absent. We accept any activity with bn.
+  const myBonusActivities = (inp.activities ?? []).filter((a) => {
+    const data = (a.data ?? a.d ?? {}) as Record<string, unknown>;
+    const bn = data.bn;
+    if (typeof bn !== "number" || bn <= 0) return false;
+    // If user is attributed, must match. Otherwise accept (likely auth-user feed).
+    if (a.u?.i !== undefined) return a.u.i === inp.userId;
+    return true;
+  });
   const totalBonus = myBonusActivities.reduce((s, a) => {
     const data = (a.data ?? a.d ?? {}) as Record<string, unknown>;
     const bn = typeof data.bn === "number" ? data.bn : 0;
     return s + bn;
   }, 0);
 
+  // Login-Bonus-Schätzung: 100k × Tage seit erster Aktivität
+  // Wir nehmen das früheste Transfer-Datum als Proxy für "League-Beitritt"
+  const now = Date.now();
+  const daysActive =
+    isFinite(earliestTxMs) && earliestTxMs < now
+      ? Math.floor((now - earliestTxMs) / 86_400_000)
+      : 0;
+  const estimatedLoginBonus = daysActive * BONUS_RULES.LOGIN_PER_DAY;
+
+  // Matchday-Bonus-Schätzung aus per-matchday Rankings (optional)
+  let estimatedMatchdayBonus = 0;
+  if (inp.perMatchdayRankings) {
+    for (const md of inp.perMatchdayRankings) {
+      const me = md.find((u) => u.i === inp.userId);
+      if (!me) continue;
+      const placement = me.mdpl ?? 99;
+      const points = me.mdp ?? 0;
+      if (placement === 1) estimatedMatchdayBonus += BONUS_RULES.MATCHDAY_WIN;
+      else if (placement === 2) estimatedMatchdayBonus += BONUS_RULES.MATCHDAY_2ND;
+      else if (placement === 3) estimatedMatchdayBonus += BONUS_RULES.MATCHDAY_3RD;
+      if (points >= BONUS_RULES.HIGH_SCORE_THRESHOLD) {
+        estimatedMatchdayBonus += BONUS_RULES.HIGH_SCORE_BONUS;
+      }
+    }
+  }
+
   const cashEstimate =
-    inp.initialBudget - totalBought + totalSold + totalBonus;
+    inp.initialBudget -
+    totalBought +
+    totalSold +
+    totalBonus +
+    estimatedLoginBonus +
+    estimatedMatchdayBonus;
 
   const squadPlayers = inp.squad?.it ?? [];
   const teamValue = squadPlayers.reduce((s, p) => s + (p.mv ?? 0), 0);
@@ -123,6 +191,9 @@ export function computeManagerStats(inp: ComputeManagerInput): ManagerComputedSt
     totalBought,
     totalSold,
     totalBonus,
+    estimatedLoginBonus,
+    daysActive,
+    estimatedMatchdayBonus,
     cashEstimate,
     transferBalance: totalSold - totalBought,
     transferCount: transfers.length,

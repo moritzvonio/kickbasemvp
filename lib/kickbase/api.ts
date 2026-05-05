@@ -103,20 +103,23 @@ export const kb = {
 
   /**
    * Paginated fetch of ALL activities since league start.
-   * Loops until the response returns fewer items than `pageSize`.
-   * Safety cap to prevent infinite loops on broken APIs.
+   *
+   * IMPORTANT: Kickbase ignoriert `max` und liefert eine fixe Page-Size
+   * (typischerweise 25). Wir paginieren anhand der ECHTEN batch-Größe,
+   * nicht anhand unseres requested `max`. Stop-Bedingung: leeres batch
+   * ODER zwei Seiten in Folge mit identischen IDs (API gibt das Ende zurück).
    */
   async activitiesAll(
     token: string,
     leagueId: string,
-    opts?: { filter?: string; pageSize?: number; maxPages?: number }
+    opts?: { filter?: string; maxIterations?: number }
   ): Promise<import("./types").KbActivity[]> {
-    const pageSize = opts?.pageSize ?? 200;
-    const maxPages = opts?.maxPages ?? 60; // 60 × 200 = 12k events safety cap
+    const maxIterations = opts?.maxIterations ?? 200; // 200 × ~25 = 5000 events safety
     const all: import("./types").KbActivity[] = [];
+    const seenIds = new Set<string>();
+    let start = 0;
 
-    for (let page = 0; page < maxPages; page++) {
-      const start = page * pageSize;
+    for (let i = 0; i < maxIterations; i++) {
       let resp;
       try {
         resp = await kbFetch<KbActivitiesFeed>(
@@ -125,7 +128,7 @@ export const kb = {
             token,
             query: {
               start,
-              max: pageSize,
+              max: 100,
               filter: opts?.filter,
               _t: Date.now(),
             },
@@ -136,8 +139,20 @@ export const kb = {
       }
       const batch = resp.af ?? resp.it ?? [];
       if (batch.length === 0) break;
-      all.push(...batch);
-      if (batch.length < pageSize) break;
+
+      // Add only new entries (defensive against API quirks)
+      let newCount = 0;
+      for (const a of batch) {
+        if (!seenIds.has(a.i)) {
+          seenIds.add(a.i);
+          all.push(a);
+          newCount++;
+        }
+      }
+      // If the API returned no new items, we're at the end
+      if (newCount === 0) break;
+      // Advance start by the actual batch size (not our requested max)
+      start += batch.length;
     }
 
     return all;
@@ -211,46 +226,49 @@ export const kb = {
 
   /**
    * Paginated fetch of ALL transfers for a manager since league start.
-   * managerTransfer typically returns the full list, but we paginate to be safe.
+   *
+   * IMPORTANT: Endpoint nimmt nur `start`, NICHT `max`. Liefert fix 25
+   * Einträge pro Page. Wir incrementen `start` um die ECHTE batch-Größe
+   * und stoppen wenn ein batch keine neuen IDs bringt oder leer ist.
    */
   async managerTransferAll(
     token: string,
     leagueId: string,
     managerId: string,
-    opts?: { pageSize?: number; maxPages?: number }
+    opts?: { maxIterations?: number }
   ): Promise<import("./types").KbManagerTransfer[]> {
-    const pageSize = opts?.pageSize ?? 100;
-    const maxPages = opts?.maxPages ?? 30;
+    const maxIterations = opts?.maxIterations ?? 100; // 100 × ~25 = 2500 transfers
     const all: import("./types").KbManagerTransfer[] = [];
+    const seen = new Set<string>();
+    let start = 0;
 
-    for (let page = 0; page < maxPages; page++) {
-      const start = page * pageSize;
+    for (let i = 0; i < maxIterations; i++) {
       let resp;
       try {
         resp = await kbFetch<import("./types").KbManagerTransferResponse>(
           `/v4/leagues/${leagueId}/managers/${managerId}/transfer`,
-          {
-            token,
-            query: { start, max: pageSize },
-          }
+          { token, query: { start } }
         );
       } catch {
         break;
       }
       const batch = resp.it ?? [];
       if (batch.length === 0) break;
-      all.push(...batch);
-      if (batch.length < pageSize) break;
+
+      let newCount = 0;
+      for (const t of batch) {
+        const key = `${t.pi}|${t.dt}|${t.tty}`;
+        if (!seen.has(key)) {
+          seen.add(key);
+          all.push(t);
+          newCount++;
+        }
+      }
+      if (newCount === 0) break;
+      start += batch.length;
     }
 
-    // Dedup just in case (some APIs return overlapping pages)
-    const seen = new Set<string>();
-    return all.filter((t) => {
-      const key = `${t.pi}|${t.dt}|${t.tty}`;
-      if (seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    });
+    return all;
   },
 
   async managerDashboard(token: string, leagueId: string, managerId: string) {
