@@ -558,54 +558,9 @@ function ManagerCard({
           />
         </div>
 
-        {/* Estimate-vs-Real Vergleich (nur eigener User) */}
+        {/* Estimate-vs-Real Vergleich (nur eigener User) — Debug-Modus */}
         {stats.realCashFromApi !== undefined && (
-          <div
-            className={cn(
-              "mt-4 rounded-lg border p-3",
-              Math.abs(stats.cashEstimateError ?? 0) < 1_000_000
-                ? "border-emerald-200 bg-emerald-50/50"
-                : Math.abs(stats.cashEstimateError ?? 0) < 5_000_000
-                ? "border-amber-200 bg-amber-50/50"
-                : "border-rose-200 bg-rose-50/50"
-            )}
-          >
-            <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-2">
-              📊 Schätz-Validierung (eigener User)
-            </div>
-            <div className="grid grid-cols-3 gap-3 text-xs tabular">
-              <div>
-                <div className="text-[10px] text-muted-foreground">Geschätzt</div>
-                <div className="font-mono font-bold text-base">
-                  {formatEUR(stats.cashEstimate, { compact: true })}
-                </div>
-              </div>
-              <div>
-                <div className="text-[10px] text-muted-foreground">Echt (Kickbase)</div>
-                <div className="font-mono font-bold text-base text-emerald-700">
-                  {formatEUR(stats.realCashFromApi, { compact: true })}
-                </div>
-              </div>
-              <div>
-                <div className="text-[10px] text-muted-foreground">Diff (Schätzfehler)</div>
-                <div
-                  className={cn(
-                    "font-mono font-bold text-base",
-                    (stats.cashEstimateError ?? 0) > 0
-                      ? "text-emerald-700"
-                      : "text-rose-700"
-                  )}
-                >
-                  {(stats.cashEstimateError ?? 0) > 0 ? "+" : ""}
-                  {formatEUR(stats.cashEstimateError ?? 0, { compact: true })}
-                </div>
-              </div>
-            </div>
-            <p className="text-[10px] text-muted-foreground mt-2">
-              Wir berechnen deinen Cash mit DERSELBEN Pipeline wie für andere Manager und vergleichen mit{" "}
-              <code className="font-mono">/me/budget</code> als Wahrheits-Anker. Diff zeigt was unsere Schätzung systemisch übersieht (vermutlich für andere Manager analog).
-            </p>
-          </div>
+          <CashDebugPanel stats={stats} budget={budget} />
         )}
 
         {/* Cash composition mini-bar */}
@@ -718,6 +673,191 @@ function ManagerCard({
         </div>
       </CardContent>
     </Card>
+  );
+}
+
+/* ─── Debug-Panel: detaillierter Cash-Compare ──────────────────── */
+function CashDebugPanel({
+  stats,
+  budget,
+}: {
+  stats: ManagerComputedStats;
+  budget: number;
+}) {
+  const real = stats.realCashFromApi ?? 0;
+  const estimate = stats.cashEstimate;
+  const diff = real - estimate;
+  const absDiff = Math.abs(diff);
+
+  // Achievement-Bonus-Komponente (entweder real oder geschätzt)
+  const achievementSum =
+    stats.realAchievementBonus !== undefined
+      ? stats.realAchievementBonus
+      : stats.estimatedMatchdayBonus + stats.estimatedHandBonus;
+
+  // Show line-by-line breakdown
+  const lines: Array<{
+    label: string;
+    value: number;
+    note?: string;
+    color?: string;
+    sign?: "+" | "−";
+  }> = [
+    { label: "Initial-Budget", value: budget, sign: "+" },
+    { label: `Käufe (${stats.transferCount > 0 ? "alle" : "0"})`, value: -stats.totalBought, sign: "−", color: "text-rose-700" },
+    { label: "Verkäufe", value: stats.totalSold, sign: "+", color: "text-emerald-700" },
+    { label: "Bonus-Feed (data.bn)", value: stats.totalBonus, sign: "+", color: "text-amber-700", note: `${stats.bonusEventCount} events` },
+    { label: `Login-Bonus (geschätzt)`, value: stats.estimatedLoginBonus, sign: "+", color: "text-sky-700", note: `${stats.daysActive} Tage × 100k` },
+    {
+      label:
+        stats.realAchievementBonus !== undefined
+          ? "Erfolge (echt aus /user/achievements)"
+          : "Spieltag + Hand (geschätzt)",
+      value: achievementSum,
+      sign: "+",
+      color: "text-violet-700",
+    },
+  ];
+
+  return (
+    <div
+      className={cn(
+        "mt-4 rounded-lg border p-3",
+        absDiff < 1_000_000
+          ? "border-emerald-300 bg-emerald-50/40"
+          : absDiff < 5_000_000
+          ? "border-amber-300 bg-amber-50/40"
+          : "border-rose-300 bg-rose-50/40"
+      )}
+    >
+      <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-2 flex items-center gap-2">
+        📊 Cash-Pipeline-Debug
+        <Badge variant={absDiff < 1_000_000 ? "success" : absDiff < 5_000_000 ? "muted" : "danger"} className="text-[9px]">
+          {absDiff < 1_000_000 ? "✓ Genau" : absDiff < 5_000_000 ? "Akzeptabel" : "Pipeline-Fehler!"}
+        </Badge>
+      </div>
+
+      {/* Compact 3-card top */}
+      <div className="grid grid-cols-3 gap-2 text-xs tabular mb-3">
+        <div className="bg-white/70 rounded p-2 ring-1 ring-border">
+          <div className="text-[10px] text-muted-foreground">Geschätzt</div>
+          <div className="font-mono font-bold text-base">
+            {formatEUR(estimate, { compact: true })}
+          </div>
+        </div>
+        <div className="bg-white/70 rounded p-2 ring-1 ring-emerald-200">
+          <div className="text-[10px] text-muted-foreground">Echt (Kickbase)</div>
+          <div className="font-mono font-bold text-base text-emerald-700">
+            {formatEUR(real, { compact: true })}
+          </div>
+        </div>
+        <div
+          className={cn(
+            "rounded p-2 ring-1",
+            diff > 0 ? "bg-rose-100/60 ring-rose-300" : "bg-emerald-100/60 ring-emerald-300"
+          )}
+        >
+          <div className="text-[10px] text-muted-foreground">
+            {diff > 0 ? "Wir schätzen ZU NIEDRIG" : "Wir schätzen ZU HOCH"}
+          </div>
+          <div
+            className={cn(
+              "font-mono font-bold text-base",
+              diff > 0 ? "text-rose-700" : "text-emerald-700"
+            )}
+          >
+            {diff > 0 ? "+" : ""}
+            {formatEUR(diff, { compact: true })}
+          </div>
+        </div>
+      </div>
+
+      {/* Pipeline-Lines */}
+      <div className="text-[11px] tabular space-y-1">
+        <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
+          Schritt-für-Schritt
+        </div>
+        {lines.map((l, i) => (
+          <div key={i} className="flex items-center justify-between border-b border-border/30 pb-0.5">
+            <span className="flex items-center gap-1.5">
+              <span className={cn("font-mono w-3", l.color)}>{l.sign}</span>
+              <span>{l.label}</span>
+              {l.note && (
+                <span className="text-[10px] text-muted-foreground">({l.note})</span>
+              )}
+            </span>
+            <span className={cn("font-mono font-medium", l.color)}>
+              {formatEUR(Math.abs(l.value), { compact: true })}
+            </span>
+          </div>
+        ))}
+        <div className="flex items-center justify-between pt-1.5 mt-1 border-t border-border">
+          <span className="font-semibold">= Schätzung</span>
+          <span className="font-mono font-bold">
+            {formatEUR(estimate, { compact: true })}
+          </span>
+        </div>
+        <div className="flex items-center justify-between text-rose-700">
+          <span className="font-semibold">Was uns fehlt</span>
+          <span className="font-mono font-bold">
+            {diff > 0 ? "+" : ""}
+            {formatEUR(diff, { compact: true })}
+          </span>
+        </div>
+      </div>
+
+      {/* Achievement-Detail wenn vorhanden */}
+      {stats.achievementBreakdown && stats.achievementBreakdown.length > 0 && (
+        <details className="mt-3 text-[11px]" open={absDiff >= 5_000_000}>
+          <summary className="cursor-pointer text-muted-foreground hover:text-foreground font-medium">
+            Achievement-Komponente — alle {stats.achievementBreakdown.length} Typen aus
+            /user/achievements (auch er=0)
+          </summary>
+          <div className="mt-2 grid sm:grid-cols-2 gap-x-3 gap-y-0.5 pl-2 max-h-72 overflow-auto">
+            {stats.achievementBreakdown
+              .slice()
+              .sort((a, b) => b.total - a.total)
+              .map((a) => (
+                <div
+                  key={a.t}
+                  className={cn(
+                    "flex items-center justify-between text-[10px] tabular py-0.5",
+                    a.ac > 0 && a.er === 0
+                      ? "text-rose-700 font-semibold"
+                      : a.ac === 0
+                      ? "text-muted-foreground/50"
+                      : "text-muted-foreground"
+                  )}
+                >
+                  <span className="truncate">
+                    <span className="text-foreground/70 font-mono mr-1">[t={a.t}]</span>
+                    {a.n} <span className="text-foreground/60">×{a.ac}</span>
+                    {a.ac > 0 && a.er === 0 && (
+                      <span className="text-rose-600 ml-1">⚠ er=0!</span>
+                    )}
+                  </span>
+                  <span className="font-mono">
+                    {a.er > 0 ? formatEUR(a.er, { compact: true }) : "—"} ×{a.ac} ={" "}
+                    {formatEUR(a.total, { compact: true })}
+                  </span>
+                </div>
+              ))}
+          </div>
+          <p className="text-[10px] text-muted-foreground mt-2">
+            🚨 Zeilen mit{" "}
+            <span className="text-rose-700 font-semibold">⚠ er=0!</span> haben{" "}
+            <code className="font-mono">ac &gt; 0</code> aber wir kennen den Belohnungsbetrag
+            nicht — das sind Kandidaten für die fehlenden Mio.
+          </p>
+        </details>
+      )}
+
+      <p className="text-[10px] text-muted-foreground mt-3 italic">
+        Pipeline läuft IDENTISCH für alle Manager. Diff hier = Schätzfehler den auch andere
+        Cards systemisch haben. Erst wenn diese Diff &lt; 1 Mio sind die anderen Werte
+        glaubwürdig.
+      </p>
+    </div>
   );
 }
 
