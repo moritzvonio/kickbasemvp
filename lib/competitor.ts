@@ -31,22 +31,61 @@ import type {
 export const SELL_TO_BANK_FACTOR = 0.67;
 
 /**
- * Kickbase-Bonus-Konstanten (Bundesliga-Default)
- * Werte sind aus der App reverse-engineered und können pro Liga konfigurierbar sein.
+ * Kickbase-Bonus-Konstanten — recherchiert aus help.kickbase.com.
+ * Quelle: "Welche Erfolge kann ich in der App erhalten?" (offizielle Doku)
+ *
+ * Spieltagspunkte sind KUMULATIV: 2000 Pkt löst Silber + Gold + Jahrhundert
+ * gleichzeitig aus = 250k + 500k + 1Mio = 1.75 Mio.
+ *
+ * Einzelspieler-Bonusse kumulieren nicht in der gleichen Weise (jeder Tier
+ * ist ein separater Erfolg pro Spieler — ein 500-Punkte-Spieler löst alle
+ * 4 Tiers aus = 100k+500k+1M+2M = 3.6 Mio).
  */
 export const BONUS_RULES = {
-  /** Tagesbonus für Login (≈ 100k pro Tag) */
+  /** Tagesbonus für Login */
   LOGIN_PER_DAY: 100_000,
   /** Spieltagssieger (1. Platz an einem Spieltag) */
   MATCHDAY_WIN: 1_000_000,
-  /** 2. Platz am Spieltag */
-  MATCHDAY_2ND: 500_000,
-  /** 3. Platz am Spieltag */
-  MATCHDAY_3RD: 250_000,
-  /** Bonus für ≥ 1500 Punkte am Spieltag */
-  HIGH_SCORE_THRESHOLD: 1500,
-  HIGH_SCORE_BONUS: 500_000,
+  /** Spieltagspunkte Silber (Team ≥ 1000 Pkt) */
+  TEAM_POINTS_1000: 250_000,
+  /** Spieltagspunkte Gold (Team ≥ 1500 Pkt) */
+  TEAM_POINTS_1500: 500_000,
+  /** Jahrhundertspiel (Team ≥ 2000 Pkt) */
+  TEAM_POINTS_2000: 1_000_000,
+  /** Topscorer (1 Spieler ≥ 200 Pkt) */
+  PLAYER_200: 100_000,
+  /** Matchwinner (1 Spieler ≥ 300 Pkt) */
+  PLAYER_300: 500_000,
+  /** Weltklasse (1 Spieler ≥ 400 Pkt) */
+  PLAYER_400: 1_000_000,
+  /** Fussballgott (1 Spieler ≥ 500 Pkt) */
+  PLAYER_500: 2_000_000,
+  /** MVP — stärkster Spieler eines Spieltags league-wide */
+  MVP: 1_000_000,
+  /** Spieler-Profit-Erfolge (Bronze/Silver/Gold/König Hand) */
+  HAND_BRONZE_THRESHOLD: 3_000_000,
+  HAND_BRONZE: 250_000,
+  HAND_SILVER_THRESHOLD: 5_000_000,
+  HAND_SILVER: 500_000,
+  HAND_GOLD_THRESHOLD: 10_000_000,
+  HAND_GOLD: 1_000_000,
+  HAND_KOENIG_THRESHOLD: 25_000_000,
+  HAND_KOENIG: 2_000_000,
+  /** Saisonende-Boni */
+  MEISTER: 2_000_000,
+  VIZEMEISTER: 1_000_000,
+  /** Tormaschine (meiste Tore in der Liga) */
+  TORMASCHINE: 250_000,
 };
+
+/** Berechne Spieltagspunkte-Bonus kumulativ aus Team-Punkten am Spieltag */
+export function teamPointsBonus(mdp: number): number {
+  let bonus = 0;
+  if (mdp >= 1000) bonus += BONUS_RULES.TEAM_POINTS_1000;
+  if (mdp >= 1500) bonus += BONUS_RULES.TEAM_POINTS_1500;
+  if (mdp >= 2000) bonus += BONUS_RULES.TEAM_POINTS_2000;
+  return bonus;
+}
 
 export interface ManagerComputedStats {
   userId: string;
@@ -63,8 +102,12 @@ export interface ManagerComputedStats {
   estimatedLoginBonus: number;
   /** Tage seit erster Aktivität in der Liga */
   daysActive: number;
-  /** Σ geschätzte Spieltagsboni aus Ranking-History (optional) */
+  /** Σ geschätzte Spieltagsboni aus Ranking-History (Spieltagssieger + Punkte-Tiers) */
   estimatedMatchdayBonus: number;
+  /** Σ realer Achievement-Bonus (nur für eigenen User; aus /user/achievements) */
+  realAchievementBonus?: number;
+  /** Achievement-Breakdown (nur für eigenen User) */
+  achievementBreakdown?: Array<{ t: number; n: string; ac: number; er: number; total: number }>;
   /** Berechneter aktueller Cash-Stand (alle Komponenten) */
   cashEstimate: number;
   /** Nettoergebnis aus allen Transfers (Sells - Buys) */
@@ -106,6 +149,11 @@ export interface ComputeManagerInput {
   rankingEntry?: KbRankingUser;
   /** Pro-Spieltag-Rankings: für Berechnung der Spieltagsboni */
   perMatchdayRankings?: KbRankingUser[][];
+  /** Echte Achievement-Daten (nur für eigenen User abrufbar) */
+  achievements?: {
+    items: Array<{ t: number; n: string; ac?: number; er: number; total: number }>;
+    total: number;
+  };
 }
 
 export function computeManagerStats(inp: ComputeManagerInput): ManagerComputedStats {
@@ -147,22 +195,23 @@ export function computeManagerStats(inp: ComputeManagerInput): ManagerComputedSt
       : 0;
   const estimatedLoginBonus = daysActive * BONUS_RULES.LOGIN_PER_DAY;
 
-  // Matchday-Bonus-Schätzung aus per-matchday Rankings (optional)
+  // Matchday-Bonus aus per-matchday Rankings (Spieltagssieger + Team-Punkte-Tiers)
   let estimatedMatchdayBonus = 0;
   if (inp.perMatchdayRankings) {
     for (const md of inp.perMatchdayRankings) {
       const me = md.find((u) => u.i === inp.userId);
       if (!me) continue;
-      const placement = me.mdpl ?? 99;
-      const points = me.mdp ?? 0;
-      if (placement === 1) estimatedMatchdayBonus += BONUS_RULES.MATCHDAY_WIN;
-      else if (placement === 2) estimatedMatchdayBonus += BONUS_RULES.MATCHDAY_2ND;
-      else if (placement === 3) estimatedMatchdayBonus += BONUS_RULES.MATCHDAY_3RD;
-      if (points >= BONUS_RULES.HIGH_SCORE_THRESHOLD) {
-        estimatedMatchdayBonus += BONUS_RULES.HIGH_SCORE_BONUS;
-      }
+      if (me.mdpl === 1) estimatedMatchdayBonus += BONUS_RULES.MATCHDAY_WIN;
+      const mdp = me.mdp ?? 0;
+      estimatedMatchdayBonus += teamPointsBonus(mdp);
     }
   }
+
+  // Wenn echte Achievement-Daten verfügbar (eigener User) → diese statt
+  // estimatedMatchdayBonus verwenden (sind genauer + enthalten Einzelspieler/MVP/Hand)
+  const realAchievementBonus = inp.achievements?.total;
+  const achievementBonusFinal =
+    realAchievementBonus !== undefined ? realAchievementBonus : estimatedMatchdayBonus;
 
   const cashEstimate =
     inp.initialBudget -
@@ -170,7 +219,7 @@ export function computeManagerStats(inp: ComputeManagerInput): ManagerComputedSt
     totalSold +
     totalBonus +
     estimatedLoginBonus +
-    estimatedMatchdayBonus;
+    achievementBonusFinal;
 
   const squadPlayers = inp.squad?.it ?? [];
   const teamValue = squadPlayers.reduce((s, p) => s + (p.mv ?? 0), 0);
@@ -194,6 +243,14 @@ export function computeManagerStats(inp: ComputeManagerInput): ManagerComputedSt
     estimatedLoginBonus,
     daysActive,
     estimatedMatchdayBonus,
+    realAchievementBonus,
+    achievementBreakdown: inp.achievements?.items.map((a) => ({
+      t: a.t,
+      n: a.n,
+      ac: a.ac ?? 0,
+      er: a.er,
+      total: a.total,
+    })),
     cashEstimate,
     transferBalance: totalSold - totalBought,
     transferCount: transfers.length,
@@ -206,8 +263,6 @@ export function computeManagerStats(inp: ComputeManagerInput): ManagerComputedSt
     seasonPoints: inp.rankingEntry?.sp,
     placement: inp.rankingEntry?.spl,
     bonusEventCount: myBonusActivities.length,
-    // Ohne squad-Daten ist der Cash trotzdem aus Transfers berechenbar; ohne
-    // transfers ist er nur "initial + bonus", was sehr ungenau wäre.
     cashUncertain: !inp.transfers || inp.transfers.length === 0,
   };
 }

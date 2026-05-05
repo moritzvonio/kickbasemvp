@@ -55,11 +55,12 @@ export default async function WettbewerbPage({
     | "balance"
     | "points";
 
-  // Step 1: get ranking + overview + ALL activities since Liga-Start (paginated)
-  const [ranking, overview, allActivitiesArr] = await Promise.all([
+  // Step 1: get ranking + overview + ALL activities + own achievements (parallel)
+  const [ranking, overview, allActivitiesArr, ownAchievements] = await Promise.all([
     withKbAuth(path, () => kb.ranking(session.token, leagueId)).catch(() => ({} as Awaited<ReturnType<typeof kb.ranking>>)),
     withKbAuth(path, () => kb.leagueOverviewWithManagers(session.token, leagueId)).catch(() => ({} as Awaited<ReturnType<typeof kb.leagueOverviewWithManagers>>)),
     withKbAuth(path, () => kb.activitiesAll(session.token, leagueId)).catch(() => [] as KbActivity[]),
+    withKbAuth(path, () => kb.userAchievementsTotal(session.token, leagueId)).catch(() => ({ items: [], total: 0 })),
   ]);
   const activities: { af?: KbActivity[]; it?: KbActivity[] } = { af: allActivitiesArr };
 
@@ -133,6 +134,8 @@ export default async function WettbewerbPage({
       activities: allActivities,
       rankingEntry: d.manager,
       perMatchdayRankings,
+      // Nur für den auth'd user echten Achievements-Total — andere geschätzt
+      achievements: d.manager.i === session.userId ? ownAchievements : undefined,
     })
   );
 
@@ -261,17 +264,17 @@ export default async function WettbewerbPage({
           </div>
           <div className="grid sm:grid-cols-2 gap-x-4 gap-y-1.5">
             <div>
-              <span className="font-medium text-foreground">📊 Erfasst (paginiert):</span>
+              <span className="font-medium text-foreground">📊 Exakt erfasst:</span>
               <ul className="list-disc ml-4 mt-1">
-                <li>Alle Käufe + Verkäufe seit Liga-Start (managerTransfer + dedup)</li>
-                <li>Alle Bonus-Aktivitäten mit <code className="font-mono">data.bn</code> (Spieltag, Achievements)</li>
+                <li>Alle Käufe + Verkäufe seit Liga-Start (paginiert)</li>
+                <li><span className="text-violet-700 font-semibold">Erfolge (eigener User)</span>: Σ ac × er aus <code className="font-mono">/user/achievements</code> — alle Erfolgs-Tiers (Spieltagssieger, Punkte 1k/1.5k/2k, MVP, Topscorer/Matchwinner/Weltklasse/Fussballgott, Bronze/Silber/Gold/König-Hand, Meister/Vize)</li>
               </ul>
             </div>
             <div>
               <span className="font-medium text-foreground">🧮 Geschätzt:</span>
               <ul className="list-disc ml-4 mt-1">
-                <li><span className="text-sky-700">Login-Bonus</span> = 100k × Tage seit erstem Transfer</li>
-                <li><span className="text-violet-700">Spieltagsbonus</span>: 1 Mio (1.) / 500k (2.) / 250k (3.) + 500k bei ≥1500 Pkt</li>
+                <li><span className="text-sky-700">Login-Bonus</span> = 100k × Tage seit erstem Transfer (Doku sagt ~33 Mio/Saison)</li>
+                <li><span className="text-violet-700">Andere Manager</span>: Spieltagssieger + Team-Punkte-Tiers (1k/1.5k/2k) aus per-Spieltag-Ranking — Einzelspieler-Erfolge nicht enthalten</li>
               </ul>
             </div>
           </div>
@@ -554,8 +557,13 @@ function ManagerCard({
           <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-1.5 flex items-center gap-2">
             Cash-Komposition
             <span className="text-muted-foreground/70 normal-case tracking-normal">
-              ({stats.daysActive} Tage aktiv · {stats.transferCount} Transfers)
+              ({stats.daysActive} Tage · {stats.transferCount} Transfers)
             </span>
+            {stats.realAchievementBonus !== undefined && (
+              <Badge variant="success" className="text-[9px]">
+                exakt
+              </Badge>
+            )}
           </div>
           <div className="flex items-center gap-x-2 gap-y-0.5 text-[10px] text-muted-foreground tabular flex-wrap">
             <span>
@@ -577,10 +585,16 @@ function ManagerCard({
                 + {formatEUR(stats.estimatedLoginBonus, { compact: true })} Login
               </span>
             )}
-            {stats.estimatedMatchdayBonus > 0 && (
-              <span className="text-violet-600">
-                + {formatEUR(stats.estimatedMatchdayBonus, { compact: true })} Spieltag
+            {stats.realAchievementBonus !== undefined ? (
+              <span className="text-violet-700 font-semibold">
+                + {formatEUR(stats.realAchievementBonus, { compact: true })} Erfolge
               </span>
+            ) : (
+              stats.estimatedMatchdayBonus > 0 && (
+                <span className="text-violet-600">
+                  + ~{formatEUR(stats.estimatedMatchdayBonus, { compact: true })} Spieltag (gesch.)
+                </span>
+              )
             )}
             {stats.cashUncertain && (
               <Badge variant="muted" className="text-[9px]">
@@ -588,6 +602,32 @@ function ManagerCard({
               </Badge>
             )}
           </div>
+          {/* Achievement-Breakdown — nur für eigenen User */}
+          {stats.achievementBreakdown && stats.achievementBreakdown.length > 0 && (
+            <details className="mt-2 text-[10px]">
+              <summary className="cursor-pointer text-muted-foreground hover:text-foreground tabular">
+                Erfolge im Detail ({stats.achievementBreakdown.filter((a) => a.ac > 0).length} aktiv)
+              </summary>
+              <div className="mt-1.5 grid sm:grid-cols-2 gap-x-3 gap-y-0.5 pl-2">
+                {stats.achievementBreakdown
+                  .filter((a) => a.ac > 0 && a.total > 0)
+                  .sort((a, b) => b.total - a.total)
+                  .map((a) => (
+                    <div
+                      key={a.t}
+                      className="flex items-center justify-between text-[10px] text-muted-foreground tabular"
+                    >
+                      <span className="truncate">
+                        {a.n} <span className="text-foreground/60">×{a.ac}</span>
+                      </span>
+                      <span className="font-mono text-violet-700 font-semibold">
+                        {formatEUR(a.total, { compact: true })}
+                      </span>
+                    </div>
+                  ))}
+              </div>
+            </details>
+          )}
         </div>
       </CardContent>
     </Card>

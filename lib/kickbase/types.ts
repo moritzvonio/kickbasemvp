@@ -603,6 +603,30 @@ export interface KbPerformancePoint {
   [k: string]: unknown;
 }
 
+/** GET /v4/leagues/{id}/user/achievements — eigene Erfolge (Liste) */
+export interface KbUserAchievementsResponse {
+  it: KbUserAchievement[];
+}
+
+export interface KbUserAchievement {
+  /** Achievement type id (z.B. 1 = Spieltagssieger Bronze) */
+  t: number;
+  /** Name */
+  n: string;
+  /** Achievement count (wie oft der Erfolg ausgelöst wurde) */
+  ac?: number;
+  /** Is enabled (in Liga-Settings) */
+  ise?: boolean;
+  /** Description (only on detail endpoint) */
+  d?: string;
+  /** Earnings — Belohnung pro Auslösung (only on detail endpoint) */
+  er?: number;
+  /** Date of last unlock */
+  dt?: string;
+  /** Is repeatable */
+  isrp?: boolean;
+}
+
 /** GET /v4/competitions/{id}/table — Bundesliga-Tabelle (mit Team-Logos!) */
 export interface KbCompetitionTable {
   it: KbCompetitionTableEntry[];

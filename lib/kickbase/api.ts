@@ -179,6 +179,58 @@ export const kb = {
   },
 
   // ── Manager (other players in the league) ──────────────
+  // ── Achievements (eigener User) ───────────────────────
+  async userAchievements(token: string, leagueId: string) {
+    return kbFetch<import("./types").KbUserAchievementsResponse>(
+      `/v4/leagues/${leagueId}/user/achievements`,
+      { token }
+    );
+  },
+
+  async userAchievementDetail(token: string, leagueId: string, type: number | string) {
+    return kbFetch<import("./types").KbUserAchievement>(
+      `/v4/leagues/${leagueId}/user/achievements/${type}`,
+      { token }
+    );
+  },
+
+  /** Fetcht Liste + alle Detail-er-Werte → Σ(ac × er) als realer Bonus */
+  async userAchievementsTotal(
+    token: string,
+    leagueId: string
+  ): Promise<{
+    items: Array<import("./types").KbUserAchievement & { er: number; total: number }>;
+    total: number;
+  }> {
+    let list;
+    try {
+      list = await kbFetch<import("./types").KbUserAchievementsResponse>(
+        `/v4/leagues/${leagueId}/user/achievements`,
+        { token }
+      );
+    } catch {
+      return { items: [], total: 0 };
+    }
+    const types = list.it ?? [];
+    const details = await Promise.all(
+      types.map((it) =>
+        kbFetch<import("./types").KbUserAchievement>(
+          `/v4/leagues/${leagueId}/user/achievements/${it.t}`,
+          { token }
+        )
+          .then((d) => ({ ...it, ...d, er: d.er ?? 0 }))
+          .catch(() => ({ ...it, er: 0 }))
+      )
+    );
+    const enriched = details.map((d) => ({
+      ...d,
+      er: d.er ?? 0,
+      total: (d.ac ?? 0) * (d.er ?? 0),
+    }));
+    const total = enriched.reduce((s, d) => s + d.total, 0);
+    return { items: enriched, total };
+  },
+
   // ── Competition (Bundesliga-wide) ──────────────────────
   async competitionTable(token: string, competitionId = "1") {
     return kbFetch<import("./types").KbCompetitionTable>(
