@@ -101,6 +101,48 @@ export const kb = {
     });
   },
 
+  /**
+   * Paginated fetch of ALL activities since league start.
+   * Loops until the response returns fewer items than `pageSize`.
+   * Safety cap to prevent infinite loops on broken APIs.
+   */
+  async activitiesAll(
+    token: string,
+    leagueId: string,
+    opts?: { filter?: string; pageSize?: number; maxPages?: number }
+  ): Promise<import("./types").KbActivity[]> {
+    const pageSize = opts?.pageSize ?? 200;
+    const maxPages = opts?.maxPages ?? 60; // 60 × 200 = 12k events safety cap
+    const all: import("./types").KbActivity[] = [];
+
+    for (let page = 0; page < maxPages; page++) {
+      const start = page * pageSize;
+      let resp;
+      try {
+        resp = await kbFetch<KbActivitiesFeed>(
+          `/v4/leagues/${leagueId}/activitiesFeed`,
+          {
+            token,
+            query: {
+              start,
+              max: pageSize,
+              filter: opts?.filter,
+              _t: Date.now(),
+            },
+          }
+        );
+      } catch {
+        break;
+      }
+      const batch = resp.af ?? resp.it ?? [];
+      if (batch.length === 0) break;
+      all.push(...batch);
+      if (batch.length < pageSize) break;
+    }
+
+    return all;
+  },
+
   // ── Player ─────────────────────────────────────────────
   async player(token: string, leagueId: string, playerId: string) {
     return kbFetch<KbPlayerDetails>(`/v4/leagues/${leagueId}/players/${playerId}`, { token });
@@ -154,11 +196,61 @@ export const kb = {
     );
   },
 
-  async managerTransfer(token: string, leagueId: string, managerId: string) {
+  async managerTransfer(token: string, leagueId: string, managerId: string, opts?: { start?: number; max?: number }) {
     return kbFetch<import("./types").KbManagerTransferResponse>(
       `/v4/leagues/${leagueId}/managers/${managerId}/transfer`,
-      { token }
+      {
+        token,
+        query: {
+          start: opts?.start,
+          max: opts?.max,
+        },
+      }
     );
+  },
+
+  /**
+   * Paginated fetch of ALL transfers for a manager since league start.
+   * managerTransfer typically returns the full list, but we paginate to be safe.
+   */
+  async managerTransferAll(
+    token: string,
+    leagueId: string,
+    managerId: string,
+    opts?: { pageSize?: number; maxPages?: number }
+  ): Promise<import("./types").KbManagerTransfer[]> {
+    const pageSize = opts?.pageSize ?? 100;
+    const maxPages = opts?.maxPages ?? 30;
+    const all: import("./types").KbManagerTransfer[] = [];
+
+    for (let page = 0; page < maxPages; page++) {
+      const start = page * pageSize;
+      let resp;
+      try {
+        resp = await kbFetch<import("./types").KbManagerTransferResponse>(
+          `/v4/leagues/${leagueId}/managers/${managerId}/transfer`,
+          {
+            token,
+            query: { start, max: pageSize },
+          }
+        );
+      } catch {
+        break;
+      }
+      const batch = resp.it ?? [];
+      if (batch.length === 0) break;
+      all.push(...batch);
+      if (batch.length < pageSize) break;
+    }
+
+    // Dedup just in case (some APIs return overlapping pages)
+    const seen = new Set<string>();
+    return all.filter((t) => {
+      const key = `${t.pi}|${t.dt}|${t.tty}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
   },
 
   async managerDashboard(token: string, leagueId: string, managerId: string) {

@@ -55,12 +55,13 @@ export default async function WettbewerbPage({
     | "balance"
     | "points";
 
-  // Step 1: get ranking + overview (small, fast)
-  const [ranking, overview, activities] = await Promise.all([
+  // Step 1: get ranking + overview + ALL activities since Liga-Start (paginated)
+  const [ranking, overview, allActivitiesArr] = await Promise.all([
     withKbAuth(path, () => kb.ranking(session.token, leagueId)).catch(() => ({} as Awaited<ReturnType<typeof kb.ranking>>)),
     withKbAuth(path, () => kb.leagueOverviewWithManagers(session.token, leagueId)).catch(() => ({} as Awaited<ReturnType<typeof kb.leagueOverviewWithManagers>>)),
-    withKbAuth(path, () => kb.activities(session.token, leagueId, { max: 200 })).catch(() => ({ af: [] as KbActivity[] } as Awaited<ReturnType<typeof kb.activities>>)),
+    withKbAuth(path, () => kb.activitiesAll(session.token, leagueId)).catch(() => [] as KbActivity[]),
   ]);
+  const activities: { af?: KbActivity[]; it?: KbActivity[] } = { af: allActivitiesArr };
 
   const members = ranking.us ?? ranking.it ?? [];
   if (members.length === 0) {
@@ -85,17 +86,17 @@ export default async function WettbewerbPage({
 
   const allActivities = activities.af ?? activities.it ?? [];
 
-  // Step 2: per-manager fetch squad + transfer (parallel)
+  // Step 2: per-manager fetch squad + ALL transfers (paginated, parallel)
   const memberData = await Promise.all(
     members.map(async (m) => {
-      const [squad, transferResp] = await Promise.all([
+      const [squad, transfers] = await Promise.all([
         withKbAuth(path, () => kb.managerSquad(session.token, leagueId, m.i)).catch(() => null),
-        withKbAuth(path, () => kb.managerTransfer(session.token, leagueId, m.i)).catch(() => null),
+        withKbAuth(path, () => kb.managerTransferAll(session.token, leagueId, m.i)).catch(() => []),
       ]);
       return {
         manager: m,
         squad: squad ?? null,
-        transfers: transferResp?.it ?? [],
+        transfers,
       };
     })
   );
