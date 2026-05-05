@@ -10,6 +10,7 @@ import { formatEUR, formatDelta, cn } from "@/lib/utils";
 import {
   computeManagerStats,
   detectInitialBudget,
+  calibrateDailyExtra,
   SELL_TO_BANK_FACTOR,
   type ManagerComputedStats,
 } from "@/lib/competitor";
@@ -124,6 +125,37 @@ export default async function WettbewerbPage({
     )
   );
 
+  // PASS 1: Eigene Draft-Stats (Default-Werte) → daraus dailyExtraPerDay kalibrieren
+  const meDataIdx = memberData.findIndex((d) => d.manager.i === session.userId);
+  const meData = meDataIdx >= 0 ? memberData[meDataIdx] : null;
+  const meRealCash = myRealBudget?.b !== undefined ? myRealBudget.b : undefined;
+
+  let dailyExtraPerDay: number | undefined;
+  if (meData && meRealCash !== undefined && ownAchievements) {
+    const draft = computeManagerStats({
+      userId: meData.manager.i,
+      name: meData.manager.n,
+      image: meData.manager.uim,
+      initialBudget,
+      transfers: meData.transfers,
+      squad: meData.squad,
+      activities: allActivities,
+      rankingEntry: meData.manager,
+      perMatchdayRankings,
+      achievements: ownAchievements,
+    });
+    dailyExtraPerDay = calibrateDailyExtra({
+      realCash: meRealCash,
+      initialBudget,
+      totalBought: draft.totalBought,
+      totalSold: draft.totalSold,
+      totalBonus: draft.totalBonus,
+      realAchievementBonus: ownAchievements.total,
+      daysActive: draft.daysActive,
+    });
+  }
+
+  // PASS 2: Alle Stats mit dailyExtraPerDay neu berechnen
   const stats: ManagerComputedStats[] = memberData.map((d) => {
     const isMe = d.manager.i === session.userId;
     return computeManagerStats({
@@ -136,11 +168,9 @@ export default async function WettbewerbPage({
       activities: allActivities,
       rankingEntry: d.manager,
       perMatchdayRankings,
-      // Achievements aktuell nur für eigenen User (Endpoint ist self-only)
-      // ABER: nicht zum Bypass nutzen — nur als zusätzlicher Daten-Layer
       achievements: isMe ? ownAchievements : undefined,
-      // Echter Cash aus /me/budget — nur als Vergleichsreferenz angezeigt
-      realCashFromApi: isMe && myRealBudget?.b !== undefined ? myRealBudget.b : undefined,
+      realCashFromApi: isMe ? meRealCash : undefined,
+      dailyExtraPerDay,
     });
   });
 
@@ -267,6 +297,18 @@ export default async function WettbewerbPage({
             <span className="font-mono text-foreground">{formatEUR(initialBudget, { compact: true })}</span>{" "}
             (aus Liga-Setting). Cash = Initial − Käufe + Verkäufe + alle Boni.
           </div>
+          {dailyExtraPerDay !== undefined && dailyExtraPerDay > 0 && (
+            <div className="rounded-md bg-emerald-50/50 border border-emerald-200 p-2">
+              <span className="font-medium text-emerald-800">🔧 Self-Calibration aktiv</span>:{" "}
+              Aus deinem echten Cash kalibrierter <strong>"unbekannter täglicher Bonus"</strong>:{" "}
+              <span className="font-mono font-bold">
+                {Math.round(dailyExtraPerDay / 1000)}k €/Tag
+              </span>{" "}
+              (zusätzlich zu Login 100k). Das deckt Boni ab die wir nicht namentlich kennen
+              (z.B. Performance-Bonus, Streak-Bonus, höhere Tiers etc.). Wert wird auf alle
+              anderen Manager additiv angewendet — Annahme: skaliert pro Liga gleich.
+            </div>
+          )}
           <div className="grid sm:grid-cols-2 gap-x-4 gap-y-1.5">
             <div>
               <span className="font-medium text-foreground">📊 Exakt aus Kickbase:</span>
