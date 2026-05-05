@@ -55,6 +55,15 @@ export const kb = {
     return kbFetch<KbMeInLeague>(`/v4/leagues/${leagueId}/me`, { token });
   },
 
+  /**
+   * GIB MIR DEN ECHTEN CASH-STAND.
+   * Das `/me`-Endpoint gibt nur null zurück — die echten Budget-Daten
+   * liegen unter `/me/budget`. Hier kommt die wahrhaftige Wahrheit.
+   */
+  async myBudget(token: string, leagueId: string) {
+    return kbFetch<KbMeInLeague>(`/v4/leagues/${leagueId}/me/budget`, { token });
+  },
+
   async ranking(token: string, leagueId: string, dayNumber?: number) {
     return kbFetch<KbRankingResponse>(`/v4/leagues/${leagueId}/ranking`, {
       token,

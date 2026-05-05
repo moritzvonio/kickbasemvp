@@ -41,7 +41,7 @@ export default async function TradingPage({
   const [squad, market, budget] = await Promise.all([
     withKbAuth(path, () => kb.squad(session.token, leagueId)).catch(() => ({ it: [] } as Awaited<ReturnType<typeof kb.squad>>)),
     withKbAuth(path, () => kb.market(session.token, leagueId)).catch(() => ({ it: [] } as Awaited<ReturnType<typeof kb.market>>)),
-    withKbAuth(path, () => kb.meInLeague(session.token, leagueId)).catch(() => null),
+    withKbAuth(path, () => kb.myBudget(session.token, leagueId)).catch(() => null),
   ]);
 
   const players = squad.it ?? [];

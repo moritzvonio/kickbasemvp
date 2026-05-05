@@ -23,7 +23,7 @@ export default async function AufstellungPage({
   const [overview, squad, budget] = await Promise.all([
     withKbAuth(path, () => kb.lineupOverview(session.token, leagueId)).catch(() => null),
     withKbAuth(path, () => kb.squad(session.token, leagueId)).catch(() => ({ it: [] as KbSquadPlayer[] })),
-    withKbAuth(path, () => kb.meInLeague(session.token, leagueId)).catch(() => null),
+    withKbAuth(path, () => kb.myBudget(session.token, leagueId)).catch(() => null),
   ]);
 
   const lineupPlayers = overview?.lp ?? [];

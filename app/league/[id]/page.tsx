@@ -49,7 +49,7 @@ export default async function LeagueDashboard({
   const emptyActivities = { af: [] } as Awaited<ReturnType<typeof kb.activities>>;
 
   const [budget, squad, ranking, activities] = await Promise.all([
-    withKbAuth(path, () => kb.meInLeague(session.token, leagueId)).catch(() => null),
+    withKbAuth(path, () => kb.myBudget(session.token, leagueId)).catch(() => null),
     withKbAuth(path, () => kb.squad(session.token, leagueId)).catch(() => emptySquad),
     withKbAuth(path, () => kb.ranking(session.token, leagueId)).catch(() => emptyRanking),
     withKbAuth(path, () => kb.activities(session.token, leagueId, { max: 12 })).catch(() => emptyActivities),

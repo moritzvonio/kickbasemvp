@@ -55,12 +55,13 @@ export default async function WettbewerbPage({
     | "balance"
     | "points";
 
-  // Step 1: get ranking + overview + ALL activities + own achievements (parallel)
-  const [ranking, overview, allActivitiesArr, ownAchievements] = await Promise.all([
+  // Step 1: get ranking + overview + ALL activities + own achievements + REAL OWN BUDGET
+  const [ranking, overview, allActivitiesArr, ownAchievements, myRealBudget] = await Promise.all([
     withKbAuth(path, () => kb.ranking(session.token, leagueId)).catch(() => ({} as Awaited<ReturnType<typeof kb.ranking>>)),
     withKbAuth(path, () => kb.leagueOverviewWithManagers(session.token, leagueId)).catch(() => ({} as Awaited<ReturnType<typeof kb.leagueOverviewWithManagers>>)),
     withKbAuth(path, () => kb.activitiesAll(session.token, leagueId)).catch(() => [] as KbActivity[]),
     withKbAuth(path, () => kb.userAchievementsTotal(session.token, leagueId)).catch(() => ({ items: [], total: 0 })),
+    withKbAuth(path, () => kb.myBudget(session.token, leagueId)).catch(() => null),
   ]);
   const activities: { af?: KbActivity[]; it?: KbActivity[] } = { af: allActivitiesArr };
 
@@ -123,8 +124,9 @@ export default async function WettbewerbPage({
     )
   );
 
-  const stats: ManagerComputedStats[] = memberData.map((d) =>
-    computeManagerStats({
+  const stats: ManagerComputedStats[] = memberData.map((d) => {
+    const isMe = d.manager.i === session.userId;
+    return computeManagerStats({
       userId: d.manager.i,
       name: d.manager.n,
       image: d.manager.uim,
@@ -135,9 +137,11 @@ export default async function WettbewerbPage({
       rankingEntry: d.manager,
       perMatchdayRankings,
       // Nur für den auth'd user echten Achievements-Total — andere geschätzt
-      achievements: d.manager.i === session.userId ? ownAchievements : undefined,
-    })
-  );
+      achievements: isMe ? ownAchievements : undefined,
+      // Auth'd user: ECHTER Cash aus /me/budget (überspringt komplette Schätzung)
+      realCash: isMe && myRealBudget?.b !== undefined ? myRealBudget.b : undefined,
+    });
+  });
 
   const me = stats.find((s) => s.userId === session.userId);
   const others = stats.filter((s) => s.userId !== session.userId);
@@ -264,17 +268,18 @@ export default async function WettbewerbPage({
           </div>
           <div className="grid sm:grid-cols-2 gap-x-4 gap-y-1.5">
             <div>
-              <span className="font-medium text-foreground">📊 Exakt erfasst:</span>
+              <span className="font-medium text-foreground">📊 Exakt aus Kickbase:</span>
               <ul className="list-disc ml-4 mt-1">
+                <li><span className="text-emerald-700 font-semibold">Eigener Cash</span>: direkt aus <code className="font-mono">/me/budget</code> — keine Schätzung nötig</li>
                 <li>Alle Käufe + Verkäufe seit Liga-Start (paginiert)</li>
-                <li><span className="text-violet-700 font-semibold">Erfolge (eigener User)</span>: Σ ac × er aus <code className="font-mono">/user/achievements</code> — alle Erfolgs-Tiers (Spieltagssieger, Punkte 1k/1.5k/2k, MVP, Topscorer/Matchwinner/Weltklasse/Fussballgott, Bronze/Silber/Gold/König-Hand, Meister/Vize)</li>
+                <li>Eigene Erfolge: Σ ac × er aus <code className="font-mono">/user/achievements</code></li>
               </ul>
             </div>
             <div>
-              <span className="font-medium text-foreground">🧮 Geschätzt:</span>
+              <span className="font-medium text-foreground">🧮 Geschätzt (für andere Manager):</span>
               <ul className="list-disc ml-4 mt-1">
-                <li><span className="text-sky-700">Login-Bonus</span> = 100k × Tage seit erstem Transfer (Doku sagt ~33 Mio/Saison)</li>
-                <li><span className="text-violet-700">Andere Manager</span>: Spieltagssieger + Team-Punkte-Tiers (1k/1.5k/2k) aus per-Spieltag-Ranking — Einzelspieler-Erfolge nicht enthalten</li>
+                <li><span className="text-sky-700">Login-Bonus</span> = 100k × Tage seit erstem Transfer (~33 Mio/Saison)</li>
+                <li><span className="text-violet-700">Achievements</span>: nur Spieltagssieger + Team-Punkte-Tiers — Einzelspieler/Hand/MVP fehlen</li>
               </ul>
             </div>
           </div>
@@ -471,8 +476,16 @@ function ManagerCard({
             >
               {formatEUR(stats.netTeamValue, { compact: true })}
             </div>
-            <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mt-1">
+            <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mt-1 flex items-center gap-1 justify-end">
               Netto-Teamwert
+              {stats.cashIsReal && (
+                <span
+                  className="text-emerald-600"
+                  title="Cash kommt direkt aus /me/budget (exakt)"
+                >
+                  ✓
+                </span>
+              )}
             </div>
           </div>
         </div>
@@ -554,14 +567,14 @@ function ManagerCard({
 
         {/* Cash composition mini-bar */}
         <div className="mt-4 pt-3 border-t border-border/50">
-          <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-1.5 flex items-center gap-2">
-            Cash-Komposition
+          <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-1.5 flex items-center gap-2 flex-wrap">
+            {stats.cashIsReal ? "Cash (exakt aus Kickbase)" : "Cash-Komposition (geschätzt)"}
             <span className="text-muted-foreground/70 normal-case tracking-normal">
               ({stats.daysActive} Tage · {stats.transferCount} Transfers)
             </span>
-            {stats.realAchievementBonus !== undefined && (
+            {stats.cashIsReal && (
               <Badge variant="success" className="text-[9px]">
-                exakt
+                ✓ /me/budget
               </Badge>
             )}
           </div>

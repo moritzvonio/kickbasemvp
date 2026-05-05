@@ -108,8 +108,12 @@ export interface ManagerComputedStats {
   realAchievementBonus?: number;
   /** Achievement-Breakdown (nur für eigenen User) */
   achievementBreakdown?: Array<{ t: number; n: string; ac: number; er: number; total: number }>;
-  /** Berechneter aktueller Cash-Stand (alle Komponenten) */
+  /** Aktueller Cash-Stand. Wenn realCash an computeManagerStats übergeben
+   *  wurde (eigener User), ist dieser Wert EXAKT (aus /me/budget).
+   *  Sonst Schätzung aus Initial − Käufe + Verkäufe + Boni + Login + Erfolge. */
   cashEstimate: number;
+  /** True wenn cashEstimate aus /me/budget kommt (exakt) statt geschätzt */
+  cashIsReal: boolean;
   /** Nettoergebnis aus allen Transfers (Sells - Buys) */
   transferBalance: number;
   /** Anzahl Transfers */
@@ -154,6 +158,8 @@ export interface ComputeManagerInput {
     items: Array<{ t: number; n: string; ac?: number; er: number; total: number }>;
     total: number;
   };
+  /** REAL Cash-Wert direkt aus /me/budget (nur für eigenen User verfügbar) */
+  realCash?: number;
 }
 
 export function computeManagerStats(inp: ComputeManagerInput): ManagerComputedStats {
@@ -213,13 +219,17 @@ export function computeManagerStats(inp: ComputeManagerInput): ManagerComputedSt
   const achievementBonusFinal =
     realAchievementBonus !== undefined ? realAchievementBonus : estimatedMatchdayBonus;
 
+  // Wenn realCash verfügbar (eigener User), den ECHTEN Wert aus /me/budget
+  // verwenden — alle Schätzungen werden überflüssig
   const cashEstimate =
-    inp.initialBudget -
-    totalBought +
-    totalSold +
-    totalBonus +
-    estimatedLoginBonus +
-    achievementBonusFinal;
+    inp.realCash !== undefined
+      ? inp.realCash
+      : inp.initialBudget -
+        totalBought +
+        totalSold +
+        totalBonus +
+        estimatedLoginBonus +
+        achievementBonusFinal;
 
   const squadPlayers = inp.squad?.it ?? [];
   const teamValue = squadPlayers.reduce((s, p) => s + (p.mv ?? 0), 0);
@@ -252,6 +262,7 @@ export function computeManagerStats(inp: ComputeManagerInput): ManagerComputedSt
       total: a.total,
     })),
     cashEstimate,
+    cashIsReal: inp.realCash !== undefined,
     transferBalance: totalSold - totalBought,
     transferCount: transfers.length,
     teamValue,
