@@ -136,10 +136,11 @@ export default async function WettbewerbPage({
       activities: allActivities,
       rankingEntry: d.manager,
       perMatchdayRankings,
-      // Nur für den auth'd user echten Achievements-Total — andere geschätzt
+      // Achievements aktuell nur für eigenen User (Endpoint ist self-only)
+      // ABER: nicht zum Bypass nutzen — nur als zusätzlicher Daten-Layer
       achievements: isMe ? ownAchievements : undefined,
-      // Auth'd user: ECHTER Cash aus /me/budget (überspringt komplette Schätzung)
-      realCash: isMe && myRealBudget?.b !== undefined ? myRealBudget.b : undefined,
+      // Echter Cash aus /me/budget — nur als Vergleichsreferenz angezeigt
+      realCashFromApi: isMe && myRealBudget?.b !== undefined ? myRealBudget.b : undefined,
     });
   });
 
@@ -476,16 +477,8 @@ function ManagerCard({
             >
               {formatEUR(stats.netTeamValue, { compact: true })}
             </div>
-            <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mt-1 flex items-center gap-1 justify-end">
-              Netto-Teamwert
-              {stats.cashIsReal && (
-                <span
-                  className="text-emerald-600"
-                  title="Cash kommt direkt aus /me/budget (exakt)"
-                >
-                  ✓
-                </span>
-              )}
+            <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mt-1">
+              Netto-Teamwert (gesch.)
             </div>
           </div>
         </div>
@@ -565,18 +558,63 @@ function ManagerCard({
           />
         </div>
 
+        {/* Estimate-vs-Real Vergleich (nur eigener User) */}
+        {stats.realCashFromApi !== undefined && (
+          <div
+            className={cn(
+              "mt-4 rounded-lg border p-3",
+              Math.abs(stats.cashEstimateError ?? 0) < 1_000_000
+                ? "border-emerald-200 bg-emerald-50/50"
+                : Math.abs(stats.cashEstimateError ?? 0) < 5_000_000
+                ? "border-amber-200 bg-amber-50/50"
+                : "border-rose-200 bg-rose-50/50"
+            )}
+          >
+            <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-2">
+              📊 Schätz-Validierung (eigener User)
+            </div>
+            <div className="grid grid-cols-3 gap-3 text-xs tabular">
+              <div>
+                <div className="text-[10px] text-muted-foreground">Geschätzt</div>
+                <div className="font-mono font-bold text-base">
+                  {formatEUR(stats.cashEstimate, { compact: true })}
+                </div>
+              </div>
+              <div>
+                <div className="text-[10px] text-muted-foreground">Echt (Kickbase)</div>
+                <div className="font-mono font-bold text-base text-emerald-700">
+                  {formatEUR(stats.realCashFromApi, { compact: true })}
+                </div>
+              </div>
+              <div>
+                <div className="text-[10px] text-muted-foreground">Diff (Schätzfehler)</div>
+                <div
+                  className={cn(
+                    "font-mono font-bold text-base",
+                    (stats.cashEstimateError ?? 0) > 0
+                      ? "text-emerald-700"
+                      : "text-rose-700"
+                  )}
+                >
+                  {(stats.cashEstimateError ?? 0) > 0 ? "+" : ""}
+                  {formatEUR(stats.cashEstimateError ?? 0, { compact: true })}
+                </div>
+              </div>
+            </div>
+            <p className="text-[10px] text-muted-foreground mt-2">
+              Wir berechnen deinen Cash mit DERSELBEN Pipeline wie für andere Manager und vergleichen mit{" "}
+              <code className="font-mono">/me/budget</code> als Wahrheits-Anker. Diff zeigt was unsere Schätzung systemisch übersieht (vermutlich für andere Manager analog).
+            </p>
+          </div>
+        )}
+
         {/* Cash composition mini-bar */}
         <div className="mt-4 pt-3 border-t border-border/50">
           <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-1.5 flex items-center gap-2 flex-wrap">
-            {stats.cashIsReal ? "Cash (exakt aus Kickbase)" : "Cash-Komposition (geschätzt)"}
+            Cash-Komposition (geschätzt)
             <span className="text-muted-foreground/70 normal-case tracking-normal">
               ({stats.daysActive} Tage · {stats.transferCount} Transfers)
             </span>
-            {stats.cashIsReal && (
-              <Badge variant="success" className="text-[9px]">
-                ✓ /me/budget
-              </Badge>
-            )}
           </div>
           <div className="flex items-center gap-x-2 gap-y-0.5 text-[10px] text-muted-foreground tabular flex-wrap">
             <span>
@@ -598,9 +636,10 @@ function ManagerCard({
                 + {formatEUR(stats.estimatedLoginBonus, { compact: true })} Login
               </span>
             )}
+            {/* Erfolge: für eigenen User exakt verfügbar, sonst Spieltag+Hand-Schätzung */}
             {stats.realAchievementBonus !== undefined ? (
               <span className="text-violet-700 font-semibold">
-                + {formatEUR(stats.realAchievementBonus, { compact: true })} Erfolge
+                + {formatEUR(stats.realAchievementBonus, { compact: true })} Erfolge (exakt)
               </span>
             ) : (
               <>

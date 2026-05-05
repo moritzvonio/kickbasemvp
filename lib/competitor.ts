@@ -172,12 +172,15 @@ export interface ManagerComputedStats {
   realAchievementBonus?: number;
   /** Achievement-Breakdown (nur für eigenen User) */
   achievementBreakdown?: Array<{ t: number; n: string; ac: number; er: number; total: number }>;
-  /** Aktueller Cash-Stand. Wenn realCash an computeManagerStats übergeben
-   *  wurde (eigener User), ist dieser Wert EXAKT (aus /me/budget).
-   *  Sonst Schätzung aus Initial − Käufe + Verkäufe + Boni + Login + Erfolge. */
+  /** Geschätzter Cash-Stand: Initial − Käufe + Verkäufe + Boni + Login + Erfolge.
+   *  IMMER eine Schätzung — auch für den eigenen User. So sind Manager-Cards
+   *  apples-to-apples vergleichbar. */
   cashEstimate: number;
-  /** True wenn cashEstimate aus /me/budget kommt (exakt) statt geschätzt */
-  cashIsReal: boolean;
+  /** Echter Cash aus /me/budget (nur für eigenen User verfügbar).
+   *  Wird NUR zur Validierung gegen cashEstimate angezeigt, NICHT als Override. */
+  realCashFromApi?: number;
+  /** Diff = realCashFromApi − cashEstimate (Schätzfehler) */
+  cashEstimateError?: number;
   /** Nettoergebnis aus allen Transfers (Sells - Buys) */
   transferBalance: number;
   /** Anzahl Transfers */
@@ -222,8 +225,8 @@ export interface ComputeManagerInput {
     items: Array<{ t: number; n: string; ac?: number; er: number; total: number }>;
     total: number;
   };
-  /** REAL Cash-Wert direkt aus /me/budget (nur für eigenen User verfügbar) */
-  realCash?: number;
+  /** Echter Cash aus /me/budget (NUR Vergleichsreferenz, kein Override) */
+  realCashFromApi?: number;
 }
 
 export function computeManagerStats(inp: ComputeManagerInput): ManagerComputedStats {
@@ -289,17 +292,18 @@ export function computeManagerStats(inp: ComputeManagerInput): ManagerComputedSt
       ? realAchievementBonus
       : estimatedMatchdayBonus + estimatedHandBonus;
 
-  // Wenn realCash verfügbar (eigener User), den ECHTEN Wert aus /me/budget
-  // verwenden — alle Schätzungen werden überflüssig
+  // Cash IMMER schätzen — auch für eigenen User. Realwert separat zur Validierung.
   const cashEstimate =
-    inp.realCash !== undefined
-      ? inp.realCash
-      : inp.initialBudget -
-        totalBought +
-        totalSold +
-        totalBonus +
-        estimatedLoginBonus +
-        achievementBonusFinal;
+    inp.initialBudget -
+    totalBought +
+    totalSold +
+    totalBonus +
+    estimatedLoginBonus +
+    achievementBonusFinal;
+  const cashEstimateError =
+    inp.realCashFromApi !== undefined
+      ? inp.realCashFromApi - cashEstimate
+      : undefined;
 
   const squadPlayers = inp.squad?.it ?? [];
   const teamValue = squadPlayers.reduce((s, p) => s + (p.mv ?? 0), 0);
@@ -334,7 +338,8 @@ export function computeManagerStats(inp: ComputeManagerInput): ManagerComputedSt
       total: a.total,
     })),
     cashEstimate,
-    cashIsReal: inp.realCash !== undefined,
+    realCashFromApi: inp.realCashFromApi,
+    cashEstimateError,
     transferBalance: totalSold - totalBought,
     transferCount: transfers.length,
     teamValue,
