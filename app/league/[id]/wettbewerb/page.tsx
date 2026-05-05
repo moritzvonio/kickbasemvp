@@ -806,6 +806,50 @@ function CashDebugPanel({
         </div>
       </div>
 
+      {/* Hypothesen-Rechner: Was MÜSSTEN die Werte sein um real zu treffen? */}
+      {Math.abs(diff) > 1_000_000 && (
+        <div className="mt-3 pt-3 border-t border-rose-200">
+          <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-2">
+            🔍 Hypothesen-Rechner — Was schließt die {formatEUR(diff, { compact: true })}-Lücke?
+          </div>
+          <div className="grid sm:grid-cols-3 gap-2 text-[11px] tabular">
+            <HypothesisCard
+              title="A: Initial-Budget"
+              currentValue={budget}
+              targetValue={budget + diff}
+              unit="€"
+              hint="wenn bs > 1 oder Premium-Liga"
+            />
+            <HypothesisCard
+              title="B: Login pro Tag"
+              currentValue={100_000}
+              targetValue={100_000 + diff / Math.max(stats.daysActive, 1)}
+              unit="€/Tag"
+              hint={`bei ${stats.daysActive} Tagen`}
+            />
+            <HypothesisCard
+              title="C: Achievements"
+              currentValue={
+                stats.realAchievementBonus !== undefined
+                  ? stats.realAchievementBonus
+                  : stats.estimatedMatchdayBonus + stats.estimatedHandBonus
+              }
+              targetValue={
+                (stats.realAchievementBonus !== undefined
+                  ? stats.realAchievementBonus
+                  : stats.estimatedMatchdayBonus + stats.estimatedHandBonus) + diff
+              }
+              unit="€"
+              hint="falls API er-Werte zu niedrig liefert"
+            />
+          </div>
+          <p className="text-[10px] text-muted-foreground mt-2">
+            ☝️ Welche der drei Werte stimmt mit deinen Erwartungen am ehesten überein?
+            Das ist die wahrscheinliche Ursache.
+          </p>
+        </div>
+      )}
+
       {/* Achievement-Detail wenn vorhanden */}
       {stats.achievementBreakdown && stats.achievementBreakdown.length > 0 && (
         <details className="mt-3 text-[11px]" open={absDiff >= 5_000_000}>
@@ -857,6 +901,42 @@ function CashDebugPanel({
         Cards systemisch haben. Erst wenn diese Diff &lt; 1 Mio sind die anderen Werte
         glaubwürdig.
       </p>
+    </div>
+  );
+}
+
+function HypothesisCard({
+  title,
+  currentValue,
+  targetValue,
+  unit,
+  hint,
+}: {
+  title: string;
+  currentValue: number;
+  targetValue: number;
+  unit: string;
+  hint: string;
+}) {
+  const fmt = (v: number) => {
+    if (unit === "€") return formatEUR(v, { compact: true });
+    if (unit === "€/Tag") return `${Math.round(v / 1000)}k €/Tag`;
+    return String(v);
+  };
+  return (
+    <div className="rounded-md bg-white/70 ring-1 ring-border p-2">
+      <div className="text-[10px] font-semibold text-muted-foreground mb-0.5">
+        {title}
+      </div>
+      <div className="flex items-baseline justify-between gap-1">
+        <span className="text-muted-foreground line-through text-[10px]">
+          {fmt(currentValue)}
+        </span>
+        <span className="text-base font-mono font-bold text-rose-700">
+          {fmt(targetValue)}
+        </span>
+      </div>
+      <div className="text-[9px] text-muted-foreground mt-0.5">{hint}</div>
     </div>
   );
 }
