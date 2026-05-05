@@ -10,7 +10,6 @@ import { formatEUR, formatDelta, cn } from "@/lib/utils";
 import {
   computeManagerStats,
   detectInitialBudget,
-  calibrateDailyExtra,
   SELL_TO_BANK_FACTOR,
   type ManagerComputedStats,
 } from "@/lib/competitor";
@@ -30,6 +29,7 @@ import {
   LineChart as LineChartIcon,
 } from "lucide-react";
 import { TeamValueChart, type TVChartPoint } from "./TeamValueChart";
+import { ActivityTypeDebug } from "./activity-debug";
 
 export const metadata: Metadata = { title: "Wettbewerb" };
 export const dynamic = "force-dynamic";
@@ -125,37 +125,8 @@ export default async function WettbewerbPage({
     )
   );
 
-  // PASS 1: Eigene Draft-Stats (Default-Werte) → daraus dailyExtraPerDay kalibrieren
-  const meDataIdx = memberData.findIndex((d) => d.manager.i === session.userId);
-  const meData = meDataIdx >= 0 ? memberData[meDataIdx] : null;
   const meRealCash = myRealBudget?.b !== undefined ? myRealBudget.b : undefined;
 
-  let dailyExtraPerDay: number | undefined;
-  if (meData && meRealCash !== undefined && ownAchievements) {
-    const draft = computeManagerStats({
-      userId: meData.manager.i,
-      name: meData.manager.n,
-      image: meData.manager.uim,
-      initialBudget,
-      transfers: meData.transfers,
-      squad: meData.squad,
-      activities: allActivities,
-      rankingEntry: meData.manager,
-      perMatchdayRankings,
-      achievements: ownAchievements,
-    });
-    dailyExtraPerDay = calibrateDailyExtra({
-      realCash: meRealCash,
-      initialBudget,
-      totalBought: draft.totalBought,
-      totalSold: draft.totalSold,
-      totalBonus: draft.totalBonus,
-      realAchievementBonus: ownAchievements.total,
-      daysActive: draft.daysActive,
-    });
-  }
-
-  // PASS 2: Alle Stats mit dailyExtraPerDay neu berechnen
   const stats: ManagerComputedStats[] = memberData.map((d) => {
     const isMe = d.manager.i === session.userId;
     return computeManagerStats({
@@ -170,7 +141,6 @@ export default async function WettbewerbPage({
       perMatchdayRankings,
       achievements: isMe ? ownAchievements : undefined,
       realCashFromApi: isMe ? meRealCash : undefined,
-      dailyExtraPerDay,
     });
   });
 
@@ -285,6 +255,21 @@ export default async function WettbewerbPage({
         </div>
       </section>
 
+      {/* Activity-Type Debug — zeigt was wirklich im Feed steht */}
+      <Card className="bg-amber-50/30 border-amber-200 slide-up slide-up-2">
+        <CardContent className="p-4">
+          <div className="flex items-center gap-2 text-foreground font-semibold text-sm mb-1">
+            🔬 Activity-Feed-Inspektor
+          </div>
+          <p className="text-xs text-muted-foreground mb-2">
+            Alle paginierten Aktivitäten ({allActivities.length} Events) gruppiert nach{" "}
+            <code className="font-mono">t</code>-Code mit allen numerischen Feldern.
+            Hilft Bonus-Kategorien zu finden die wir aktuell verpassen.
+          </p>
+          <ActivityTypeDebug activities={allActivities} />
+        </CardContent>
+      </Card>
+
       {/* Methodik-Hinweis */}
       <Card className="bg-primary/[0.04] border-primary/20 slide-up slide-up-2">
         <CardContent className="p-4 text-xs text-muted-foreground space-y-2.5">
@@ -297,18 +282,6 @@ export default async function WettbewerbPage({
             <span className="font-mono text-foreground">{formatEUR(initialBudget, { compact: true })}</span>{" "}
             (aus Liga-Setting). Cash = Initial − Käufe + Verkäufe + alle Boni.
           </div>
-          {dailyExtraPerDay !== undefined && dailyExtraPerDay > 0 && (
-            <div className="rounded-md bg-emerald-50/50 border border-emerald-200 p-2">
-              <span className="font-medium text-emerald-800">🔧 Self-Calibration aktiv</span>:{" "}
-              Aus deinem echten Cash kalibrierter <strong>"unbekannter täglicher Bonus"</strong>:{" "}
-              <span className="font-mono font-bold">
-                {Math.round(dailyExtraPerDay / 1000)}k €/Tag
-              </span>{" "}
-              (zusätzlich zu Login 100k). Das deckt Boni ab die wir nicht namentlich kennen
-              (z.B. Performance-Bonus, Streak-Bonus, höhere Tiers etc.). Wert wird auf alle
-              anderen Manager additiv angewendet — Annahme: skaliert pro Liga gleich.
-            </div>
-          )}
           <div className="grid sm:grid-cols-2 gap-x-4 gap-y-1.5">
             <div>
               <span className="font-medium text-foreground">📊 Exakt aus Kickbase:</span>

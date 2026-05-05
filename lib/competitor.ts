@@ -79,38 +79,29 @@ export const BONUS_RULES = {
 };
 
 /**
- * Self-Calibration: Aus dem echten Cash des eigenen Users den effektiven
- * "unbekannten täglichen Bonus" zurückrechnen.
- *
- * Wir KENNEN: Initial, Käufe, Verkäufe, Bonus-Feed, Login (100k×days), Achievements
- * Was wir NICHT kennen: irgendeine Summe X die Kickbase zusätzlich auszahlt
- *
- * X_pro_Tag = (real_cash - initial + buys - sells - bonusFeed - login_default - achievements) / days
- *
- * Wir wenden X_pro_Tag dann auf alle anderen Manager an (skalierte Annäherung).
+ * Diagnose-Helper: Zeigt was uns NUMERISCH fehlt — keine Auto-Korrektur.
+ * Für eigenen User berechenbar, weil wir realCash kennen.
  */
-export function calibrateDailyExtra(opts: {
+export function diagnoseMissingBonus(opts: {
   realCash: number;
   initialBudget: number;
   totalBought: number;
   totalSold: number;
   totalBonus: number;
+  estimatedLoginBonus: number;
   realAchievementBonus: number;
   daysActive: number;
-}): number {
-  if (opts.daysActive <= 0) return 0;
-  const knownLogin = opts.daysActive * BONUS_RULES.LOGIN_PER_DAY;
-  const inferred =
-    (opts.realCash -
-      opts.initialBudget +
-      opts.totalBought -
-      opts.totalSold -
-      opts.totalBonus -
-      knownLogin -
-      opts.realAchievementBonus) /
-    opts.daysActive;
-  // Clamp to non-negative (kann auch ~0 sein wenn Pipeline genau ist)
-  return Math.max(0, Math.round(inferred / 1000) * 1000);
+}): { totalMissing: number; perDay: number } {
+  const accountedFor =
+    opts.initialBudget -
+    opts.totalBought +
+    opts.totalSold +
+    opts.totalBonus +
+    opts.estimatedLoginBonus +
+    opts.realAchievementBonus;
+  const totalMissing = opts.realCash - accountedFor;
+  const perDay = opts.daysActive > 0 ? totalMissing / opts.daysActive : 0;
+  return { totalMissing, perDay };
 }
 
 /** Berechne Spieltagspunkte-Bonus kumulativ aus Team-Punkten am Spieltag */
@@ -203,8 +194,6 @@ export interface ManagerComputedStats {
   estimatedHandBonus: number;
   /** Pro-Spieler Hand-Bonus-Breakdown */
   handBonusBreakdown: Array<{ pid: string; pn: string; profit: number; tier: string; payout: number }>;
-  /** "Unbekannter täglicher Bonus" aus Self-Calibration (für alle Manager additiv) */
-  calibratedDailyExtraBonus: number;
   /** Σ realer Achievement-Bonus (nur für eigenen User; aus /user/achievements) */
   realAchievementBonus?: number;
   /** Achievement-Breakdown (nur für eigenen User) */
@@ -264,8 +253,6 @@ export interface ComputeManagerInput {
   };
   /** Echter Cash aus /me/budget (NUR Vergleichsreferenz, kein Override) */
   realCashFromApi?: number;
-  /** Calibrated daily extra bonus (zusätzlich zu Login 100k) — aus self-calibration */
-  dailyExtraPerDay?: number;
 }
 
 export function computeManagerStats(inp: ComputeManagerInput): ManagerComputedStats {
@@ -305,9 +292,6 @@ export function computeManagerStats(inp: ComputeManagerInput): ManagerComputedSt
       ? Math.floor((now - earliestTxMs) / 86_400_000)
       : 0;
   const estimatedLoginBonus = daysActive * BONUS_RULES.LOGIN_PER_DAY;
-  // Plus optional calibrated daily extra (deckt unbekannte tägliche Boni ab)
-  const dailyExtra = inp.dailyExtraPerDay ?? 0;
-  const calibratedDailyExtraBonus = daysActive * dailyExtra;
 
   // Matchday-Bonus aus per-matchday Rankings (Spieltagssieger + Team-Punkte-Tiers)
   let estimatedMatchdayBonus = 0;
@@ -340,7 +324,6 @@ export function computeManagerStats(inp: ComputeManagerInput): ManagerComputedSt
     totalSold +
     totalBonus +
     estimatedLoginBonus +
-    calibratedDailyExtraBonus +
     achievementBonusFinal;
   const cashEstimateError =
     inp.realCashFromApi !== undefined
@@ -371,7 +354,6 @@ export function computeManagerStats(inp: ComputeManagerInput): ManagerComputedSt
     estimatedMatchdayBonus,
     estimatedHandBonus,
     handBonusBreakdown: handResult.perPlayer,
-    calibratedDailyExtraBonus,
     realAchievementBonus,
     achievementBreakdown: inp.achievements?.items.map((a) => ({
       t: a.t,
