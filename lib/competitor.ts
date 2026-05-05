@@ -87,6 +87,66 @@ export function teamPointsBonus(mdp: number): number {
   return bonus;
 }
 
+/**
+ * Berechne Hand-Bonus aus Transfer-History.
+ * Für jeden Spieler: Σ Verkäufe − Σ Käufe = realisierter Profit.
+ * Wenn ≥ 3M: Bronze, ≥ 5M: + Silber, ≥ 10M: + Gold, ≥ 25M: + König (alle Tiers kumulieren).
+ *
+ * Nur wenn der Spieler MINDESTENS 1× verkauft wurde (sonst kein realized profit).
+ */
+export function computeHandBonus(transfers: KbManagerTransfer[]): {
+  bonus: number;
+  perPlayer: Array<{ pid: string; pn: string; profit: number; tier: string; payout: number }>;
+} {
+  const byPid = new Map<
+    string,
+    { pn: string; buys: number; sells: number; sellCount: number }
+  >();
+  for (const t of transfers) {
+    if (!t.pi) continue;
+    const cur = byPid.get(t.pi) ?? { pn: t.pn, buys: 0, sells: 0, sellCount: 0 };
+    if (t.tty === 1) cur.buys += t.trp ?? 0;
+    else if (t.tty === 2) {
+      cur.sells += t.trp ?? 0;
+      cur.sellCount += 1;
+    }
+    if (!cur.pn && t.pn) cur.pn = t.pn;
+    byPid.set(t.pi, cur);
+  }
+
+  let bonus = 0;
+  const perPlayer: Array<{ pid: string; pn: string; profit: number; tier: string; payout: number }> = [];
+
+  for (const [pid, e] of byPid) {
+    if (e.sellCount === 0) continue;
+    const profit = e.sells - e.buys;
+    if (profit < BONUS_RULES.HAND_BRONZE_THRESHOLD) continue;
+    let payout = 0;
+    let tier = "";
+    if (profit >= BONUS_RULES.HAND_BRONZE_THRESHOLD) {
+      payout += BONUS_RULES.HAND_BRONZE;
+      tier = "Bronze";
+    }
+    if (profit >= BONUS_RULES.HAND_SILVER_THRESHOLD) {
+      payout += BONUS_RULES.HAND_SILVER;
+      tier = "Silber";
+    }
+    if (profit >= BONUS_RULES.HAND_GOLD_THRESHOLD) {
+      payout += BONUS_RULES.HAND_GOLD;
+      tier = "Gold";
+    }
+    if (profit >= BONUS_RULES.HAND_KOENIG_THRESHOLD) {
+      payout += BONUS_RULES.HAND_KOENIG;
+      tier = "König";
+    }
+    bonus += payout;
+    perPlayer.push({ pid, pn: e.pn || pid, profit, tier, payout });
+  }
+
+  perPlayer.sort((a, b) => b.payout - a.payout);
+  return { bonus, perPlayer };
+}
+
 export interface ManagerComputedStats {
   userId: string;
   name: string;
@@ -104,6 +164,10 @@ export interface ManagerComputedStats {
   daysActive: number;
   /** Σ geschätzte Spieltagsboni aus Ranking-History (Spieltagssieger + Punkte-Tiers) */
   estimatedMatchdayBonus: number;
+  /** Σ Hand-Bonus aus Transfer-History (Bronze/Silber/Gold/König) */
+  estimatedHandBonus: number;
+  /** Pro-Spieler Hand-Bonus-Breakdown */
+  handBonusBreakdown: Array<{ pid: string; pn: string; profit: number; tier: string; payout: number }>;
   /** Σ realer Achievement-Bonus (nur für eigenen User; aus /user/achievements) */
   realAchievementBonus?: number;
   /** Achievement-Breakdown (nur für eigenen User) */
@@ -213,11 +277,17 @@ export function computeManagerStats(inp: ComputeManagerInput): ManagerComputedSt
     }
   }
 
+  // Hand-Bonus aus Transfer-History (für alle Manager berechenbar)
+  const handResult = computeHandBonus(transfers);
+  const estimatedHandBonus = handResult.bonus;
+
   // Wenn echte Achievement-Daten verfügbar (eigener User) → diese statt
-  // estimatedMatchdayBonus verwenden (sind genauer + enthalten Einzelspieler/MVP/Hand)
+  // estimatedMatchdayBonus + Hand verwenden (sind genauer + enthalten alles)
   const realAchievementBonus = inp.achievements?.total;
   const achievementBonusFinal =
-    realAchievementBonus !== undefined ? realAchievementBonus : estimatedMatchdayBonus;
+    realAchievementBonus !== undefined
+      ? realAchievementBonus
+      : estimatedMatchdayBonus + estimatedHandBonus;
 
   // Wenn realCash verfügbar (eigener User), den ECHTEN Wert aus /me/budget
   // verwenden — alle Schätzungen werden überflüssig
@@ -253,6 +323,8 @@ export function computeManagerStats(inp: ComputeManagerInput): ManagerComputedSt
     estimatedLoginBonus,
     daysActive,
     estimatedMatchdayBonus,
+    estimatedHandBonus,
+    handBonusBreakdown: handResult.perPlayer,
     realAchievementBonus,
     achievementBreakdown: inp.achievements?.items.map((a) => ({
       t: a.t,

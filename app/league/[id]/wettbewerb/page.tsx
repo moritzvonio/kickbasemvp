@@ -603,11 +603,18 @@ function ManagerCard({
                 + {formatEUR(stats.realAchievementBonus, { compact: true })} Erfolge
               </span>
             ) : (
-              stats.estimatedMatchdayBonus > 0 && (
-                <span className="text-violet-600">
-                  + ~{formatEUR(stats.estimatedMatchdayBonus, { compact: true })} Spieltag (gesch.)
-                </span>
-              )
+              <>
+                {stats.estimatedMatchdayBonus > 0 && (
+                  <span className="text-violet-600">
+                    + ~{formatEUR(stats.estimatedMatchdayBonus, { compact: true })} Spieltag
+                  </span>
+                )}
+                {stats.estimatedHandBonus > 0 && (
+                  <span className="text-fuchsia-600">
+                    + {formatEUR(stats.estimatedHandBonus, { compact: true })} Hand
+                  </span>
+                )}
+              </>
             )}
             {stats.cashUncertain && (
               <Badge variant="muted" className="text-[9px]">
@@ -615,6 +622,34 @@ function ManagerCard({
               </Badge>
             )}
           </div>
+          {/* Hand-Bonus-Breakdown — für alle Manager berechenbar */}
+          {stats.handBonusBreakdown.length > 0 && !stats.realAchievementBonus && (
+            <details className="mt-2 text-[10px]">
+              <summary className="cursor-pointer text-muted-foreground hover:text-foreground tabular">
+                Hand-Bonus-Trades ({stats.handBonusBreakdown.length})
+              </summary>
+              <div className="mt-1.5 grid sm:grid-cols-2 gap-x-3 gap-y-0.5 pl-2">
+                {stats.handBonusBreakdown.slice(0, 12).map((h) => (
+                  <div
+                    key={h.pid}
+                    className="flex items-center justify-between text-[10px] text-muted-foreground tabular"
+                  >
+                    <span className="truncate">
+                      <span className="text-fuchsia-700 font-bold mr-1">{h.tier}</span>
+                      {h.pn}
+                      <span className="text-foreground/60 ml-1">
+                        +{formatEUR(h.profit, { compact: true })}
+                      </span>
+                    </span>
+                    <span className="font-mono text-fuchsia-700 font-semibold">
+                      {formatEUR(h.payout, { compact: true })}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </details>
+          )}
+
           {/* Achievement-Breakdown — nur für eigenen User */}
           {stats.achievementBreakdown && stats.achievementBreakdown.length > 0 && (
             <details className="mt-2 text-[10px]">
