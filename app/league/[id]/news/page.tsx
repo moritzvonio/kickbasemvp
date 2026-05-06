@@ -80,6 +80,7 @@ export default async function LeagueNewsPage({
         initialItems={items}
         myPlayerIds={myPlayerIds}
         playerNameMap={playerNameMap}
+        leagueId={leagueId}
       />
     </div>
   );

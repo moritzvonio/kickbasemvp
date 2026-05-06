@@ -10,12 +10,15 @@ export function NewsCard({
   item,
   playerNameMap,
   highlightPlayerIds,
+  leagueId,
 }: {
   item: TaggedNewsItem;
   /** playerId → Display-Name */
   playerNameMap?: Record<string, string>;
   /** Spieler aus dem eigenen Squad — werden farblich hervorgehoben */
   highlightPlayerIds?: Set<string>;
+  /** Wenn gesetzt → Player-Tags werden Links zur Spieler-Detail-Page (mit #news-Anchor) */
+  leagueId?: string;
 }) {
   const taggedPlayers = item.playerIds
     .map((id) => ({ id, name: playerNameMap?.[id] ?? id }))
@@ -66,16 +69,28 @@ export function NewsCard({
             <div className="flex flex-wrap gap-1 mt-1.5">
               {taggedPlayers.slice(0, 4).map((p) => {
                 const isMine = highlightPlayerIds?.has(p.id);
+                const className = cn(
+                  "rounded-md px-1.5 py-0.5 text-[10px] font-medium ring-1 ring-inset transition-colors",
+                  isMine
+                    ? "bg-emerald-100 text-emerald-900 ring-emerald-300/60"
+                    : "bg-muted text-foreground/80 ring-border",
+                  leagueId && "hover:ring-primary/50 hover:bg-accent cursor-pointer"
+                );
+                if (leagueId) {
+                  return (
+                    <Link
+                      key={p.id}
+                      href={`/league/${leagueId}/spieler/${p.id}#news`}
+                      className={className}
+                      onClick={(e) => e.stopPropagation()}
+                      title={`${p.name} — alle News + Spieler-Detail öffnen`}
+                    >
+                      {p.name}
+                    </Link>
+                  );
+                }
                 return (
-                  <span
-                    key={p.id}
-                    className={cn(
-                      "rounded-md px-1.5 py-0.5 text-[10px] font-medium ring-1 ring-inset",
-                      isMine
-                        ? "bg-emerald-100 text-emerald-900 ring-emerald-300/60"
-                        : "bg-muted text-foreground/80 ring-border"
-                    )}
-                  >
+                  <span key={p.id} className={className}>
                     {p.name}
                   </span>
                 );

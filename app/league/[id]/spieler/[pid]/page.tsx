@@ -354,7 +354,11 @@ export default async function PlayerPage({
       </Card>
 
       {/* News-Sektion zu diesem Spieler */}
-      <PlayerNewsSection playerId={playerId} playerName={player.n ?? "Spieler"} />
+      <PlayerNewsSection
+        playerId={playerId}
+        playerName={player.n ?? "Spieler"}
+        leagueId={leagueId}
+      />
     </div>
   );
 }
@@ -362,9 +366,11 @@ export default async function PlayerPage({
 async function PlayerNewsSection({
   playerId,
   playerName,
+  leagueId,
 }: {
   playerId: string;
   playerName: string;
+  leagueId: string;
 }) {
   const [news, idx] = await Promise.all([
     getRecentNewsForPlayer(playerId, { limit: 8 }),
@@ -391,6 +397,7 @@ async function PlayerNewsSection({
             key={item.externalId}
             item={item}
             playerNameMap={playerNameMap}
+            leagueId={leagueId}
           />
         ))}
       </CardContent>

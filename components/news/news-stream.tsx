@@ -20,12 +20,15 @@ export function NewsStream({
   myClubSlug,
   playerNameMap,
   showFilters = true,
+  leagueId,
 }: {
   initialItems: TaggedNewsItem[];
   myPlayerIds?: string[];
   myClubSlug?: string;
   playerNameMap?: Record<string, string>;
   showFilters?: boolean;
+  /** Wenn gesetzt: Player-Tags in Cards verlinken zur Spieler-Detail-Page */
+  leagueId?: string;
 }) {
   const [filter, setFilter] = useState<NewsFilter>("all");
   const myPlayerSet = useMemo(
@@ -106,6 +109,7 @@ export function NewsStream({
             item={item}
             playerNameMap={playerNameMap}
             highlightPlayerIds={myPlayerSet}
+            leagueId={leagueId}
           />
         ))
       )}
