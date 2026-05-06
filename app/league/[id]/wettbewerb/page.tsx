@@ -248,11 +248,23 @@ export default async function WettbewerbPage({
             );
           })}
         </div>
-        <div className="grid gap-3">
-          {sortedOthers.map((s) => (
-            <ManagerCard key={s.userId} stats={s} budget={initialBudget} />
-          ))}
-        </div>
+        {/* Große Vergleichs-Tabelle (alle Manager, alle Stats nebeneinander) */}
+        <CompareTable
+          stats={[me, ...sortedOthers].filter(Boolean) as ManagerComputedStats[]}
+          myUserId={session.userId}
+        />
+
+        {/* Detail-Cards (klassische Card-Ansicht für Drill-Down) */}
+        <details className="mt-6">
+          <summary className="cursor-pointer text-xs uppercase tracking-wider text-muted-foreground font-semibold hover:text-foreground py-2">
+            Detail-Karten anzeigen ({sortedOthers.length} Manager)
+          </summary>
+          <div className="grid gap-3 mt-3">
+            {sortedOthers.map((s) => (
+              <ManagerCard key={s.userId} stats={s} budget={initialBudget} />
+            ))}
+          </div>
+        </details>
       </section>
 
       {/* Activity-Type Debug — zeigt was wirklich im Feed steht */}
@@ -322,12 +334,10 @@ function buildTeamValueChartData(opts: {
 }): { data: TVChartPoint[]; managers: { id: string; name: string }[] } {
   if (opts.matchdaysToFetch.length < 2) return { data: [], managers: [] };
 
-  // Cap on chart resolution — show only last 15 days for legibility
-  const total = opts.matchdaysToFetch.length;
-  const cap = 15;
-  const startIdx = Math.max(0, total - cap);
-  const days = opts.matchdaysToFetch.slice(startIdx);
-  const rankings = opts.perMatchdayRankings.slice(startIdx);
+  // Chart zeigt vollen Saisonverlauf (kein Cap mehr — User sieht von MD 1
+  // bis aktuell). Recharts handled X-Achse-Spacing automatisch.
+  const days = opts.matchdaysToFetch.slice();
+  const rankings = opts.perMatchdayRankings.slice();
 
   // matchday → latest bonus date (für Transfer-Cutoff)
   const matchdayEndDate = new Map<number, number>();
@@ -1019,5 +1029,134 @@ function Stat({
       <div className="font-mono font-semibold tabular text-sm">{value}</div>
       {sub && <div className="text-[10px] text-muted-foreground tabular mt-0.5">{sub}</div>}
     </div>
+  );
+}
+
+/**
+ * Große tabellarische Übersicht aller Manager mit allen wichtigen Stats
+ * nebeneinander. Eigener User wird hervorgehoben.
+ */
+function CompareTable({
+  stats,
+  myUserId,
+}: {
+  stats: ManagerComputedStats[];
+  myUserId: string;
+}) {
+  return (
+    <Card className="overflow-hidden mb-6">
+      <div className="overflow-x-auto">
+        <table className="w-full text-xs tabular">
+          <thead>
+            <tr className="border-b border-border bg-muted/40">
+              <th className="text-left pl-4 py-2.5 font-semibold w-10">#</th>
+              <th className="text-left py-2.5 font-semibold min-w-[140px]">
+                Manager
+              </th>
+              <th className="text-right py-2.5 font-semibold">Punkte</th>
+              <th className="text-right py-2.5 font-semibold">Spieltag</th>
+              <th className="text-right py-2.5 font-semibold">Teamwert</th>
+              <th className="text-right py-2.5 font-semibold">Cash</th>
+              <th className="text-right py-2.5 font-semibold bg-primary/[0.04]">
+                Netto-TW
+              </th>
+              <th className="text-right py-2.5 font-semibold">Max-Gebot</th>
+              <th className="text-right py-2.5 font-semibold">Δ Transfer</th>
+              <th className="text-right pr-4 py-2.5 font-semibold">24 h</th>
+            </tr>
+          </thead>
+          <tbody>
+            {stats.map((s, i) => {
+              const isMe = s.userId === myUserId;
+              return (
+                <tr
+                  key={s.userId}
+                  className={cn(
+                    "border-b border-border/40 last:border-0",
+                    isMe && "bg-primary/[0.06] font-medium"
+                  )}
+                >
+                  <td className="pl-4 py-2.5 text-muted-foreground">
+                    {i + 1}
+                  </td>
+                  <td className="py-2.5">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <UserAvatar name={s.name} image={s.image} size="xs" />
+                      <span className={cn("truncate", isMe && "font-semibold")}>
+                        {s.name}
+                      </span>
+                      {isMe && (
+                        <span className="inline-flex items-center px-1 py-0 rounded text-[9px] font-bold bg-primary text-primary-foreground">
+                          Du
+                        </span>
+                      )}
+                    </div>
+                  </td>
+                  <td className="text-right py-2.5 font-mono font-semibold">
+                    {s.seasonPoints?.toLocaleString("de-DE") ?? "—"}
+                  </td>
+                  <td className="text-right py-2.5 font-mono text-emerald-700">
+                    {s.estimatedMatchdayBonus
+                      ? `+${(s.estimatedMatchdayBonus / 1_000_000).toFixed(1).replace(".", ",")}M`
+                      : "—"}
+                  </td>
+                  <td className="text-right py-2.5 font-mono">
+                    {formatEUR(s.teamValue, { compact: true })}
+                  </td>
+                  <td
+                    className={cn(
+                      "text-right py-2.5 font-mono",
+                      s.cashEstimate < 0 ? "text-rose-600" : "text-foreground"
+                    )}
+                  >
+                    {formatEUR(s.cashEstimate, { compact: true })}
+                  </td>
+                  <td className="text-right py-2.5 font-mono font-semibold bg-primary/[0.04]">
+                    {formatEUR(s.netTeamValue, { compact: true })}
+                  </td>
+                  <td className="text-right py-2.5 font-mono text-muted-foreground">
+                    {formatEUR(s.maxBidSingleSell, { compact: true })}
+                  </td>
+                  <td
+                    className={cn(
+                      "text-right py-2.5 font-mono",
+                      s.transferBalance > 0
+                        ? "text-emerald-600"
+                        : s.transferBalance < 0
+                        ? "text-rose-600"
+                        : "text-muted-foreground"
+                    )}
+                  >
+                    {s.transferBalance === 0
+                      ? "—"
+                      : (s.transferBalance > 0 ? "+" : "") +
+                        formatEUR(s.transferBalance, { compact: true })}
+                  </td>
+                  <td
+                    className={cn(
+                      "text-right pr-4 py-2.5 font-mono",
+                      s.dayGain > 0
+                        ? "text-emerald-600"
+                        : s.dayGain < 0
+                        ? "text-rose-600"
+                        : "text-muted-foreground"
+                    )}
+                  >
+                    {s.dayGain === 0
+                      ? "—"
+                      : (s.dayGain > 0 ? "+" : "") +
+                        formatEUR(s.dayGain, { compact: true })}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+      <p className="text-[10px] text-muted-foreground px-4 py-2 border-t border-border bg-muted/30">
+        Sortierung folgt deiner Tab-Auswahl oben · Netto-TW = Teamwert + Cash
+        (Gesamt-Vermögen) · Max-Gebot = Cash + 67 % vom teuersten Squad-Spieler
+      </p>
+    </Card>
   );
 }

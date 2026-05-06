@@ -11,6 +11,9 @@ import { PositionBadge } from "@/components/ui/position-icon";
 import { EmptyState } from "@/components/ui/empty-state";
 import { BatteryBar } from "@/components/ui/point-bar";
 import { formatEUR, formatDelta, cn } from "@/lib/utils";
+import { analyzeBidPattern } from "@/lib/bid-analyzer";
+import { BidAdvisor, type ManagerPattern } from "./BidAdvisor";
+import type { KbRankingUser, KbManagerTransfer } from "@/lib/kickbase/types";
 import {
   ArrowUp,
   ArrowDown,
@@ -38,11 +41,41 @@ export default async function TradingPage({
   const path = `/league/${leagueId}/trading`;
   const session = await requireSessionOrRedirect(path);
 
-  const [squad, market, budget] = await Promise.all([
+  const [squad, market, budget, ranking] = await Promise.all([
     withKbAuth(path, () => kb.squad(session.token, leagueId)).catch(() => ({ it: [] } as Awaited<ReturnType<typeof kb.squad>>)),
     withKbAuth(path, () => kb.market(session.token, leagueId)).catch(() => ({ it: [] } as Awaited<ReturnType<typeof kb.market>>)),
     withKbAuth(path, () => kb.myBudget(session.token, leagueId)).catch(() => null),
+    withKbAuth(path, () => kb.ranking(session.token, leagueId)).catch(
+      () => ({}) as Awaited<ReturnType<typeof kb.ranking>>
+    ),
   ]);
+
+  // Bid-Pattern-Analyse: Transfer-History aller Liga-Mitglieder (außer User)
+  // parallel fetchen, jeden auf Bid-Pattern analysieren
+  const allMembers = (ranking.us ?? ranking.it ?? []) as KbRankingUser[];
+  const competitors = allMembers.filter((m) => m.i !== session.userId);
+  const transferLists = await Promise.all(
+    competitors.map(async (m) => {
+      try {
+        const transfers = await kb.managerTransferAll(
+          session.token,
+          leagueId,
+          m.i
+        );
+        return { user: m, transfers };
+      } catch {
+        return { user: m, transfers: [] as KbManagerTransfer[] };
+      }
+    })
+  );
+  const managerPatterns: ManagerPattern[] = transferLists
+    .map(({ user, transfers }) => ({
+      userId: user.i,
+      name: user.n,
+      image: user.uim,
+      pattern: analyzeBidPattern(transfers),
+    }))
+    .filter((p) => p.pattern.buyCount >= 1);
 
   const players = squad.it ?? [];
   const teamValue = players.reduce((s, p) => s + (p.mv ?? 0), 0);
@@ -112,6 +145,13 @@ export default async function TradingPage({
           accent="warning"
         />
       </section>
+
+      {/* Bid-Advisor: Konkurrenten-Bietverhalten + Empfehlung */}
+      {managerPatterns.length > 0 && (
+        <section className="slide-up slide-up-2">
+          <BidAdvisor managerPatterns={managerPatterns} />
+        </section>
+      )}
 
       {/* My Squad — Movers (gainers + losers) side by side */}
       <section className="grid gap-4 lg:grid-cols-2 slide-up slide-up-2">
