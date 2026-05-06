@@ -32,8 +32,9 @@ export const CLUB_RSS_FEEDS: Array<{
   /** Bevorzugt: offizieller Vereins-RSS. Fallback: Google News Aggregator */
   rssUrl: string;
 }> = [
-  // VERIFIZIERT: offizielle RSSs die aktuell funktionieren
-  { slug: "fcb", name: "FC Bayern München", rssUrl: "https://fcbayern.com/de/news/rss" },
+  // FC Bayern offizielles RSS ist zu langsam (10s+ Timeout) → Google News
+  { slug: "fcb", name: "FC Bayern München", rssUrl: gnews("Bayern München Bundesliga") },
+  // Eintracht Frankfurt: offizieller RSS funktioniert
   { slug: "sge", name: "Eintracht Frankfurt", rssUrl: "https://www.eintracht.de/aktuell/?type=2" },
   // Alle anderen via Google News (offizielle RSSs zu instabil)
   { slug: "bvb", name: "Borussia Dortmund", rssUrl: gnews("Borussia Dortmund Bundesliga") },
@@ -67,7 +68,8 @@ export function makeClubRssSource(cfg: {
     clubSlug: cfg.slug,
     intervalMinutes: 30,
     async fetch() {
-      return fetchRssFeed(cfg.rssUrl, sourceId, { maxItems: 25 });
+      // Limit auf 10 — bei 26 Sources × 10 = 260 max items, passt in 60s
+      return fetchRssFeed(cfg.rssUrl, sourceId, { maxItems: 10 });
     },
   };
 }

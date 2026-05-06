@@ -55,13 +55,32 @@ export async function tagItem(
     if (text.includes(fullname)) found.add(playerId);
   }
 
-  // 2) Surname-Match — nur eindeutige Nachnamen mit ≥ 5 Zeichen
+  // 2) Surname-Match — eindeutige Nachnamen mit ≥ 4 Zeichen
+  // Bei mehrdeutigen Nachnamen: nur taggen wenn Vereins-Name auch im Text
+  // (verhindert false positives: "Müller" beim FCB-Artikel = Thomas, beim
+  // Eintracht-Artikel = anderer Müller).
   for (const [surname, playerIds] of Object.entries(idx.bySurname)) {
-    if (surname.length < 5) continue;
-    if (playerIds.length > 1) continue; // mehrdeutige Namen skippen
-    if (found.has(playerIds[0])) continue; // schon via Full-Name gefunden
+    if (surname.length < 4) continue;
+    if (playerIds.length === 0) continue;
     const re = new RegExp(`\\b${escapeRegex(surname)}\\b`, "i");
-    if (re.test(text)) found.add(playerIds[0]);
+    if (!re.test(text)) continue;
+    if (playerIds.length === 1) {
+      if (!found.has(playerIds[0])) found.add(playerIds[0]);
+      continue;
+    }
+    // Mehrdeutig: filter auf Spieler dessen Verein im Text genannt wird
+    for (const pid of playerIds) {
+      if (found.has(pid)) continue;
+      const meta = idx.byPlayerId[pid];
+      if (!meta) continue;
+      if (
+        meta.clubSlug &&
+        text.includes(meta.clubSlug.toLowerCase())
+      ) {
+        found.add(pid);
+        break; // höchstens 1 Spieler pro mehrdeutigem Nachnamen
+      }
+    }
   }
 
   const playerIds = [...found];

@@ -15,7 +15,7 @@ export const sportschauSource: NewsSource = {
   intervalMinutes: 30,
   async fetch() {
     const items = await fetchRssFeed(SPORTSCHAU_RSS, "sportschau", {
-      maxItems: 40,
+      maxItems: 20,
     });
     // Sportschau ist breit (auch andere Sportarten) — wir filtern auf Fußball/BL
     return items.filter((it) => {

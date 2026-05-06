@@ -65,28 +65,25 @@ export function LeagueTabs({ leagueId }: { leagueId: string }) {
   return (
     <div className="mx-auto max-w-6xl px-4 pb-3">
       <nav
-        className="flex items-center max-w-full overflow-x-auto scrollbar-none gap-3 sm:gap-5"
+        className="flex items-end max-w-full overflow-x-auto scrollbar-none gap-4 sm:gap-6"
         role="tablist"
         aria-label="Liga-Navigation"
       >
         {groups.map((group, gi) => (
           <div
             key={group.label}
-            className="flex items-center gap-2 sm:gap-3 shrink-0"
+            className="flex flex-col gap-1 shrink-0"
           >
-            {gi > 0 && (
-              <span
-                aria-hidden
-                className="h-5 w-px bg-border/50 shrink-0"
-              />
-            )}
-            <span
-              className="text-[9px] uppercase tracking-[0.12em] font-semibold text-muted-foreground/55 select-none shrink-0 hidden sm:inline"
-              title={group.label}
-            >
+            <span className="text-[9px] uppercase tracking-[0.14em] font-semibold text-muted-foreground/60 select-none px-1">
               {group.label}
             </span>
-            <div className="flex items-center gap-0.5 shrink-0">
+            <div className="flex items-center gap-0.5 shrink-0 relative">
+              {gi > 0 && (
+                <span
+                  aria-hidden
+                  className="absolute -left-3 sm:-left-4 top-1/2 -translate-y-1/2 h-5 w-px bg-border/50"
+                />
+              )}
               {group.tabs.map((t) => {
                 const active = t.exact
                   ? pathname === t.href

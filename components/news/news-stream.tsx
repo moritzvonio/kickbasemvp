@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { NewsCard } from "./news-card";
+import { NewsCard, type PlayerMeta } from "./news-card";
 import { NewsEmptyState } from "./news-empty-state";
 import type { TaggedNewsItem } from "@/lib/news/types";
 
@@ -21,16 +21,22 @@ export function NewsStream({
   playerNameMap,
   showFilters = true,
   leagueId,
+  defaultFilter,
 }: {
   initialItems: TaggedNewsItem[];
   myPlayerIds?: string[];
   myClubSlug?: string;
-  playerNameMap?: Record<string, string>;
+  playerNameMap?: Record<string, string | PlayerMeta>;
   showFilters?: boolean;
   /** Wenn gesetzt: Player-Tags in Cards verlinken zur Spieler-Detail-Page */
   leagueId?: string;
+  /** Default-Filter (sonst "all") */
+  defaultFilter?: NewsFilter;
 }) {
-  const [filter, setFilter] = useState<NewsFilter>("all");
+  // Default: wenn Squad-Spieler da sind → "myteam" prio, sonst "all"
+  const initialFilter: NewsFilter =
+    defaultFilter ?? (myPlayerIds && myPlayerIds.length > 0 ? "myteam" : "all");
+  const [filter, setFilter] = useState<NewsFilter>(initialFilter);
   const myPlayerSet = useMemo(
     () => new Set(myPlayerIds ?? []),
     [myPlayerIds]

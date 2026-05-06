@@ -20,10 +20,19 @@ export interface PlayerIndex {
   byName: Record<string, string>;
   /** Nachname (lowercase) → [playerIds] */
   bySurname: Record<string, string[]>;
-  /** playerId → Display-Name + Club-Slug */
+  /** playerId → Display-Name + Club-Slug + Spielerbild (für News-Cards) */
   byPlayerId: Record<
     string,
-    { name: string; firstName: string; lastName: string; clubSlug: string }
+    {
+      name: string;
+      firstName: string;
+      lastName: string;
+      clubSlug: string;
+      /** Player-Image-Path (für PlayerAvatar) */
+      pim?: string;
+      /** Team-ID für Team-Logo-Fallback */
+      tid?: string;
+    }
   >;
   refreshedAt: string;
   count: number;
@@ -74,6 +83,7 @@ export async function rebuildPlayerIndex(token: string): Promise<PlayerIndex> {
     fn?: string;
     tid: string;
     pos: number;
+    pim?: string;
   }> = [];
 
   for (const pos of positions) {
@@ -113,6 +123,8 @@ export async function rebuildPlayerIndex(token: string): Promise<PlayerIndex> {
       firstName,
       lastName,
       clubSlug,
+      pim: p.pim,
+      tid: p.tid,
     };
   }
 

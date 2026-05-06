@@ -30,9 +30,12 @@ export default async function PublicNewsPage() {
     getPlayerIndex(),
   ]);
 
-  const playerNameMap: Record<string, string> = {};
+  const playerNameMap: Record<
+    string,
+    { name: string; pim?: string; tid?: string }
+  > = {};
   for (const [pid, meta] of Object.entries(idx.byPlayerId)) {
-    playerNameMap[pid] = meta.name;
+    playerNameMap[pid] = { name: meta.name, pim: meta.pim, tid: meta.tid };
   }
 
   // Schema.org structured data

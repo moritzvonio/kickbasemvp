@@ -14,6 +14,6 @@ export const kickerSource: NewsSource = {
   type: "media",
   intervalMinutes: 30,
   async fetch() {
-    return fetchRssFeed(KICKER_BL_RSS, "kicker-bl", { maxItems: 30 });
+    return fetchRssFeed(KICKER_BL_RSS, "kicker-bl", { maxItems: 15 });
   },
 };
