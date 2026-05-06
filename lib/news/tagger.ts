@@ -16,7 +16,7 @@
  */
 
 import type { RawNewsItem, TaggedNewsItem, NewsSourceType } from "./types";
-import { getPlayerIndex } from "./player-index";
+import { getPlayerIndex, type PlayerIndex } from "./player-index";
 
 /** Source-Display-Daten — wird vom Aggregator gesetzt */
 let SOURCE_REGISTRY: Map<
@@ -41,8 +41,12 @@ function escapeRegex(s: string) {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-export async function tagItem(raw: RawNewsItem): Promise<TaggedNewsItem> {
-  const idx = await getPlayerIndex();
+export async function tagItem(
+  raw: RawNewsItem,
+  preloadedIdx?: PlayerIndex
+): Promise<TaggedNewsItem> {
+  // Wenn Aggregator den Index schon geladen hat → nutzen, spart KV-Read pro Item
+  const idx = preloadedIdx ?? (await getPlayerIndex());
   const text = `${raw.title} ${raw.body ?? ""}`.toLowerCase();
   const found = new Set<string>();
 
