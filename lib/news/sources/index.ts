@@ -8,6 +8,7 @@
 import type { NewsSource } from "../types";
 import { buildClubRssSources, CLUB_RSS_FEEDS } from "./club-rss-source";
 import { kickerSource } from "./kicker-rss-source";
+import { sportschauSource } from "./sportschau-rss-source";
 import { buildMockReporterSources } from "./mock-twitter-source";
 
 const MOCKS_DISABLED = process.env.NEWS_DISABLE_MOCKS === "1";
@@ -15,6 +16,7 @@ const MOCKS_DISABLED = process.env.NEWS_DISABLE_MOCKS === "1";
 export const allSources: NewsSource[] = [
   ...buildClubRssSources(),
   kickerSource,
+  sportschauSource,
   ...(MOCKS_DISABLED ? [] : buildMockReporterSources()),
 ];
 
