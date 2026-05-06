@@ -85,8 +85,16 @@ export async function storeIfNew(item: TaggedNewsItem): Promise<boolean> {
   for (const phrase of BLOCKLIST_PHRASES) {
     if (text.includes(phrase)) return false;
   }
-  // Items ohne Player- UND Club-Tag → uninteressant
-  if (item.playerIds.length === 0 && !item.clubSlug) return false;
+  // Items ohne Player- UND Club-Tag → nur skippen wenn aus Vereins-Source
+  // (dort sollte ein Club-Tag immer da sein). Bei Reporter/Media/Community
+  // lassen wir auch untaggierte News durch — User kann via Filter steuern.
+  if (
+    item.playerIds.length === 0 &&
+    !item.clubSlug &&
+    item.sourceType === "club"
+  ) {
+    return false;
+  }
 
   const stored = toStored(item);
   const score = item.publishedAt.getTime();

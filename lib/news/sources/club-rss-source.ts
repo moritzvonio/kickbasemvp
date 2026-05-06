@@ -17,24 +17,28 @@ export const CLUB_RSS_FEEDS: Array<{
   name: string;
   rssUrl: string | null;
 }> = [
+  // VERIFIED LIVE — diese RSSs liefern aktuell Daten
   { slug: "fcb", name: "FC Bayern München", rssUrl: "https://fcbayern.com/de/news/rss" },
-  { slug: "bvb", name: "Borussia Dortmund", rssUrl: "https://www.bvb.de/RSS" },
-  { slug: "rbl", name: "RB Leipzig", rssUrl: null /* TODO: kein offizielles RSS gefunden */ },
-  { slug: "b04", name: "Bayer 04 Leverkusen", rssUrl: "https://www.bayer04.de/de-de/feed/news" },
   { slug: "sge", name: "Eintracht Frankfurt", rssUrl: "https://www.eintracht.de/aktuell/?type=2" },
-  { slug: "wob", name: "VfL Wolfsburg", rssUrl: "https://www.vfl-wolfsburg.de/news.rss" },
-  { slug: "vfb", name: "VfB Stuttgart", rssUrl: "https://www.vfb.de/de/vfb/news/rss-feed/" },
-  { slug: "svw", name: "Werder Bremen", rssUrl: "https://www.werder.de/news.rss" },
-  { slug: "scf", name: "SC Freiburg", rssUrl: "https://www.scfreiburg.com/news.rss" },
+  // 11 Vereine ohne aktuell funktionierendes offizielles RSS — werden via
+  // Kicker.de (BL-übergreifend) und Spieler-Tagging abgedeckt. Mourice kann
+  // gefundene URLs hier eintragen sobald er welche findet.
+  { slug: "bvb", name: "Borussia Dortmund", rssUrl: null /* TODO: bvb.de RSS aktuell 404 */ },
+  { slug: "rbl", name: "RB Leipzig", rssUrl: null /* TODO: kein offizielles RSS gefunden */ },
+  { slug: "b04", name: "Bayer 04 Leverkusen", rssUrl: null /* TODO: alte URL 404 */ },
+  { slug: "wob", name: "VfL Wolfsburg", rssUrl: null /* TODO: alte URL 404 */ },
+  { slug: "vfb", name: "VfB Stuttgart", rssUrl: null /* TODO: alte URL 404 */ },
+  { slug: "svw", name: "Werder Bremen", rssUrl: null /* TODO: aktuell 429 Rate-Limit */ },
+  { slug: "scf", name: "SC Freiburg", rssUrl: null /* TODO: alte URL 404 */ },
   { slug: "m05", name: "Mainz 05", rssUrl: null /* TODO */ },
   { slug: "fca", name: "FC Augsburg", rssUrl: null /* TODO */ },
   { slug: "tsg", name: "TSG Hoffenheim", rssUrl: null /* TODO */ },
   { slug: "fcu", name: "1. FC Union Berlin", rssUrl: null /* TODO */ },
-  { slug: "bmg", name: "Borussia Mönchengladbach", rssUrl: "https://www.borussia.de/de/feed.html" },
-  { slug: "fck", name: "1. FC Köln", rssUrl: "https://fc.de/news.rss" },
-  { slug: "fcsp", name: "FC St. Pauli", rssUrl: "https://www.fcstpauli.com/news.rss" },
+  { slug: "bmg", name: "Borussia Mönchengladbach", rssUrl: null /* TODO: alte URL 404 */ },
+  { slug: "fck", name: "1. FC Köln", rssUrl: null /* TODO: alte URL 404 */ },
+  { slug: "fcsp", name: "FC St. Pauli", rssUrl: null /* TODO: alte URL 404 */ },
   { slug: "fch", name: "1. FC Heidenheim", rssUrl: null /* TODO */ },
-  { slug: "hsv", name: "Hamburger SV", rssUrl: "https://www.hsv.de/news.rss" },
+  { slug: "hsv", name: "Hamburger SV", rssUrl: null /* TODO: alte URL 404 */ },
 ];
 
 export function makeClubRssSource(cfg: {
