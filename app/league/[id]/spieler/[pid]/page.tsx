@@ -378,7 +378,7 @@ async function PlayerNewsSection({
   }
 
   return (
-    <Card className="slide-up">
+    <Card id="news" className="slide-up scroll-mt-24">
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">
           <Newspaper className="size-4 text-primary" />

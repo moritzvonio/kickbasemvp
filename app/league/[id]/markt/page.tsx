@@ -15,6 +15,7 @@ import {
   dowPatternSampleCounts,
   type MvPoint,
 } from "@/lib/mv-predict";
+import { getRecentNewsForPlayers } from "@/lib/news/store";
 import { RankBadge, RankNumber } from "@/components/ui/rank-badge";
 import { PlayerAvatar } from "@/components/ui/player-avatar";
 import { formatEUR, cn } from "@/lib/utils";
@@ -31,6 +32,7 @@ import {
   TrendingUp,
   Wallet,
   Layers,
+  Newspaper,
 } from "lucide-react";
 
 export const metadata: Metadata = { title: "Transfermarkt" };
@@ -112,6 +114,20 @@ export default async function MarketPage({
     if (item) {
       mvFullMap.set(item.pid, item.full);
       mvHistMap.set(item.pid, item.last14);
+    }
+  }
+
+  // News-Indikator: für alle Markt-Spieler die letzten News (24h) holen.
+  // Differenzierung gegen Kickly: User sieht sofort wenn ein angebotener Spieler
+  // aktuelle News (Verletzung, Aufstellungs-Zweifel) hat — Kaufrisiko-Signal.
+  const allMarketPids = items.map((it) => marketEntryPid(it)).filter(Boolean);
+  const recentNews = await getRecentNewsForPlayers(allMarketPids, { limit: 200 });
+  const newsByPlayer = new Map<string, number>();
+  const sinceMs = Date.now() - 24 * 60 * 60 * 1000;
+  for (const news of recentNews) {
+    if (news.publishedAt.getTime() < sinceMs) continue;
+    for (const pid of news.playerIds) {
+      newsByPlayer.set(pid, (newsByPlayer.get(pid) ?? 0) + 1);
     }
   }
 
@@ -344,6 +360,21 @@ export default async function MarketPage({
                       <span className="font-semibold truncate">{p.n}</span>
                       <RankBadge rank={overallRank} total={allComp.length} />
                       <HotBadge pct={pct} />
+                      {(() => {
+                        const newsCount = newsByPlayer.get(pid) ?? 0;
+                        if (newsCount === 0) return null;
+                        return (
+                          <Link
+                            href={`/league/${leagueId}/spieler/${pid}#news`}
+                            onClick={(e) => e.stopPropagation()}
+                            className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-semibold bg-rose-50 text-rose-700 ring-1 ring-rose-200 hover:bg-rose-100"
+                            title={`${newsCount} aktuelle News (24h) zu diesem Spieler`}
+                          >
+                            <Newspaper className="size-3" />
+                            {newsCount} News
+                          </Link>
+                        );
+                      })()}
                       {p.exs !== undefined && p.exs > 0 && (
                         <Badge variant="muted" className="text-[10px] gap-1">
                           <Clock className="size-3" />
