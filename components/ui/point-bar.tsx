@@ -50,9 +50,21 @@ export function PointBar({
 /**
  * Battery-style performance indicator — chunky, prominent display
  * for primary stats. Has a battery cap on the right.
+ *
+ * Skala: linear interpolierte HSL-Hue von rot (0°) → gelb (60°) → grün (120°)
+ * proportional zu (value − min) / (max − min). `min` (default 0) bestimmt
+ * den "voll rot"-Punkt, `max` den "voll grün"-Punkt.
+ *
+ * - value <= min     → komplett rot (kleine sichtbare Füllung)
+ * - value zwischen   → linear interpoliert
+ * - value >= max     → komplett grün (volle Füllung)
+ * - value 0/fehlend  → grau ("nicht gespielt")
+ *
+ * Beispiel Markt: `min=50, max=130` → < 50 = rot, > 130 = grün.
  */
 export function BatteryBar({
   value,
+  min = 0,
   max,
   className,
   width = 140,
@@ -60,21 +72,27 @@ export function BatteryBar({
   segments = 5,
 }: {
   value: number | undefined;
+  min?: number;
   max: number;
   className?: string;
   width?: number;
   height?: number;
   segments?: number;
 }) {
-  const safeValue = value && max > 0 ? value : 0;
-  const pct = max > 0 ? Math.min(1, safeValue / max) : 0;
-  const tier = pct >= 0.75 ? "good" : pct >= 0.4 ? "mid" : pct > 0 ? "bad" : "empty";
-  const fillColor: Record<string, string> = {
-    good: "linear-gradient(90deg, #10b981, #34d399)",
-    mid: "linear-gradient(90deg, #f59e0b, #fbbf24)",
-    bad: "linear-gradient(90deg, #ef4444, #f87171)",
-    empty: "transparent",
-  };
+  const safeValue = typeof value === "number" ? value : 0;
+  const hasData = safeValue > 0 && max > min;
+  const range = max - min;
+  // rawPct kann negativ sein (value < min); clampen für Farbe und Füllung
+  const rawPct = hasData && range > 0 ? (safeValue - min) / range : 0;
+  const colorPct = Math.max(0, Math.min(1, rawPct));
+  // Mindestens 6 % Füllung wenn gespielt, damit "schlecht aber gespielt"
+  // sichtbar bleibt und nicht mit "nicht gespielt" (grau) verwechselt wird.
+  const fillPct = hasData ? Math.max(0.06, Math.min(1, rawPct)) : 0;
+  const hue = colorPct * 120;
+  const fillBg = hasData
+    ? `linear-gradient(90deg, hsl(${hue}, 70%, 48%), hsl(${hue}, 78%, 56%))`
+    : "transparent";
+
   const capW = Math.max(3, Math.round(height * 0.22));
   const capH = Math.round(height * 0.55);
   const bodyW = width - capW - 1;
@@ -83,26 +101,27 @@ export function BatteryBar({
     <span
       className={cn("inline-flex items-center align-middle", className)}
       style={{ width, height }}
-      title={`${safeValue} (${(pct * 100).toFixed(0)}%)`}
+      title={
+        hasData
+          ? `${safeValue} Pkt Ø — Skala ${min}-${max} (${Math.round(colorPct * 100)} %)`
+          : "Nicht gespielt"
+      }
     >
-      {/* Battery body */}
       <span
         className="relative inline-block rounded-md bg-muted ring-1 ring-border overflow-hidden"
         style={{ width: bodyW, height }}
       >
-        {/* Fill */}
-        <span
-          className="absolute inset-y-0 left-0 rounded-l-md transition-[width] duration-500"
-          style={{
-            width: `${pct * 100}%`,
-            background: fillColor[tier],
-            boxShadow:
-              tier !== "empty"
-                ? "inset 0 1px 0 rgba(255,255,255,0.35), inset 0 -1px 0 rgba(0,0,0,0.08)"
-                : undefined,
-          }}
-        />
-        {/* Segment dividers (battery cells) */}
+        {hasData && (
+          <span
+            className="absolute inset-y-0 left-0 rounded-l-md transition-[width,background] duration-500"
+            style={{
+              width: `${fillPct * 100}%`,
+              background: fillBg,
+              boxShadow:
+                "inset 0 1px 0 rgba(255,255,255,0.35), inset 0 -1px 0 rgba(0,0,0,0.08)",
+            }}
+          />
+        )}
         {Array.from({ length: segments - 1 }).map((_, i) => (
           <span
             key={i}
@@ -112,7 +131,6 @@ export function BatteryBar({
           />
         ))}
       </span>
-      {/* Battery cap */}
       <span
         className="inline-block bg-border rounded-r-sm"
         style={{ width: capW, height: capH, marginLeft: 1 }}

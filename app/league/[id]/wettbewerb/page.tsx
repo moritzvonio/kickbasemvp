@@ -721,7 +721,29 @@ function CashDebugPanel({
     { label: "Initial-Budget", value: budget, sign: "+" },
     { label: `Käufe (${stats.transferCount > 0 ? "alle" : "0"})`, value: -stats.totalBought, sign: "−", color: "text-rose-700" },
     { label: "Verkäufe", value: stats.totalSold, sign: "+", color: "text-emerald-700" },
-    { label: "Bonus-Feed (data.bn)", value: stats.totalBonus, sign: "+", color: "text-amber-700", note: `${stats.bonusEventCount} events` },
+    {
+      label:
+        stats.realAchievementBonus !== undefined
+          ? "Bonus-Feed (data.bn) — übersprungen (= redundant zu achievements/points/login)"
+          : "Bonus-Feed (data.bn)",
+      value: stats.realAchievementBonus !== undefined ? 0 : stats.totalBonus,
+      sign: "+",
+      color:
+        stats.realAchievementBonus !== undefined
+          ? "text-muted-foreground line-through"
+          : "text-amber-700",
+      note:
+        stats.realAchievementBonus !== undefined
+          ? `${stats.bonusEventCount} events ignoriert`
+          : `${stats.bonusEventCount} events`,
+    },
+    {
+      label: "Punkteprämie (abgeschlossen)",
+      value: stats.estimatedPointsBonus,
+      sign: "+",
+      color: "text-emerald-700",
+      note: `${stats.totalMatchdayPoints.toLocaleString("de-DE")} Pkt × 1k €`,
+    },
     { label: `Login-Bonus (geschätzt)`, value: stats.estimatedLoginBonus, sign: "+", color: "text-sky-700", note: `${stats.daysActive} Tage × 100k` },
     {
       label:
@@ -819,6 +841,15 @@ function CashDebugPanel({
             {formatEUR(diff, { compact: true })}
           </span>
         </div>
+        {stats.openMatchdayPoints > 0 && (
+          <div className="flex items-center justify-between text-[10px] text-muted-foreground pt-1 italic">
+            <span>
+              ⏳ Laufender Spieltag: {stats.openMatchdayPoints.toLocaleString("de-DE")} Pkt
+              (= {formatEUR(stats.openMatchdayBonus, { compact: true })}) — von Kickbase
+              noch nicht ausgezahlt, daher NICHT in der Schätzung
+            </span>
+          </div>
+        )}
       </div>
 
       {/* Hypothesen-Rechner: Was MÜSSTEN die Werte sein um real zu treffen? */}

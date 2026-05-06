@@ -3,9 +3,13 @@
  *
  * Cash-Berechnung:
  *   cash = initialBudget
- *        - Σ(buy.trp)            // every buy reduces cash
- *        + Σ(sell.trp)            // every sell adds cash
- *        + Σ(bonus.bn)            // matchday bonuses & achievements
+ *        - Σ(buy.trp)             // every buy reduces cash
+ *        + Σ(sell.trp)             // every sell adds cash
+ *        + Σ(activity.bn)          // bonus payouts aus Activity-Feed
+ *        + Σ(mdp) × 1.000 €        // Punkteprämie pro Spieltagspunkt (Doku)
+ *        + 100k × daysActive       // login-bonus extrapoliert
+ *        + Σ achievements.total    // realer Achievement-Total (nur eigener User)
+ *                ODER Σ estimatedMatchday + estimatedHand (Schätzung für andere)
  *
  * Initial budget = league.b (Liga-Setting, default 50 Mio in Bundesliga,
  * sometimes 30 Mio for "small" leagues).
@@ -42,7 +46,7 @@ export const SELL_TO_BANK_FACTOR = 0.67;
  * 4 Tiers aus = 100k+500k+1M+2M = 3.6 Mio).
  */
 export const BONUS_RULES = {
-  /** Tagesbonus für Login */
+  /** Tagesbonus für Login (nach Tag 10; Tag 1-10 staffelt 10k→100k) */
   LOGIN_PER_DAY: 100_000,
   /** Spieltagssieger (1. Platz an einem Spieltag) */
   MATCHDAY_WIN: 1_000_000,
@@ -76,6 +80,11 @@ export const BONUS_RULES = {
   VIZEMEISTER: 1_000_000,
   /** Tormaschine (meiste Tore in der Liga) */
   TORMASCHINE: 250_000,
+  /** Punkteprämie — pro Spieltagspunkt zahlt Kickbase 1.000 € automatisch aufs
+   *  Konto, zusätzlich zu den Tier-Erfolgen. Quelle: help.kickbase.com
+   *  "Wann werden die Punkteprämien ausgeschüttet" + Doku-Hinweis "Belohnungen
+   *  basierend auf Matchday-Punkten". */
+  EUR_PER_POINT: 1_000,
 };
 
 /**
@@ -184,6 +193,14 @@ export interface ManagerComputedStats {
   totalSold: number;
   /** Σ explizite Bonus-Auszahlungen aus Activity-Feed */
   totalBonus: number;
+  /** Geschätzte Punkteprämie für ABGESCHLOSSENE Spieltage: Σ mdp × 1.000 € */
+  estimatedPointsBonus: number;
+  /** Σ aller mdp aus abgeschlossenen Spieltagen */
+  totalMatchdayPoints: number;
+  /** Punkte des aktuellen/laufenden Spieltags — noch nicht ausgezahlt */
+  openMatchdayPoints: number;
+  /** Wert des laufenden Spieltags = openMatchdayPoints × 1.000 €  */
+  openMatchdayBonus: number;
   /** Geschätzter Login-Bonus (100k × Tage) */
   estimatedLoginBonus: number;
   /** Tage seit erster Aktivität in der Liga */
@@ -257,6 +274,7 @@ export interface ComputeManagerInput {
 
 export function computeManagerStats(inp: ComputeManagerInput): ManagerComputedStats {
   const transfers = inp.transfers ?? [];
+  const activities = inp.activities ?? [];
 
   let totalBought = 0;
   let totalSold = 0;
@@ -268,16 +286,24 @@ export function computeManagerStats(inp: ComputeManagerInput): ManagerComputedSt
     if (!isNaN(ts) && ts < earliestTxMs) earliestTxMs = ts;
   }
 
-  // Permissive bonus detection: any activity with data.bn (numeric > 0).
-  // The Kickbase activity feed has multiple t-codes for bonuses (22 + others)
-  // and `u` attribution is sometimes absent. We accept any activity with bn.
-  const myBonusActivities = (inp.activities ?? []).filter((a) => {
+  // Älteste user-zugeordnete Activity bestimmen — relevant für Login-Bonus,
+  // weil ein Manager schon im Feed auftaucht bevor er den ersten Transfer macht.
+  let earliestActivityMs = Number.POSITIVE_INFINITY;
+  for (const a of activities) {
+    if (a.u?.i !== undefined && a.u.i !== inp.userId) continue;
+    if (a.dt === undefined) continue;
+    const ts = new Date(a.dt).getTime();
+    if (!isNaN(ts) && ts < earliestActivityMs) earliestActivityMs = ts;
+  }
+
+  const isMine = (a: KbActivity) =>
+    a.u?.i === undefined ? true : a.u.i === inp.userId;
+
+  const myBonusActivities = activities.filter((a) => {
     const data = (a.data ?? a.d ?? {}) as Record<string, unknown>;
     const bn = data.bn;
     if (typeof bn !== "number" || bn <= 0) return false;
-    // If user is attributed, must match. Otherwise accept (likely auth-user feed).
-    if (a.u?.i !== undefined) return a.u.i === inp.userId;
-    return true;
+    return isMine(a);
   });
   const totalBonus = myBonusActivities.reduce((s, a) => {
     const data = (a.data ?? a.d ?? {}) as Record<string, unknown>;
@@ -285,25 +311,45 @@ export function computeManagerStats(inp: ComputeManagerInput): ManagerComputedSt
     return s + bn;
   }, 0);
 
-  // Login-Bonus: 100k × Tage seit erster Aktivität (Doku-bestätigt)
+  // Login-Bonus: 100k × Tage seit ältester user-Aktivität (Activity ODER Transfer).
+  // Activities reichen meist weiter zurück als Transfers — Liga-Beitritt vor erstem Transfer ist normal.
   const now = Date.now();
+  const earliestMs = Math.min(earliestTxMs, earliestActivityMs);
   const daysActive =
-    isFinite(earliestTxMs) && earliestTxMs < now
-      ? Math.floor((now - earliestTxMs) / 86_400_000)
+    isFinite(earliestMs) && earliestMs < now
+      ? Math.floor((now - earliestMs) / 86_400_000)
       : 0;
   const estimatedLoginBonus = daysActive * BONUS_RULES.LOGIN_PER_DAY;
 
   // Matchday-Bonus aus per-matchday Rankings (Spieltagssieger + Team-Punkte-Tiers)
+  // Plus Punkteprämie: 1.000 € pro Spieltagspunkt, separat zur Tier-Erfolg-Auszahlung.
+  // WICHTIG: der LETZTE Eintrag ist potenziell der laufende Spieltag — Kickbase zahlt
+  // die Punkteprämie erst nach Abschluss aus. Wir trennen daher abgeschlossene und
+  // offene Spieltage und addieren nur die abgeschlossenen ins cashEstimate.
   let estimatedMatchdayBonus = 0;
+  let totalMatchdayPoints = 0;
+  let openMatchdayPoints = 0;
   if (inp.perMatchdayRankings) {
-    for (const md of inp.perMatchdayRankings) {
+    const mds = inp.perMatchdayRankings;
+    const closedMds = mds.length > 1 ? mds.slice(0, -1) : [];
+    const openMd = mds[mds.length - 1];
+
+    for (const md of closedMds) {
       const me = md.find((u) => u.i === inp.userId);
       if (!me) continue;
       if (me.mdpl === 1) estimatedMatchdayBonus += BONUS_RULES.MATCHDAY_WIN;
       const mdp = me.mdp ?? 0;
+      totalMatchdayPoints += mdp;
       estimatedMatchdayBonus += teamPointsBonus(mdp);
     }
+
+    if (openMd) {
+      const meOpen = openMd.find((u) => u.i === inp.userId);
+      openMatchdayPoints = meOpen?.mdp ?? 0;
+    }
   }
+  const estimatedPointsBonus = totalMatchdayPoints * BONUS_RULES.EUR_PER_POINT;
+  const openMatchdayBonus = openMatchdayPoints * BONUS_RULES.EUR_PER_POINT;
 
   // Hand-Bonus aus Transfer-History (für alle Manager berechenbar)
   const handResult = computeHandBonus(transfers);
@@ -318,13 +364,54 @@ export function computeManagerStats(inp: ComputeManagerInput): ManagerComputedSt
       : estimatedMatchdayBonus + estimatedHandBonus;
 
   // Cash IMMER schätzen — auch für eigenen User. Realwert separat zur Validierung.
+  // Für eigenen User (realAchievementBonus vorhanden) ist totalBonus aus dem
+  // Activity-Feed REDUNDANT — die data.bn-Auszahlungen sind bereits in
+  // achievements.total + estimatedPointsBonus + estimatedLoginBonus enthalten.
+  // Für andere Manager (keine /user/achievements verfügbar) brauchen wir
+  // totalBonus weiterhin als beste verfügbare Bonus-Quelle.
+  const isOwnUser = realAchievementBonus !== undefined;
   const cashEstimate =
     inp.initialBudget -
     totalBought +
     totalSold +
-    totalBonus +
+    (isOwnUser ? 0 : totalBonus) +
+    estimatedPointsBonus +
     estimatedLoginBonus +
     achievementBonusFinal;
+
+  // Diagnose-Log nur für eigenen User wenn DEBUG_CASH_PIPELINE=1 gesetzt ist.
+  // Default off, damit der Server-Log nicht zugespamt wird.
+  if (
+    inp.realCashFromApi !== undefined &&
+    process.env.DEBUG_CASH_PIPELINE === "1"
+  ) {
+    const fmt = (n: number) =>
+      `${(n / 1_000_000).toFixed(2).replace(".", ",")} Mio`;
+    console.log("\n[CASH-PIPELINE]", inp.name, "(eigener User)");
+    console.log("  Initial-Budget         :", fmt(inp.initialBudget));
+    console.log("  - Käufe (n=" + transfers.filter((t) => t.tty === 1).length + ")        :", "-" + fmt(totalBought));
+    console.log("  + Verkäufe (n=" + transfers.filter((t) => t.tty === 2).length + ")     :", "+" + fmt(totalSold));
+    console.log("  + Bonus-Feed bn (n=" + myBonusActivities.length + ")  :", "+" + fmt(totalBonus));
+    console.log("  + Punkteprämie         :", "+" + fmt(estimatedPointsBonus), `(${totalMatchdayPoints} Pkt × 1k)`);
+    console.log("  + Login-Bonus          :", "+" + fmt(estimatedLoginBonus), `(${daysActive} Tage × 100k)`);
+    console.log("  + Achievements (real)  :", "+" + fmt(achievementBonusFinal), `(API total)`);
+    console.log("  ============================================");
+    console.log("  = cashEstimate         :", fmt(cashEstimate));
+    console.log("  realCashFromApi        :", fmt(inp.realCashFromApi));
+    console.log("  diff (real - estimate) :", fmt(inp.realCashFromApi - cashEstimate));
+    if (inp.achievements) {
+      console.log("\n  [Achievements-Detail]");
+      for (const a of inp.achievements.items) {
+        const ac = a.ac ?? 0;
+        if (ac === 0 && a.total === 0) continue;
+        console.log(`    t=${a.t} ${a.n} : ${ac}× × ${fmt(a.er)} = ${fmt(a.total)}`);
+      }
+      console.log("    Σ achievements.total :", fmt(inp.achievements.total));
+    }
+    console.log("\n  [Open Matchday]");
+    console.log("    openMatchdayPoints   :", openMatchdayPoints, "Pkt =", fmt(openMatchdayBonus));
+    console.log("    perMatchdayRankings  :", inp.perMatchdayRankings?.length ?? 0, "Spieltage");
+  }
   const cashEstimateError =
     inp.realCashFromApi !== undefined
       ? inp.realCashFromApi - cashEstimate
@@ -349,6 +436,10 @@ export function computeManagerStats(inp: ComputeManagerInput): ManagerComputedSt
     totalBought,
     totalSold,
     totalBonus,
+    estimatedPointsBonus,
+    totalMatchdayPoints,
+    openMatchdayPoints,
+    openMatchdayBonus,
     estimatedLoginBonus,
     daysActive,
     estimatedMatchdayBonus,

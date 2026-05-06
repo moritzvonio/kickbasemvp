@@ -13,10 +13,13 @@ import { cn } from "@/lib/utils";
  */
 export function RankBadge({
   rank,
+  total,
   className,
   size = "md",
 }: {
   rank: number | undefined;
+  /** Optional: Gesamtanzahl Bundesliga-Spieler für "X / Total"-Anzeige */
+  total?: number;
   className?: string;
   size?: "sm" | "md" | "lg";
 }) {
@@ -37,9 +40,12 @@ export function RankBadge({
         tier.classes,
         className
       )}
-      title={`Platz ${rank} der Bundesliga-Saisonwertung`}
+      title={
+        total
+          ? `Platz ${rank} von ${total} in der Bundesliga-Saisonwertung`
+          : `Platz ${rank} der Bundesliga-Saisonwertung`
+      }
     >
-      {/* Medal background — subtle radial sheen */}
       <span
         aria-hidden
         className="absolute inset-0 opacity-40 mix-blend-overlay"
@@ -48,10 +54,13 @@ export function RankBadge({
             "radial-gradient(ellipse at top, rgba(255,255,255,0.7), transparent 60%)",
         }}
       />
-      {/* Tier icon */}
       <span className="relative z-10 leading-none flex-shrink-0">{tier.emoji}</span>
-      {/* Rank number */}
-      <span className="relative z-10 leading-none">#{rank}</span>
+      <span className="relative z-10 leading-none">
+        #{rank}
+        {total && (
+          <span className="opacity-70 font-normal ml-0.5">/{total}</span>
+        )}
+      </span>
     </span>
   );
 }
@@ -90,11 +99,23 @@ function tierFor(rank: number) {
 }
 
 /** Pure rank number (for inline use, e.g. position rank) */
-export function RankNumber({ rank }: { rank: number | undefined }) {
+export function RankNumber({
+  rank,
+  total,
+}: {
+  rank: number | undefined;
+  total?: number;
+}) {
   if (!rank) return null;
   return (
-    <span className="text-[10px] font-mono tabular text-muted-foreground">
+    <span
+      className="text-[10px] font-mono tabular text-muted-foreground"
+      title={total ? `Rang ${rank} von ${total}` : undefined}
+    >
       #{rank}
+      {total && (
+        <span className="opacity-60">/{total}</span>
+      )}
     </span>
   );
 }

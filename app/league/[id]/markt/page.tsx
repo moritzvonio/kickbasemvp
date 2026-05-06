@@ -8,6 +8,13 @@ import { TeamTag } from "@/components/ui/team-tag";
 import { PositionBadge } from "@/components/ui/position-icon";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PointBar, BatteryBar, HotBadge } from "@/components/ui/point-bar";
+import { MvMiniSpark } from "./MvMiniSpark";
+import {
+  predictMv,
+  computeGlobalDowPct,
+  dowPatternSampleCounts,
+  type MvPoint,
+} from "@/lib/mv-predict";
 import { RankBadge, RankNumber } from "@/components/ui/rank-badge";
 import { PlayerAvatar } from "@/components/ui/player-avatar";
 import { formatEUR, cn } from "@/lib/utils";
@@ -20,18 +27,39 @@ import {
   ShoppingCart,
   Goal,
   Footprints,
+  Trophy,
+  TrendingUp,
+  Wallet,
+  Layers,
 } from "lucide-react";
 
 export const metadata: Metadata = { title: "Transfermarkt" };
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
+type SortKey =
+  | "points"
+  | "avg"
+  | "mv"
+  | "mvt"
+  | "expiry"
+  | "pos"
+  | "goals";
+
 export default async function MarketPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ sort?: string }>;
 }) {
   const { id: leagueId } = await params;
+  const sp = await searchParams;
+  const sortKey: SortKey = (
+    ["points", "avg", "mv", "mvt", "expiry", "pos", "goals"] as const
+  ).includes((sp.sort ?? "") as SortKey)
+    ? ((sp.sort ?? "points") as SortKey)
+    : "points";
   const path = `/league/${leagueId}/markt`;
   const session = await requireSessionOrRedirect(path);
 
@@ -61,6 +89,52 @@ export default async function MarketPage({
     if (item?.detail) detailMap.set(item.pid, item.detail);
   }
 
+  // 2b. MV-History (letzte 14 Tage) für jeden Markt-Spieler — parallel
+  // Endpoint akzeptiert nur den Default 92. Wir holen die volle Historie
+  // — für die Prognose brauchen wir möglichst viele Wochentag-Samples,
+  // für die visuelle Sparkline reichen die letzten 14 Tage.
+  const mvHistFetches = await Promise.all(
+    items.map(async (e) => {
+      const pid = marketEntryPid(e);
+      if (!pid) return null;
+      try {
+        const h = await kb.marketValue(session.token, leagueId, pid, 92);
+        const all = (h.it ?? []).slice().sort((a, b) => a.dt - b.dt);
+        return { pid, full: all, last14: all.slice(-14) };
+      } catch {
+        return { pid, full: [] as MvPoint[], last14: [] as MvPoint[] };
+      }
+    })
+  );
+  const mvFullMap = new Map<string, MvPoint[]>();
+  const mvHistMap = new Map<string, MvPoint[]>();
+  for (const item of mvHistFetches) {
+    if (item) {
+      mvFullMap.set(item.pid, item.full);
+      mvHistMap.set(item.pid, item.last14);
+    }
+  }
+
+  // Saisonweiten Wochentag-Pattern aus ALLEN Markt-Histories berechnen.
+  // Mit ~23 Spielern × 92 Tage = ~2000 Δ-Werte → ~280 Samples pro Wochentag.
+  // So wird der DoW-Effekt ein robuster Liga-Trend, nicht eine 14-Tage-Schätzung.
+  const allHistories = Array.from(mvFullMap.values()).filter(
+    (h) => h.length >= 7
+  );
+  const globalDowPct = computeGlobalDowPct(allHistories);
+  const dowSamples = dowPatternSampleCounts(allHistories);
+  // Diagnose nur wenn DEBUG_PREDICT=1 gesetzt
+  if (process.env.DEBUG_PREDICT === "1") {
+    const dowMean = globalDowPct.reduce((s, v) => s + v, 0) / 7;
+    const relPct = globalDowPct.map((p) => p - dowMean);
+    console.log(
+      "[MARKT-PRED] DoW relativ (So..Sa):",
+      relPct.map((p) => (p * 100).toFixed(2) + "%").join(" / "),
+      "| samples:",
+      dowSamples.join("/")
+    );
+  }
+
   // 3. Try to also build a Bundesliga-weite player pool for rank computation.
   //    competitionPlayers is best-effort — if it fails, we skip ranks.
   const compChunks = await Promise.all(
@@ -76,7 +150,6 @@ export default async function MarketPage({
   //   rankByPid       → 1-N across all Bundesliga players (overall)
   //   rankByPidPos    → 1-N within position
   //   maxByPos        → max points per position (for PointBar normalization)
-  //   maxAvgByPos     → max ap per position (for Ø-bar normalization)
   const allSorted = allComp.slice().sort((a, b) => (b.p ?? 0) - (a.p ?? 0));
   const rankByPid = new Map<string, number>();
   allSorted.forEach((cp, i) => rankByPid.set(cp.pi, i + 1));
@@ -90,11 +163,15 @@ export default async function MarketPage({
   }
 
   const maxByPos: Record<number, number> = { 1: 1, 2: 1, 3: 1, 4: 1 };
-  const maxAvgByPos: Record<number, number> = { 1: 1, 2: 1, 3: 1, 4: 1 };
   for (const cp of allComp) {
     if (typeof cp.p === "number" && cp.p > (maxByPos[cp.pos] ?? 0)) maxByPos[cp.pos] = cp.p;
-    if (typeof cp.ap === "number" && cp.ap > (maxAvgByPos[cp.pos] ?? 0)) maxAvgByPos[cp.pos] = cp.ap;
   }
+
+  // Battery-Skala für Spielerpunkte-Ø: absolute Skala statt per-Position-Max.
+  // Begründung: Der User möchte konsistente Farbe-Aussage über alle Positionen.
+  // 50 Pkt Ø ist solide-rot (Ersatz/sehr schwach), 130 Pkt Ø ist Top-Performer.
+  const AVG_BAR_MIN = 50;
+  const AVG_BAR_MAX = 130;
 
   const compMap = new Map<string, KbCompetitionPlayer>();
   for (const p of allComp) compMap.set(p.pi, p);
@@ -116,9 +193,39 @@ export default async function MarketPage({
     };
   }
 
-  const sorted = items.slice().sort((a, b) => {
-    return statsFor(marketEntryPid(b)).points - statsFor(marketEntryPid(a)).points;
-  });
+  const sorters: Record<SortKey, (a: typeof items[number], b: typeof items[number]) => number> = {
+    points: (a, b) =>
+      statsFor(marketEntryPid(b)).points - statsFor(marketEntryPid(a)).points,
+    avg: (a, b) => statsFor(marketEntryPid(b)).avg - statsFor(marketEntryPid(a)).avg,
+    mv: (a, b) => (b.mv ?? 0) - (a.mv ?? 0),
+    mvt: (a, b) => (b.mvt ?? 0) - (a.mvt ?? 0),
+    // Aufsteigend nach Sekunden bis Ablauf — bald ablaufend zuerst.
+    // Ohne exs (z.B. eigene Angebote) ans Ende sortieren.
+    expiry: (a, b) => {
+      const ax = a.exs ?? Number.POSITIVE_INFINITY;
+      const bx = b.exs ?? Number.POSITIVE_INFINITY;
+      return ax - bx;
+    },
+    pos: (a, b) => a.pos - b.pos,
+    goals: (a, b) =>
+      statsFor(marketEntryPid(b)).goals - statsFor(marketEntryPid(a)).goals,
+  };
+  const sorted = items.slice().sort(sorters[sortKey]);
+
+  const SORT_TABS: Array<{
+    key: SortKey;
+    label: string;
+    icon: typeof Trophy;
+  }> = [
+    { key: "points", label: "Saison-Punkte", icon: Trophy },
+    { key: "avg", label: "Ø Spieltag", icon: TrendingUp },
+    { key: "expiry", label: "Bald ablaufend", icon: Clock },
+    { key: "mv", label: "Marktwert", icon: Wallet },
+    { key: "mvt", label: "MV-Trend", icon: ArrowUp },
+    { key: "goals", label: "Tore", icon: Goal },
+    { key: "pos", label: "Position", icon: Layers },
+  ];
+  const activeSort = SORT_TABS.find((t) => t.key === sortKey);
 
   return (
     <div className="space-y-6">
@@ -132,9 +239,36 @@ export default async function MarketPage({
         <p className="text-sm text-muted-foreground mt-2">
           {items.length === 0
             ? "Aktuell keine Angebote"
-            : `${items.length} ${items.length === 1 ? "Angebot" : "Angebote"} · sortiert nach Saison-Punkten`}
+            : `${items.length} ${items.length === 1 ? "Angebot" : "Angebote"} · sortiert nach ${activeSort?.label ?? "Saison-Punkten"}`}
         </p>
       </div>
+
+      {items.length > 0 && (
+        <div className="flex items-center gap-1.5 flex-wrap slide-up slide-up-1">
+          <span className="text-xs uppercase tracking-wider text-muted-foreground font-semibold mr-1">
+            Sortieren
+          </span>
+          {SORT_TABS.map((t) => {
+            const active = sortKey === t.key;
+            const Icon = t.icon;
+            return (
+              <Link
+                key={t.key}
+                href={`?sort=${t.key}`}
+                className={cn(
+                  "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium border transition-colors",
+                  active
+                    ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                    : "border-border text-muted-foreground hover:text-foreground hover:bg-accent"
+                )}
+              >
+                <Icon className="size-3" />
+                {t.label}
+              </Link>
+            );
+          })}
+        </div>
+      )}
 
       {items.length === 0 ? (
         <Card className="slide-up slide-up-1">
@@ -148,16 +282,28 @@ export default async function MarketPage({
         <div className="grid gap-2.5 slide-up slide-up-1">
           {sorted.map((p) => {
             const pid = marketEntryPid(p);
-            const trend = p.mvt ?? 0;
-            const TrendIcon = trend > 0 ? ArrowUp : trend < 0 ? ArrowDown : Minus;
+            // Echter Tages-Δ in € aus Spieler-Detail (tfhmvt) oder als
+            // Fallback aus den letzten beiden MV-History-Punkten. `mvt` aus
+            // Markt-Entry ist nur ein -1..+2 Indikator und KEIN €-Wert.
+            const detail = detailMap.get(pid);
+            const mvHistTmp = mvHistMap.get(pid) ?? [];
+            const dayChange =
+              detail?.tfhmvt ??
+              (mvHistTmp.length >= 2
+                ? mvHistTmp[mvHistTmp.length - 1].mv -
+                  mvHistTmp[mvHistTmp.length - 2].mv
+                : 0);
+            const TrendIcon =
+              dayChange > 0 ? ArrowUp : dayChange < 0 ? ArrowDown : Minus;
             const trendColor =
-              trend > 0
+              dayChange > 0
                 ? "text-emerald-600"
-                : trend < 0
+                : dayChange < 0
                 ? "text-rose-600"
                 : "text-muted-foreground";
             const priceDiff = p.prc - p.mv;
             const priceDiffPct = p.mv > 0 ? (priceDiff / p.mv) * 100 : 0;
+            const priceEqualsMv = priceDiff === 0;
 
             const s = statsFor(pid);
             const points = s.points;
@@ -165,25 +311,38 @@ export default async function MarketPage({
             const goals = s.goals;
             const assists = s.assists;
             const max = maxByPos[p.pos] ?? 1;
-            const maxAvg = maxAvgByPos[p.pos] ?? 1;
             const pct = points > 0 ? points / max : 0;
             const overallRank = rankByPid.get(pid);
             const posRank = rankByPidPos.get(pid);
+
+            // Sparkline: letzte 14 Tage
+            const mvHist = mvHistMap.get(pid) ?? [];
+            // Prognose: ganze 92-Tage-Historie + saisonweiter DoW-Pattern
+            const mvFull = mvFullMap.get(pid) ?? [];
+            const prediction = predictMv(mvFull, { globalDowPct });
 
             return (
               <Link
                 key={pid}
                 href={`/league/${leagueId}/spieler/${pid}`}
-                className="card-hover block rounded-xl border border-border bg-card p-3.5"
+                className="card-hover block rounded-xl border border-border bg-card p-4"
               >
-                <div className="flex items-start gap-3">
-                  <PlayerAvatar pim={p.pim} tid={p.tid} size={64} />
+                <div className="flex items-stretch gap-4">
+                  <div className="shrink-0 self-stretch flex items-center">
+                    <PlayerAvatar
+                      pim={p.pim}
+                      tid={p.tid}
+                      size={112}
+                      rounded="lg"
+                      className="ring-0"
+                    />
+                  </div>
 
                   {/* Center column: name + tags + stats grid */}
                   <div className="min-w-0 flex-1 space-y-2">
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="font-semibold truncate">{p.n}</span>
-                      <RankBadge rank={overallRank} />
+                      <RankBadge rank={overallRank} total={allComp.length} />
                       <HotBadge pct={pct} />
                       {p.exs !== undefined && p.exs > 0 && (
                         <Badge variant="muted" className="text-[10px] gap-1">
@@ -195,14 +354,25 @@ export default async function MarketPage({
                     <div className="text-xs text-muted-foreground flex items-center gap-1.5 flex-wrap">
                       <TeamTag tid={p.tid} size="xs" />
                       <PositionBadge pos={p.pos} className="text-[9px] h-4 px-1" />
-                      {posRank && <RankNumber rank={posRank} />}
+                      {posRank && (
+                        <RankNumber
+                          rank={posRank}
+                          total={sortedByPos[p.pos]?.length}
+                        />
+                      )}
                       {p.u?.n && <span className="truncate">von {p.u.n}</span>}
                     </div>
 
                     {/* Battery + numbers row */}
                     <div className="flex items-center gap-3 pt-1.5">
                       <div className="flex items-center gap-2 min-w-0">
-                        <BatteryBar value={avg} max={maxAvg} width={120} height={18} />
+                        <BatteryBar
+                          value={avg}
+                          min={AVG_BAR_MIN}
+                          max={AVG_BAR_MAX}
+                          width={120}
+                          height={18}
+                        />
                         <div className="flex flex-col leading-tight">
                           <span className="text-base font-bold tabular leading-none">
                             {avg > 0 ? avg : "—"}
@@ -249,32 +419,65 @@ export default async function MarketPage({
                     )}
                   </div>
 
-                  {/* Right column: Preis */}
-                  <div className="text-right shrink-0">
-                    <div className="font-mono font-bold text-base tabular">
+                  {/* MV-Graph + Prediction (eigene Spalte zwischen Stats und Preis) */}
+                  {mvHist.length >= 2 && (
+                    <div className="hidden md:flex items-center gap-3 shrink-0 self-center min-w-0">
+                      <div className="flex flex-col gap-1 min-w-0">
+                        <span className="text-[9px] uppercase tracking-wider text-muted-foreground font-medium">
+                          MV · 14 Tage
+                        </span>
+                        <div className="w-[180px] lg:w-[200px]">
+                          <MvMiniSpark points={mvHist} height={72} />
+                        </div>
+                      </div>
+                      {prediction && <PredictionBlock prediction={prediction} />}
+                    </div>
+                  )}
+
+                  {/* Right column: Preis + Tages-Steigerung */}
+                  <div className="text-right shrink-0 self-center">
+                    <div className="font-mono font-bold text-lg tabular leading-tight">
                       {formatEUR(p.prc, { compact: true })}
                     </div>
-                    <div className="flex items-center justify-end gap-1.5 text-xs">
-                      <span className="text-muted-foreground font-mono tabular">
+                    <div className="text-[9px] uppercase tracking-wider text-muted-foreground font-medium leading-none mt-0.5">
+                      {priceEqualsMv ? "Preis = MV" : "Preis"}
+                    </div>
+
+                    {/* Marktwert nur zeigen wenn ≠ Preis (vermeidet Redundanz) */}
+                    {!priceEqualsMv && (
+                      <div className="mt-2 text-xs font-mono tabular text-muted-foreground">
                         MV {formatEUR(p.mv, { compact: true })}
-                      </span>
-                      <span className={trendColor}>
-                        <TrendIcon className="size-3 inline" />
-                      </span>
-                    </div>
-                    <div
-                      className={cn(
-                        "text-[10px] font-mono mt-0.5 font-semibold tabular",
-                        priceDiff > 0
-                          ? "text-amber-600"
-                          : priceDiff < 0
-                          ? "text-emerald-600"
-                          : "text-muted-foreground"
-                      )}
-                    >
-                      {priceDiff > 0 ? "+" : ""}
-                      {priceDiffPct.toFixed(0)}% vs MV
-                    </div>
+                        <div
+                          className={cn(
+                            "text-[10px] font-mono mt-0.5 font-semibold tabular",
+                            priceDiff > 0
+                              ? "text-amber-600"
+                              : "text-emerald-600"
+                          )}
+                        >
+                          {priceDiff > 0 ? "+" : ""}
+                          {priceDiffPct.toFixed(0)}% vs MV
+                        </div>
+                      </div>
+                    )}
+
+                    {/* 24h-Δ als echter €-Wert (aus tfhmvt) */}
+                    {dayChange !== 0 && Math.abs(dayChange) >= 1 && (
+                      <div
+                        className={cn(
+                          "font-mono tabular text-xs flex items-center justify-end gap-0.5 font-semibold mt-2",
+                          trendColor
+                        )}
+                        title="Marktwert-Veränderung in den letzten 24 h"
+                      >
+                        <TrendIcon className="size-3" />
+                        {dayChange > 0 ? "+" : ""}
+                        {formatEUR(dayChange, { compact: true })}
+                        <span className="text-muted-foreground/70 font-normal ml-1">
+                          24 h
+                        </span>
+                      </div>
+                    )}
                   </div>
                 </div>
               </Link>
@@ -301,4 +504,59 @@ function formatExpiry(seconds: number): string {
   if (hours < 1) return `${Math.floor(seconds / 60)}m`;
   if (hours < 24) return `${hours}h`;
   return `${Math.floor(hours / 24)}d`;
+}
+
+/**
+ * Kompakter Prognose-Block neben der MV-Sparkline. Zeigt zwei klare Werte:
+ *  - Δ MV bis zum nächsten Spieltag (Veränderung)
+ *  - Erwarteter MV-Stand bei Spieltag-Anpfiff (Zielwert)
+ * Konfidenz nur als kleiner Punkt im Tooltip.
+ */
+function PredictionBlock({
+  prediction,
+}: {
+  prediction: import("@/lib/mv-predict").MvPrediction;
+}) {
+  const { deltaUntilMatchday, daysUntilMatchday, mvAtMatchday, confidence } =
+    prediction;
+  const up = deltaUntilMatchday > 0;
+  const flat = Math.abs(deltaUntilMatchday) < 5_000;
+  const color = flat
+    ? "text-muted-foreground"
+    : up
+    ? "text-emerald-700"
+    : "text-rose-700";
+  const Icon = flat ? Minus : up ? ArrowUp : ArrowDown;
+  const conf =
+    confidence >= 0.7 ? "hoch" : confidence >= 0.4 ? "mittel" : "niedrig";
+  const dayLabel =
+    daysUntilMatchday === 0
+      ? "heute"
+      : daysUntilMatchday === 1
+      ? "morgen"
+      : `in ${daysUntilMatchday} Tagen`;
+
+  return (
+    <div
+      className="shrink-0 flex flex-col items-end leading-tight tabular"
+      title={`Prognose ${dayLabel} · Konfidenz ${conf}`}
+    >
+      <span className="text-[9px] uppercase tracking-wider text-muted-foreground font-medium">
+        Bis Spieltag · {dayLabel}
+      </span>
+      <span
+        className={cn(
+          "font-mono font-bold text-base flex items-center gap-1 leading-tight",
+          color
+        )}
+      >
+        <Icon className="size-3.5" />
+        {up ? "+" : ""}
+        {formatEUR(deltaUntilMatchday, { compact: true })}
+      </span>
+      <span className="text-[10px] text-muted-foreground font-mono mt-0.5">
+        → MV {formatEUR(mvAtMatchday, { compact: true })}
+      </span>
+    </div>
+  );
 }

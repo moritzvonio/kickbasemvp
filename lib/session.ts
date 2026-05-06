@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
 import { jwtDecrypt, EncryptJWT } from "jose";
+import { createHash } from "node:crypto";
 import { env, isProd } from "@/lib/env";
 
 const COOKIE_NAME = "bb_session";
@@ -7,13 +8,10 @@ const ALGO = "dir";
 const ENC = "A256GCM";
 
 function getKey(): Uint8Array {
-  // jose expects a 32-byte key for A256GCM. Hash if needed via SubtleCrypto-equivalent.
-  const raw = new TextEncoder().encode(env.SESSION_SECRET);
-  if (raw.length === 32) return raw;
-  // Truncate or pad to 32 bytes deterministically
-  const out = new Uint8Array(32);
-  for (let i = 0; i < 32; i++) out[i] = raw[i % raw.length] ?? 0;
-  return out;
+  // SHA-256 produces a uniform 32-byte key from any secret length —
+  // robust gegen schwache/short/weak SESSION_SECRET-Werte (besser als
+  // byte-modulo padding das die Entropie nicht erhöht).
+  return new Uint8Array(createHash("sha256").update(env.SESSION_SECRET).digest());
 }
 
 export interface SessionPayload {

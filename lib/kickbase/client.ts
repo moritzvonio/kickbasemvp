@@ -1,7 +1,7 @@
 import { env } from "@/lib/env";
 import type { KbErrorResponse } from "./types";
 
-const USER_AGENT = "KickbaseMVP/0.1 (+https://kickbasemvp.app)";
+const USER_AGENT = `${env.NEXT_PUBLIC_APP_NAME}/0.1 (+${env.NEXT_PUBLIC_APP_URL})`;
 
 export class KickbaseError extends Error {
   status: number;

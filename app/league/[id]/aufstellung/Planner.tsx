@@ -91,31 +91,81 @@ function buildSlotIds(formation: FormationKey): string[] {
   return ids;
 }
 
+interface Counts {
+  g: number;
+  d: number;
+  m: number;
+  f: number;
+}
+
+function countByPos(
+  slots: Record<string, string | null>,
+  playerById: Map<string, PlannerPlayer>
+): Counts {
+  const c: Counts = { g: 0, d: 0, m: 0, f: 0 };
+  for (const pid of Object.values(slots)) {
+    if (!pid) continue;
+    const p = playerById.get(pid);
+    if (!p) continue;
+    if (p.pos === 1) c.g++;
+    else if (p.pos === 2) c.d++;
+    else if (p.pos === 3) c.m++;
+    else if (p.pos === 4) c.f++;
+  }
+  return c;
+}
+
+/**
+ * Wähle die Formation, die alle aktuellen Counts aufnimmt mit minimalem
+ * "Waste" (= Anzahl ungenutzter Slots). Liefert null wenn keine Formation
+ * die Counts aufnehmen kann (z.B. > 5 DEF aufgestellt).
+ */
+function deriveFormation(d: number, m: number, f: number): FormationKey | null {
+  let best: { key: FormationKey; waste: number } | null = null;
+  for (const [key, F] of Object.entries(FORMATIONS) as [
+    FormationKey,
+    (typeof FORMATIONS)[FormationKey],
+  ][]) {
+    if (F.def >= d && F.mid >= m && F.fwd >= f) {
+      const waste = F.def - d + (F.mid - m) + (F.fwd - f);
+      if (!best || waste < best.waste) best = { key, waste };
+    }
+  }
+  return best?.key ?? null;
+}
+
+/** Kann ein Spieler dieser Position zusätzlich auf den Pitch? */
+function canPlacePos(pos: number, c: Counts): boolean {
+  if (c.g + c.d + c.m + c.f >= 11) return false;
+  let ng = c.g,
+    nd = c.d,
+    nm = c.m,
+    nf = c.f;
+  if (pos === 1) ng++;
+  else if (pos === 2) nd++;
+  else if (pos === 3) nm++;
+  else if (pos === 4) nf++;
+  if (ng > 1) return false;
+  return deriveFormation(nd, nm, nf) !== null;
+}
+
 interface PlannerState {
-  formation: FormationKey;
   /** slotId → playerId (or null) */
   slots: Record<string, string | null>;
   /** player ids marked for sale */
   sells: string[];
 }
 
-function detectInitialFormation(players: PlannerPlayer[]): FormationKey {
-  const lineup = players.filter((p) => p.lo && p.lo >= 1 && p.lo <= 11);
-  const def = lineup.filter((p) => p.pos === 2).length;
-  const mid = lineup.filter((p) => p.pos === 3).length;
-  const fwd = lineup.filter((p) => p.pos === 4).length;
-  const key = `${def}-${mid}-${fwd}` as FormationKey;
-  if (FORMATIONS[key]) return key;
-  return "4-3-3";
-}
-
 function buildInitialState(players: PlannerPlayer[]): PlannerState {
-  const formation = detectInitialFormation(players);
+  const lineup = players.filter((p) => p.lo && p.lo >= 1 && p.lo <= 11);
+  const d = lineup.filter((p) => p.pos === 2).length;
+  const m = lineup.filter((p) => p.pos === 3).length;
+  const f = lineup.filter((p) => p.pos === 4).length;
+  const formation = deriveFormation(d, m, f) ?? "4-3-3";
   const slotIds = buildSlotIds(formation);
   const slots: Record<string, string | null> = {};
   for (const id of slotIds) slots[id] = null;
 
-  const lineup = players.filter((p) => p.lo && p.lo >= 1 && p.lo <= 11);
   const gk = lineup.find((p) => p.pos === 1);
   if (gk) slots["GK"] = gk.id;
 
@@ -136,7 +186,40 @@ function buildInitialState(players: PlannerPlayer[]): PlannerState {
   fillRow(3, "M");
   fillRow(4, "F");
 
-  return { formation, slots, sells: [] };
+  return { slots, sells: [] };
+}
+
+/**
+ * Spieler-IDs aus den aktuellen Slots in eine NEUE Formation übertragen.
+ * Spieler, deren Position keinen Slot mehr hat, fallen auf die Bank.
+ */
+function reassignSlots(
+  oldSlots: Record<string, string | null>,
+  newFormation: FormationKey,
+  playerById: Map<string, PlannerPlayer>
+): Record<string, string | null> {
+  const newSlotIds = buildSlotIds(newFormation);
+  const newSlots: Record<string, string | null> = {};
+  for (const id of newSlotIds) newSlots[id] = null;
+
+  const byPos = new Map<number, string[]>();
+  for (const pid of Object.values(oldSlots)) {
+    if (!pid) continue;
+    const player = playerById.get(pid);
+    if (!player) continue;
+    const arr = byPos.get(player.pos) ?? [];
+    arr.push(pid);
+    byPos.set(player.pos, arr);
+  }
+
+  for (const id of newSlotIds) {
+    const reqPos = POS_FOR_SLOT[id];
+    const arr = byPos.get(reqPos);
+    if (arr && arr.length > 0) {
+      newSlots[id] = arr.shift()!;
+    }
+  }
+  return newSlots;
 }
 
 export function Planner({
@@ -152,7 +235,8 @@ export function Planner({
   deadline?: string;
   matchday?: string | number;
 }) {
-  const storageKey = `bb_plan_${leagueId}_v1`;
+  // v2: state ohne `formation` (auto-derived)
+  const storageKey = `bb_plan_${leagueId}_v2`;
   const initialState = useMemo(() => buildInitialState(players), [players]);
   const [state, setState] = useState<PlannerState>(initialState);
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -163,9 +247,9 @@ export function Planner({
     try {
       const raw = localStorage.getItem(storageKey);
       if (raw) {
-        const parsed = JSON.parse(raw) as PlannerState;
-        if (parsed.formation && parsed.slots) {
-          setState(parsed);
+        const parsed = JSON.parse(raw) as Partial<PlannerState>;
+        if (parsed.slots) {
+          setState({ slots: parsed.slots, sells: parsed.sells ?? [] });
         }
       }
     } catch {
@@ -184,12 +268,37 @@ export function Planner({
     }
   }, [state, storageKey, hydrated]);
 
-  const slotIds = useMemo(() => buildSlotIds(state.formation), [state.formation]);
   const playerById = useMemo(() => {
     const m = new Map<string, PlannerPlayer>();
     for (const p of players) m.set(p.id, p);
     return m;
   }, [players]);
+
+  // Aktuelle Formation aus den Slot-Belegungen ableiten
+  const counts = useMemo(
+    () => countByPos(state.slots, playerById),
+    [state.slots, playerById]
+  );
+  const derivedFormation = useMemo(
+    () => deriveFormation(counts.d, counts.m, counts.f) ?? "4-3-3",
+    [counts]
+  );
+  const slotIds = useMemo(() => buildSlotIds(derivedFormation), [derivedFormation]);
+
+  // Sicherstellen dass state.slots zur derived Formation passt — falls nach
+  // Hydrate eine inkonsistente Slot-Belegung kommt, sauber neu bauen.
+  useEffect(() => {
+    const expected = new Set(slotIds);
+    const actual = Object.keys(state.slots);
+    const matches =
+      actual.length === slotIds.length && actual.every((id) => expected.has(id));
+    if (!matches) {
+      setState((prev) => ({
+        ...prev,
+        slots: reassignSlots(prev.slots, derivedFormation, playerById),
+      }));
+    }
+  }, [slotIds, derivedFormation, playerById, state.slots]);
 
   const assignedIds = new Set(Object.values(state.slots).filter(Boolean) as string[]);
   const benchPlayers = players.filter((p) => !assignedIds.has(p.id));
@@ -228,30 +337,46 @@ export function Planner({
     if (!e.over) return;
     const playerId = String(e.active.id);
     const overId = String(e.over.id);
-
     const player = playerById.get(playerId);
     if (!player) return;
 
     setState((prev) => {
-      const slots = { ...prev.slots };
-      // First, remove the player from any slot they're currently in
+      let slots = { ...prev.slots };
+      // Spieler aus aktuellen Slots entfernen
       for (const k of Object.keys(slots)) {
         if (slots[k] === playerId) slots[k] = null;
       }
 
       if (overId === "bench") {
-        // explicit drop on bench just removes them from any slot (already done)
-      } else {
-        const requiredPos = POS_FOR_SLOT[overId];
-        if (requiredPos === player.pos) {
-          // If something else is in that slot, swap (move displaced player to bench)
-          const displaced = slots[overId];
-          slots[overId] = playerId;
-          if (displaced) {
-            // displaced just goes back to bench (no-op since it's no longer in slots)
-          }
+        return { ...prev, slots };
+      }
+
+      // Drop on a slot
+      const requiredPos = POS_FOR_SLOT[overId];
+      if (requiredPos !== player.pos) return prev; // Position passt nicht
+
+      // Wenn der Slot in der aktuellen Formation existiert: einfach platzieren
+      if (overId in slots) {
+        slots[overId] = playerId;
+        return { ...prev, slots };
+      }
+
+      // Sonst: prüfe ob durch Hinzufügen eine valide Formation entsteht
+      const newCounts = countByPos(slots, playerById);
+      if (player.pos === 1) newCounts.g++;
+      else if (player.pos === 2) newCounts.d++;
+      else if (player.pos === 3) newCounts.m++;
+      else if (player.pos === 4) newCounts.f++;
+      const newForm = deriveFormation(newCounts.d, newCounts.m, newCounts.f);
+      if (!newForm) return prev;
+
+      slots = reassignSlots(slots, newForm, playerById);
+      // Erste freie Slot-Position für diese pos finden
+      for (const id of buildSlotIds(newForm)) {
+        if (slots[id] === null && POS_FOR_SLOT[id] === player.pos) {
+          slots[id] = playerId;
+          break;
         }
-        // else: invalid drop, no-op
       }
       return { ...prev, slots };
     });
@@ -261,23 +386,37 @@ export function Planner({
     setState((prev) => ({ ...prev, slots: { ...prev.slots, [slotId]: null } }));
   };
 
-  /** Place a bench player into the first free compatible slot. No-op if none. */
+  /**
+   * Bank-Spieler aufstellen. Wählt automatisch eine passende Formation und
+   * setzt den Spieler auf den ersten freien Position-Slot. No-op wenn keine
+   * valide Formation den Spieler aufnehmen kann.
+   */
   const placeOnPitch = (playerId: string) => {
     setState((prev) => {
       const player = playerById.get(playerId);
       if (!player) return prev;
-      const slots = { ...prev.slots };
+      let slots = { ...prev.slots };
+      // Aus aktuellen Slots entfernen (falls da)
       for (const k of Object.keys(slots)) {
         if (slots[k] === playerId) slots[k] = null;
       }
-      const ids = buildSlotIds(prev.formation);
-      for (const slotId of ids) {
-        if (slots[slotId] === null && POS_FOR_SLOT[slotId] === player.pos) {
-          slots[slotId] = playerId;
-          return { ...prev, slots };
+      const c = countByPos(slots, playerById);
+      if (!canPlacePos(player.pos, c)) return prev;
+
+      const nd = c.d + (player.pos === 2 ? 1 : 0);
+      const nm = c.m + (player.pos === 3 ? 1 : 0);
+      const nf = c.f + (player.pos === 4 ? 1 : 0);
+      const newForm = deriveFormation(nd, nm, nf);
+      if (!newForm) return prev;
+
+      slots = reassignSlots(slots, newForm, playerById);
+      for (const id of buildSlotIds(newForm)) {
+        if (slots[id] === null && POS_FOR_SLOT[id] === player.pos) {
+          slots[id] = playerId;
+          break;
         }
       }
-      return prev;
+      return { ...prev, slots };
     });
   };
 
@@ -288,35 +427,6 @@ export function Planner({
         ...prev,
         sells: has ? prev.sells.filter((id) => id !== playerId) : [...prev.sells, playerId],
       };
-    });
-  };
-
-  const setFormation = (f: FormationKey) => {
-    setState((prev) => {
-      const newSlotIds = buildSlotIds(f);
-      const newSlots: Record<string, string | null> = {};
-      for (const id of newSlotIds) newSlots[id] = null;
-
-      // Try to keep current assignments by position
-      const oldByPos = new Map<number, string[]>();
-      for (const [, pid] of Object.entries(prev.slots)) {
-        if (!pid) continue;
-        const player = playerById.get(pid);
-        if (!player) continue;
-        const arr = oldByPos.get(player.pos) ?? [];
-        arr.push(pid);
-        oldByPos.set(player.pos, arr);
-      }
-
-      // Refill new slots in order
-      for (const id of newSlotIds) {
-        const reqPos = POS_FOR_SLOT[id];
-        const arr = oldByPos.get(reqPos);
-        if (arr && arr.length > 0) {
-          newSlots[id] = arr.shift()!;
-        }
-      }
-      return { ...prev, formation: f, slots: newSlots };
     });
   };
 
@@ -336,7 +446,11 @@ export function Planner({
             label="Aufstellung"
             value={`${filledCount} / 11`}
             accent={filledCount === 11 ? "success" : filledCount > 7 ? "warning" : "danger"}
-            sub={filledCount === 11 ? "Komplett" : `${11 - filledCount} fehlen`}
+            sub={
+              filledCount === 11
+                ? `Komplett · ${derivedFormation}`
+                : `${11 - filledCount} fehlen · ${derivedFormation}`
+            }
           />
           <KpiTile
             icon={<Wallet className="size-4" />}
@@ -359,20 +473,19 @@ export function Planner({
           <DeadlineTile deadline={deadline} matchday={matchday} />
         </section>
 
-        {/* Mobile-only formation row (desktop has it in sidebar) */}
-        <section className="lg:hidden flex items-center justify-between flex-wrap gap-2 slide-up slide-up-1">
-          <FormationPicker formation={state.formation} onChange={setFormation} />
+        {/* Reset-Button (mobile) */}
+        <div className="lg:hidden flex justify-end slide-up slide-up-1">
           <Button onClick={reset} variant="outline" size="sm" className="gap-1.5">
             <RotateCcw className="size-3.5" /> Reset
           </Button>
-        </section>
+        </div>
 
-        {/* Main grid: Pitch left, Sidebar right (desktop only) */}
+        {/* Main grid: Pitch left, Right sidebar (incl. Bench) right (desktop) */}
         <section className="grid gap-4 lg:grid-cols-12 slide-up slide-up-2">
           <div className="lg:col-span-7">
             <Pitch
               slotIds={slotIds}
-              formation={state.formation}
+              formation={derivedFormation}
               slots={state.slots}
               playerById={playerById}
               sells={sellSet}
@@ -382,53 +495,93 @@ export function Planner({
           </div>
 
           <aside className="lg:col-span-5 space-y-3">
-            {/* Desktop formation picker + reset */}
-            <Card className="hidden lg:block">
+            {/* Geplantes Budget — prominent oben */}
+            <Card className="bg-primary/[0.04] border-primary/30">
               <CardContent className="p-4">
-                <div className="flex items-center justify-between mb-3">
-                  <span className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">
-                    Formation
-                  </span>
-                  <Button onClick={reset} variant="ghost" size="sm" className="h-7 px-2 text-[11px] gap-1">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="size-9 rounded-lg bg-primary text-primary-foreground flex items-center justify-center">
+                      <TrendingUp className="size-5" />
+                    </span>
+                    <div>
+                      <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
+                        Verfügbar nach Verkäufen
+                      </div>
+                      <div className="text-xl font-bold tabular">
+                        {formatEUR(projectedBudget, { compact: true })}
+                      </div>
+                    </div>
+                  </div>
+                  <Button
+                    onClick={reset}
+                    variant="ghost"
+                    size="sm"
+                    className="hidden lg:inline-flex h-7 px-2 text-[11px] gap-1"
+                  >
                     <RotateCcw className="size-3" /> Reset
                   </Button>
                 </div>
-                <FormationPicker
-                  formation={state.formation}
-                  onChange={setFormation}
-                  variant="grid"
-                />
+                <div className="mt-2 grid grid-cols-2 gap-2 text-[11px] tabular">
+                  <div className="rounded bg-white/60 px-2 py-1.5 ring-1 ring-border">
+                    <div className="text-[9px] uppercase tracking-wider text-muted-foreground">
+                      Aktuell
+                    </div>
+                    <div className="font-mono font-semibold">
+                      {formatEUR(budget, { compact: true })}
+                    </div>
+                  </div>
+                  <div className="rounded bg-emerald-50 px-2 py-1.5 ring-1 ring-emerald-200">
+                    <div className="text-[9px] uppercase tracking-wider text-emerald-700">
+                      + Verkäufe ({state.sells.length})
+                    </div>
+                    <div className="font-mono font-semibold text-emerald-700">
+                      + {formatEUR(sellValue, { compact: true })}
+                    </div>
+                  </div>
+                </div>
               </CardContent>
             </Card>
 
-            {/* Free slots overview */}
+            {/* Sells summary (when present) */}
+            {sellPlayers.length > 0 && (
+              <SellsSummary
+                players={sellPlayers}
+                totalValue={sellValue}
+                onUntag={toggleSell}
+              />
+            )}
+
+            {/* Free slots compact strip */}
             <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center gap-2 mb-3">
-                  <span className="size-7 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
-                    <Layers className="size-4" />
+              <CardContent className="p-3">
+                <div className="flex items-center gap-2 mb-2">
+                  <Layers className="size-3.5 text-muted-foreground" />
+                  <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">
+                    Freie Plätze
                   </span>
-                  <span className="font-semibold text-sm">Freie Plätze</span>
+                  <span className="ml-auto text-[10px] text-muted-foreground tabular">
+                    {derivedFormation}
+                  </span>
                 </div>
-                <div className="grid grid-cols-4 gap-2">
+                <div className="grid grid-cols-4 gap-1.5">
                   {[1, 2, 3, 4].map((pos) => {
                     const free = freeSlotByPos[pos] ?? 0;
                     return (
                       <div
                         key={pos}
                         className={cn(
-                          "rounded-lg border px-2 py-2 text-center",
+                          "rounded border px-1.5 py-1.5 text-center",
                           free > 0
                             ? "border-primary/30 bg-primary/[0.04]"
                             : "border-border bg-muted/40"
                         )}
                       >
-                        <div className="flex justify-center mb-1">
+                        <div className="flex justify-center mb-0.5">
                           <PositionBadge pos={pos} />
                         </div>
                         <div
                           className={cn(
-                            "text-lg font-bold tabular leading-none",
+                            "text-base font-bold tabular leading-none",
                             free > 0 ? "text-primary" : "text-muted-foreground"
                           )}
                         >
@@ -441,51 +594,15 @@ export function Planner({
               </CardContent>
             </Card>
 
-            {/* Sells summary inline */}
-            {sellPlayers.length > 0 && (
-              <SellsSummary
-                players={sellPlayers}
-                totalValue={sellValue}
-                onUntag={toggleSell}
-              />
-            )}
-
-            {/* Quick tip */}
-            <Card className="bg-primary/[0.03] border-primary/20">
-              <CardContent className="p-4 text-xs text-muted-foreground space-y-1.5">
-                <p className="flex items-start gap-1.5">
-                  <span className="text-primary font-bold">+</span>
-                  <span>
-                    Tippe das <span className="font-semibold text-foreground">+</span>{" "}
-                    auf einem Bank-Spieler um ihn auf den nächsten freien Platz zu setzen.
-                  </span>
-                </p>
-                <p className="flex items-start gap-1.5">
-                  <span className="text-primary font-bold">↕</span>
-                  <span>
-                    Drag-Drop funktioniert auch — zwischen Bank und Pitch sowie zwischen Slots.
-                  </span>
-                </p>
-                <p className="flex items-start gap-1.5">
-                  <span className="text-primary font-bold">€</span>
-                  <span>
-                    Verkaufs-Markierung ändert sofort das geplante Budget oben.
-                  </span>
-                </p>
-              </CardContent>
-            </Card>
+            {/* Bench (right column on desktop) */}
+            <BenchZone
+              players={benchPlayers}
+              sells={sellSet}
+              counts={counts}
+              onToggleSell={toggleSell}
+              onPlace={placeOnPitch}
+            />
           </aside>
-        </section>
-
-        {/* Bench — full width below */}
-        <section className="slide-up slide-up-3">
-          <BenchZone
-            players={benchPlayers}
-            sells={sellSet}
-            freeSlotByPos={freeSlotByPos}
-            onToggleSell={toggleSell}
-            onPlace={placeOnPitch}
-          />
         </section>
       </div>
 
@@ -493,42 +610,6 @@ export function Planner({
         {activeId ? <PlayerCard player={playerById.get(activeId)!} dragging /> : null}
       </DragOverlay>
     </DndContext>
-  );
-}
-
-/* ─── Formation picker (shared) ────────────────────────── */
-function FormationPicker({
-  formation,
-  onChange,
-  variant = "row",
-}: {
-  formation: FormationKey;
-  onChange: (f: FormationKey) => void;
-  variant?: "row" | "grid";
-}) {
-  return (
-    <div
-      className={cn(
-        "flex flex-wrap gap-1.5",
-        variant === "grid" && "grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-3 gap-2"
-      )}
-    >
-      {(Object.keys(FORMATIONS) as FormationKey[]).map((f) => (
-        <button
-          key={f}
-          onClick={() => onChange(f)}
-          className={cn(
-            "px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors tabular text-center",
-            variant === "grid" && "rounded-md",
-            formation === f
-              ? "bg-primary text-primary-foreground border-primary shadow-sm"
-              : "border-border text-muted-foreground hover:bg-accent hover:text-foreground"
-          )}
-        >
-          {f}
-        </button>
-      ))}
-    </div>
   );
 }
 
@@ -646,6 +727,7 @@ function Pitch({
     { key: "def", ids: slotIds.filter((id) => id.startsWith("D")) },
     { key: "gk", ids: ["GK"] },
   ];
+  const filled = slotIds.filter((id) => slots[id]).length;
 
   return (
     <div className="relative rounded-2xl overflow-hidden ring-1 ring-emerald-700/50 shadow-card bg-emerald-700">
@@ -656,21 +738,15 @@ function Pitch({
         className="absolute inset-0 w-full h-full opacity-25 pointer-events-none"
         aria-hidden
       >
-        {/* Outer */}
         <rect x="6" y="6" width="188" height="268" fill="none" stroke="white" strokeWidth="1" />
-        {/* Center line */}
         <line x1="6" y1="140" x2="194" y2="140" stroke="white" strokeWidth="0.5" />
-        {/* Center circle */}
         <circle cx="100" cy="140" r="22" fill="none" stroke="white" strokeWidth="0.5" />
         <circle cx="100" cy="140" r="1.5" fill="white" />
-        {/* Top penalty box */}
         <rect x="55" y="6" width="90" height="32" fill="none" stroke="white" strokeWidth="0.5" />
         <rect x="78" y="6" width="44" height="14" fill="none" stroke="white" strokeWidth="0.5" />
-        {/* Bottom penalty box */}
         <rect x="55" y="242" width="90" height="32" fill="none" stroke="white" strokeWidth="0.5" />
         <rect x="78" y="260" width="44" height="14" fill="none" stroke="white" strokeWidth="0.5" />
       </svg>
-      {/* Grass stripes */}
       <div
         className="absolute inset-0 pointer-events-none"
         aria-hidden
@@ -709,7 +785,7 @@ function Pitch({
 
       {/* Formation label */}
       <div className="absolute top-3 right-3 px-2 py-1 rounded-md bg-black/30 backdrop-blur text-white text-[10px] font-mono tabular">
-        {formation} · {f.def + f.mid + f.fwd + 1}/11
+        {formation} · {filled}/{f.def + f.mid + f.fwd + 1}
       </div>
     </div>
   );
@@ -757,9 +833,7 @@ function EmptySlot({ pos }: { pos: number }) {
   const label = POSITION_LABELS[pos] ?? "?";
   return (
     <div className="aspect-[3/4] flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-white/35 bg-black/10 text-white/65 text-[10px] font-bold tracking-wider gap-1">
-      <div className="size-7 rounded-full bg-white/10 flex items-center justify-center text-[9px]">
-        +
-      </div>
+      <div className="size-7 rounded-full bg-white/10 flex items-center justify-center text-[9px]">+</div>
       {label}
     </div>
   );
@@ -793,7 +867,13 @@ function PitchPlayer({
         ref={setNodeRef}
         {...attributes}
         {...listeners}
-        className="touch-none cursor-grab active:cursor-grabbing"
+        onClick={(e) => {
+          // Drag fires nicht bei Tap (PointerSensor distance=4); Tap = "auf Bank"
+          e.stopPropagation();
+          if (!isDragging) onRemove();
+        }}
+        className="touch-none cursor-pointer active:cursor-grabbing"
+        title="Klick: Auf Bank · Halten + Ziehen: Position tauschen"
       >
         <div className="rounded-xl bg-white shadow-md ring-1 ring-emerald-900/20 overflow-hidden hover:scale-[1.03] transition-transform">
           <div
@@ -807,7 +887,6 @@ function PitchPlayer({
               rounded="md"
               className="ring-0 bg-transparent w-full h-full"
             />
-            {/* Team logo overlay (top-left) */}
             {teamLogo && (
               <span
                 className="absolute top-1 left-1 size-6 rounded-full bg-white shadow-md ring-1 ring-black/10 flex items-center justify-center overflow-hidden"
@@ -829,22 +908,22 @@ function PitchPlayer({
               </span>
             )}
             {player.st !== undefined && player.st !== 0 && (
-              <span className="absolute bottom-1 right-1 size-5 rounded-full bg-rose-500 text-white flex items-center justify-center text-[9px] ring-1 ring-white" title="Verletzt/Gesperrt">
+              <span
+                className="absolute bottom-1 right-1 size-5 rounded-full bg-rose-500 text-white flex items-center justify-center text-[9px] ring-1 ring-white"
+                title="Verletzt/Gesperrt"
+              >
                 <AlertTriangle className="size-3" />
               </span>
             )}
           </div>
           <div className="px-1.5 py-1 text-center">
-            <div className="text-[10px] sm:text-[11px] font-semibold truncate">
-              {player.name}
-            </div>
+            <div className="text-[10px] sm:text-[11px] font-semibold truncate">{player.name}</div>
             <div className="text-[9px] font-mono text-muted-foreground tabular">
               {formatEUR(player.mv, { compact: true })}
             </div>
           </div>
         </div>
       </div>
-      {/* Action buttons */}
       <div className="absolute -top-1 -right-1 flex gap-0.5 z-10">
         <button
           onClick={(e) => {
@@ -879,13 +958,13 @@ function PitchPlayer({
 function BenchZone({
   players,
   sells,
-  freeSlotByPos,
+  counts,
   onToggleSell,
   onPlace,
 }: {
   players: PlannerPlayer[];
   sells: Set<string>;
-  freeSlotByPos: Record<number, number>;
+  counts: Counts;
   onToggleSell: (id: string) => void;
   onPlace: (id: string) => void;
 }) {
@@ -902,59 +981,56 @@ function BenchZone({
       ref={setNodeRef as unknown as React.Ref<HTMLDivElement>}
       className={cn("transition-all", isOver && "ring-2 ring-primary card-glow")}
     >
-      <CardContent className="p-4 space-y-4">
+      <CardContent className="p-4 space-y-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span className="size-7 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
               <Users className="size-4" />
             </span>
-            <span className="font-semibold">Bank</span>
+            <span className="font-semibold text-sm">Bank</span>
             <Badge variant="muted" className="text-[10px]">
               {players.length}
             </Badge>
           </div>
           <span className="text-[10px] text-muted-foreground hidden sm:inline">
-            Drag oder <span className="text-foreground font-medium">+</span> zum Aufstellen
+            <span className="text-foreground font-medium">+</span> = Aufstellen
           </span>
         </div>
         {players.length === 0 ? (
-          <p className="text-sm text-muted-foreground py-4 text-center">
-            Alle Spieler aus deinem Kader sind in der Aufstellung.
+          <p className="text-xs text-muted-foreground py-3 text-center">
+            Alle Spieler sind in der Aufstellung.
           </p>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-2.5">
             {grouped.map((g) => {
               const list = players.filter((p) => p.pos === g.pos);
               if (list.length === 0) return null;
-              const free = freeSlotByPos[g.pos] ?? 0;
+              const canAdd = canPlacePos(g.pos, counts);
               return (
                 <div key={g.pos}>
-                  <div className="flex items-center gap-2 mb-2 px-1">
+                  <div className="flex items-center gap-2 mb-1.5 px-1">
                     <PositionBadge pos={g.pos} />
-                    <span className="text-xs text-muted-foreground">
-                      {list.length} Spieler · Σ{" "}
-                      {formatEUR(
-                        list.reduce((s, p) => s + (p.mv ?? 0), 0),
-                        { compact: true }
-                      )}
+                    <span className="text-[10px] text-muted-foreground tabular">
+                      {list.length}
                     </span>
-                    <span className="ml-auto text-[10px] text-muted-foreground">
-                      {free > 0 ? (
-                        <span className="text-primary font-semibold">
-                          {free} {free === 1 ? "freier Platz" : "freie Plätze"}
-                        </span>
-                      ) : (
-                        "alle besetzt"
+                    <span
+                      className={cn(
+                        "ml-auto text-[10px] tabular",
+                        canAdd
+                          ? "text-primary font-semibold"
+                          : "text-muted-foreground"
                       )}
+                    >
+                      {canAdd ? "Platz frei" : "voll"}
                     </span>
                   </div>
-                  <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                  <div className="grid gap-1.5">
                     {list.map((p) => (
                       <PlayerCard
                         key={p.id}
                         player={p}
                         isSellMarked={sells.has(p.id)}
-                        canPlace={free > 0}
+                        canPlace={canAdd}
                         onToggleSell={() => onToggleSell(p.id)}
                         onPlace={() => onPlace(p.id)}
                       />
@@ -996,24 +1072,26 @@ function PlayerCard({
       ref={setNodeRef}
       {...attributes}
       {...listeners}
+      onClick={(e) => {
+        e.stopPropagation();
+        if (!isDragging && canPlace && onPlace) onPlace();
+      }}
       className={cn(
-        "relative rounded-xl border bg-card p-2.5 touch-none cursor-grab active:cursor-grabbing card-hover",
+        "relative rounded-lg border bg-card p-2 touch-none card-hover",
+        canPlace ? "cursor-pointer active:cursor-grabbing" : "cursor-grab active:cursor-grabbing",
         isDragging && "opacity-30",
         isSellMarked && "border-rose-300 bg-rose-50/40",
         dragging && "shadow-2xl ring-2 ring-primary"
       )}
+      title={canPlace ? "Klick: Aufstellen · Halten + Ziehen: Slot" : undefined}
     >
-      <div className="flex items-center gap-2.5">
-        <PlayerAvatar pim={player.pim} tid={player.tid} size={40} />
+      <div className="flex items-center gap-2">
+        <PlayerAvatar pim={player.pim} tid={player.tid} size={32} />
         <div className="flex-1 min-w-0">
-          <div className="text-sm font-semibold truncate flex items-center gap-1">
-            {player.name}
-          </div>
+          <div className="text-xs font-semibold truncate">{player.name}</div>
           <div className="text-[10px] text-muted-foreground flex items-center gap-1.5 mt-0.5">
             <TeamTag tid={player.tid} size="xs" />
-            <span className="font-mono tabular">
-              {formatEUR(player.mv, { compact: true })}
-            </span>
+            <span className="font-mono tabular">{formatEUR(player.mv, { compact: true })}</span>
             {trend !== 0 && (
               <span
                 className={cn(
@@ -1036,12 +1114,16 @@ function PlayerCard({
                 }}
                 disabled={!canPlace}
                 className={cn(
-                  "size-7 rounded text-base font-bold transition-colors flex items-center justify-center",
+                  "size-6 rounded text-sm font-bold transition-colors flex items-center justify-center",
                   canPlace
                     ? "bg-primary/15 text-primary hover:bg-primary hover:text-primary-foreground ring-1 ring-primary/30"
                     : "bg-muted text-muted-foreground/40 cursor-not-allowed"
                 )}
-                title={canPlace ? "Auf nächsten freien Platz setzen" : "Keine freie Position auf dem Platz"}
+                title={
+                  canPlace
+                    ? "Aufstellen"
+                    : "Position voll — keine valide Formation mehr möglich"
+                }
                 aria-label="Aufstellen"
               >
                 +
@@ -1053,7 +1135,7 @@ function PlayerCard({
                 onToggleSell?.();
               }}
               className={cn(
-                "size-7 rounded text-xs transition-colors flex items-center justify-center",
+                "size-6 rounded text-[10px] transition-colors flex items-center justify-center",
                 isSellMarked
                   ? "bg-rose-500 text-white"
                   : "bg-muted text-muted-foreground hover:bg-rose-100 hover:text-rose-600"
@@ -1083,48 +1165,46 @@ function SellsSummary({
 }) {
   return (
     <Card className="border-rose-200 bg-rose-50/40 slide-up">
-      <CardContent className="p-4">
-        <div className="flex items-center justify-between mb-3">
+      <CardContent className="p-3">
+        <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-2">
-            <span className="size-7 rounded-lg bg-rose-500/15 text-rose-600 flex items-center justify-center">
-              <Tag className="size-4" />
+            <span className="size-6 rounded bg-rose-500/15 text-rose-600 flex items-center justify-center">
+              <Tag className="size-3.5" />
             </span>
-            <span className="font-semibold text-rose-900">Verkaufs-Plan</span>
+            <span className="font-semibold text-sm text-rose-900">Verkaufs-Plan</span>
             <Badge variant="danger" className="text-[10px]">
-              {players.length} {players.length === 1 ? "Spieler" : "Spieler"}
+              {players.length}
             </Badge>
           </div>
           <div className="text-right">
-            <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
+            <div className="text-[9px] uppercase tracking-wider text-muted-foreground font-medium">
               Erlös
             </div>
-            <div className="font-mono font-bold tabular text-emerald-700">
+            <div className="font-mono font-bold tabular text-emerald-700 text-sm">
               + {formatEUR(totalValue, { compact: true })}
             </div>
           </div>
         </div>
-        <div className="grid gap-1.5">
-          {players.map((p) => {
-            return (
-              <div
-                key={p.id}
-                className="flex items-center gap-2 py-1 px-2 rounded bg-white/60 ring-1 ring-rose-100"
+        <div className="grid gap-1">
+          {players.map((p) => (
+            <div
+              key={p.id}
+              className="flex items-center gap-2 py-1 px-2 rounded bg-white/60 ring-1 ring-rose-100"
+            >
+              <TeamTag tid={p.tid} size="xs" />
+              <span className="text-xs font-medium truncate flex-1">{p.name}</span>
+              <span className="text-xs font-mono text-emerald-700 tabular">
+                + {formatEUR(p.mv, { compact: true })}
+              </span>
+              <button
+                onClick={() => onUntag(p.id)}
+                className="size-5 rounded hover:bg-rose-100 text-muted-foreground hover:text-rose-700 flex items-center justify-center transition-colors"
+                aria-label="Verkaufs-Markierung entfernen"
               >
-                <TeamTag tid={p.tid} size="xs" />
-                <span className="text-sm font-medium truncate flex-1">{p.name}</span>
-                <span className="text-xs font-mono text-emerald-700 tabular">
-                  + {formatEUR(p.mv, { compact: true })}
-                </span>
-                <button
-                  onClick={() => onUntag(p.id)}
-                  className="size-5 rounded hover:bg-rose-100 text-muted-foreground hover:text-rose-700 flex items-center justify-center transition-colors"
-                  aria-label="Verkaufs-Markierung entfernen"
-                >
-                  <X className="size-3" />
-                </button>
-              </div>
-            );
-          })}
+                <X className="size-3" />
+              </button>
+            </div>
+          ))}
         </div>
       </CardContent>
     </Card>

@@ -8,6 +8,7 @@
 
 import { cookies } from "next/headers";
 import { jwtDecrypt, EncryptJWT } from "jose";
+import { createHash } from "node:crypto";
 import { env, isProd } from "@/lib/env";
 
 const COOKIE = "bb_entitlement";
@@ -23,11 +24,8 @@ export interface Entitlement {
 }
 
 function getKey(): Uint8Array {
-  const raw = new TextEncoder().encode(env.SESSION_SECRET);
-  if (raw.length === 32) return raw;
-  const out = new Uint8Array(32);
-  for (let i = 0; i < 32; i++) out[i] = raw[i % raw.length] ?? 0;
-  return out;
+  // SHA-256 für robuste 32-byte-Schlüssel-Ableitung aus dem SESSION_SECRET.
+  return new Uint8Array(createHash("sha256").update(env.SESSION_SECRET).digest());
 }
 
 export async function setEntitlement(e: Entitlement) {

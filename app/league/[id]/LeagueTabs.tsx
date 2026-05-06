@@ -12,6 +12,7 @@ import {
   Trophy,
   Swords,
   TrendingUp,
+  Newspaper,
 } from "lucide-react";
 
 interface Tab {
@@ -29,6 +30,7 @@ export function LeagueTabs({ leagueId }: { leagueId: string }) {
     { href: `/league/${leagueId}/trading`, label: "Trading", icon: TrendingUp },
     { href: `/league/${leagueId}/wettbewerb`, label: "Wettbewerb", icon: Swords },
     { href: `/league/${leagueId}/markt`, label: "Markt", icon: ShoppingCart },
+    { href: `/league/${leagueId}/news`, label: "News", icon: Newspaper },
     { href: `/league/${leagueId}/top-spieler`, label: "Top 50", icon: Trophy },
     { href: `/league/${leagueId}/watchlist`, label: "Watchlist", icon: Star },
     { href: `/league/${leagueId}/feed`, label: "Liga-Feed", icon: Activity },

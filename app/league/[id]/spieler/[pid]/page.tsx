@@ -32,6 +32,10 @@ import {
 import { MarketValueChart } from "./MarketValueChart";
 import { WatchButton } from "./WatchButton";
 import { isWatched } from "@/lib/watchlist";
+import { getRecentNewsForPlayer } from "@/lib/news/store";
+import { getPlayerIndex } from "@/lib/news/player-index";
+import { NewsCard } from "@/components/news/news-card";
+import { Newspaper } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -348,7 +352,49 @@ export default async function PlayerPage({
           )}
         </CardContent>
       </Card>
+
+      {/* News-Sektion zu diesem Spieler */}
+      <PlayerNewsSection playerId={playerId} playerName={player.n ?? "Spieler"} />
     </div>
+  );
+}
+
+async function PlayerNewsSection({
+  playerId,
+  playerName,
+}: {
+  playerId: string;
+  playerName: string;
+}) {
+  const [news, idx] = await Promise.all([
+    getRecentNewsForPlayer(playerId, { limit: 8 }),
+    getPlayerIndex(),
+  ]);
+  if (news.length === 0) return null;
+
+  const playerNameMap: Record<string, string> = {};
+  for (const [pid, meta] of Object.entries(idx.byPlayerId)) {
+    playerNameMap[pid] = meta.name;
+  }
+
+  return (
+    <Card className="slide-up">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-base">
+          <Newspaper className="size-4 text-primary" />
+          News zu {playerName}
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-2.5">
+        {news.map((item) => (
+          <NewsCard
+            key={item.externalId}
+            item={item}
+            playerNameMap={playerNameMap}
+          />
+        ))}
+      </CardContent>
+    </Card>
   );
 }
 
