@@ -65,25 +65,19 @@ export function LeagueTabs({ leagueId }: { leagueId: string }) {
   return (
     <div className="mx-auto max-w-6xl px-4 pb-3">
       <nav
-        className="flex items-end max-w-full overflow-x-auto scrollbar-none gap-4 sm:gap-6"
+        className="flex items-stretch max-w-full overflow-x-auto scrollbar-none gap-2"
         role="tablist"
         aria-label="Liga-Navigation"
       >
-        {groups.map((group, gi) => (
+        {groups.map((group) => (
           <div
             key={group.label}
-            className="flex flex-col gap-1 shrink-0"
+            className="flex flex-col shrink-0 rounded-2xl bg-muted/40 ring-1 ring-border/60 px-2 pt-1.5 pb-1.5 hover:bg-muted/60 transition-colors"
           >
-            <span className="text-[9px] uppercase tracking-[0.14em] font-semibold text-muted-foreground/60 select-none px-1">
+            <span className="text-[9px] uppercase tracking-[0.14em] font-bold text-muted-foreground/70 select-none px-2 mb-1">
               {group.label}
             </span>
-            <div className="flex items-center gap-0.5 shrink-0 relative">
-              {gi > 0 && (
-                <span
-                  aria-hidden
-                  className="absolute -left-3 sm:-left-4 top-1/2 -translate-y-1/2 h-5 w-px bg-border/50"
-                />
-              )}
+            <div className="flex items-center gap-0.5">
               {group.tabs.map((t) => {
                 const active = t.exact
                   ? pathname === t.href
@@ -96,10 +90,10 @@ export function LeagueTabs({ leagueId }: { leagueId: string }) {
                     role="tab"
                     aria-selected={active}
                     className={cn(
-                      "inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs sm:text-[13px] font-medium whitespace-nowrap transition-colors",
+                      "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs sm:text-[13px] font-medium whitespace-nowrap transition-all",
                       active
-                        ? "bg-primary/10 text-primary ring-1 ring-primary/25"
-                        : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                        ? "bg-card text-foreground shadow-sm ring-1 ring-primary/30 [&_svg]:text-primary"
+                        : "text-muted-foreground hover:text-foreground hover:bg-card/60"
                     )}
                   >
                     <Icon className="size-3.5" />
