@@ -69,41 +69,58 @@ export function LeagueTabs({ leagueId }: { leagueId: string }) {
         role="tablist"
         aria-label="Liga-Navigation"
       >
-        {groups.map((group) => (
-          <div
-            key={group.label}
-            className="flex flex-col shrink-0 rounded-2xl bg-muted/40 ring-1 ring-border/60 px-2 pt-1.5 pb-1.5 hover:bg-muted/60 transition-colors"
-          >
-            <span className="text-[9px] uppercase tracking-[0.14em] font-bold text-muted-foreground/70 select-none px-2 mb-1">
-              {group.label}
-            </span>
-            <div className="flex items-center gap-0.5">
-              {group.tabs.map((t) => {
-                const active = t.exact
-                  ? pathname === t.href
-                  : pathname.startsWith(t.href);
-                const Icon = t.icon;
-                return (
-                  <Link
-                    key={t.href}
-                    href={t.href}
-                    role="tab"
-                    aria-selected={active}
-                    className={cn(
-                      "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs sm:text-[13px] font-medium whitespace-nowrap transition-all",
-                      active
-                        ? "bg-card text-foreground shadow-sm ring-1 ring-primary/30 [&_svg]:text-primary"
-                        : "text-muted-foreground hover:text-foreground hover:bg-card/60"
-                    )}
-                  >
-                    <Icon className="size-3.5" />
-                    {t.label}
-                  </Link>
-                );
-              })}
+        {groups.map((group) => {
+          const groupHasActive = group.tabs.some((t) =>
+            t.exact ? pathname === t.href : pathname.startsWith(t.href)
+          );
+          return (
+            <div
+              key={group.label}
+              className={cn(
+                "flex flex-col shrink-0 rounded-2xl px-2 pt-1.5 pb-1.5 transition-all ring-1",
+                groupHasActive
+                  ? "bg-card ring-primary/40 shadow-[0_2px_12px_-2px_rgba(16,185,129,0.18)]"
+                  : "bg-muted/30 ring-border/60 hover:bg-muted/60 hover:ring-border"
+              )}
+            >
+              <span
+                className={cn(
+                  "text-[9px] uppercase tracking-[0.16em] font-bold select-none px-2 mb-1 transition-colors",
+                  groupHasActive ? "text-primary" : "text-muted-foreground/75"
+                )}
+              >
+                {group.label}
+              </span>
+              <div className="flex items-center gap-0.5">
+                {group.tabs.map((t) => {
+                  const active = t.exact
+                    ? pathname === t.href
+                    : pathname.startsWith(t.href);
+                  const Icon = t.icon;
+                  return (
+                    <Link
+                      key={t.href}
+                      href={t.href}
+                      role="tab"
+                      aria-selected={active}
+                      className={cn(
+                        "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs sm:text-[13px] font-semibold whitespace-nowrap transition-all",
+                        active
+                          ? "bg-primary text-primary-foreground shadow-sm [&_svg]:text-primary-foreground"
+                          : groupHasActive
+                          ? "text-foreground/75 hover:text-foreground hover:bg-muted/70"
+                          : "text-muted-foreground hover:text-foreground hover:bg-card/70"
+                      )}
+                    >
+                      <Icon className="size-3.5" />
+                      {t.label}
+                    </Link>
+                  );
+                })}
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </nav>
     </div>
   );
