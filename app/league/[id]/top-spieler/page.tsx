@@ -50,9 +50,44 @@ export default async function TopSpielerPage({
     })
   ).catch(() => ({ it: [] as KbCompetitionPlayer[] }));
 
-  const all = (data.it ?? []).slice().sort((a, b) => (b.p ?? 0) - (a.p ?? 0));
+  // Erster Sort nach competitionPlayer.p — das ist aber bei der Kickbase-API
+  // NICHT konsistent die Gesamtsaison-Punkte (manchmal nur letzter Spieltag
+  // oder Aggregat). Wir holen für die Top-(limit) Spieler die wirklichen
+  // Saison-Punkte via Detail-Endpoint (tp) und sortieren final danach.
+  const preSorted = (data.it ?? []).slice().sort((a, b) => (b.p ?? 0) - (a.p ?? 0));
+  const candidates = preSorted.slice(0, Math.min(limit + 20, preSorted.length));
+
+  // Parallel Detail-Calls für Saison-Punkte
+  const detailMap = new Map<
+    string,
+    { tp?: number; ap?: number; g?: number; a?: number }
+  >();
+  await Promise.all(
+    candidates.map(async (cp) => {
+      try {
+        const d = await kb.player(session.token, leagueId, cp.pi);
+        detailMap.set(cp.pi, {
+          tp: d.tp,
+          ap: d.ap,
+          g: d.g,
+          a: d.a,
+        });
+      } catch {
+        // ignore — fallback auf cp.p für diesen Spieler
+      }
+    })
+  );
+
+  // Helper: liefert tp wenn Detail vorhanden, sonst cp.p als Fallback
+  const seasonPoints = (cp: KbCompetitionPlayer): number => {
+    const d = detailMap.get(cp.pi);
+    return d?.tp ?? cp.p ?? 0;
+  };
+
+  // Final-Sort nach echten Saison-Punkten
+  const all = candidates.slice().sort((a, b) => seasonPoints(b) - seasonPoints(a));
   const top = all.slice(0, limit);
-  const max = top[0]?.p ?? 1;
+  const max = seasonPoints(top[0] ?? candidates[0]) || 1;
 
   return (
     <div className="space-y-6">
@@ -124,6 +159,10 @@ export default async function TopSpielerPage({
               <PlayerRow
                 key={player.pi}
                 player={player}
+                seasonPts={seasonPoints(player)}
+                detailAp={detailMap.get(player.pi)?.ap}
+                detailG={detailMap.get(player.pi)?.g}
+                detailA={detailMap.get(player.pi)?.a}
                 rank={idx + 1}
                 max={max}
                 leagueId={leagueId}
@@ -143,18 +182,29 @@ export default async function TopSpielerPage({
 
 function PlayerRow({
   player,
+  seasonPts,
+  detailAp,
+  detailG,
+  detailA,
   rank,
   max,
   leagueId,
 }: {
   player: KbCompetitionPlayer;
+  seasonPts: number;
+  detailAp?: number;
+  detailG?: number;
+  detailA?: number;
   rank: number;
   max: number;
   leagueId: string;
 }) {
-  const points = player.p ?? 0;
+  const points = seasonPts;
   const pct = points / max;
   const isInjured = player.st !== undefined && player.st !== 5 && player.st !== 0;
+  const avg = detailAp ?? player.ap;
+  const goals = detailG ?? player.g;
+  const assists = detailA ?? player.a;
 
   return (
     <Link
@@ -190,16 +240,16 @@ function PlayerRow({
         <div className="text-xs text-muted-foreground flex items-center gap-1.5">
           <TeamTag tid={player.tid} size="xs" />
           <PositionBadge pos={player.pos} className="text-[9px] h-4 px-1" />
-          {player.g !== undefined && player.g > 0 && (
-            <span className="inline-flex items-center gap-0.5 tabular" title={`${player.g} Tore`}>
+          {goals !== undefined && goals > 0 && (
+            <span className="inline-flex items-center gap-0.5 tabular" title={`${goals} Tore`}>
               <Goal className="size-3" />
-              {player.g}
+              {goals}
             </span>
           )}
-          {player.a !== undefined && player.a > 0 && (
-            <span className="inline-flex items-center gap-0.5 tabular" title={`${player.a} Vorlagen`}>
+          {assists !== undefined && assists > 0 && (
+            <span className="inline-flex items-center gap-0.5 tabular" title={`${assists} Vorlagen`}>
               <Footprints className="size-3" />
-              {player.a}
+              {assists}
             </span>
           )}
           {player.cs !== undefined && player.cs > 0 && (
@@ -219,7 +269,7 @@ function PlayerRow({
           {points.toLocaleString("de-DE")}
         </div>
         <div className="text-[10px] text-muted-foreground tabular">
-          {player.ap !== undefined ? `Ø ${player.ap}` : "—"}
+          {avg !== undefined ? `Ø ${avg} / Spieltag` : "—"}
         </div>
       </div>
     </Link>
