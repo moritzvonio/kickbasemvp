@@ -58,7 +58,7 @@ export async function POST(req: Request) {
     externalId: id,
     title: body.content.slice(0, 120),
     body: body.content,
-    url: body.url ?? `https://betterbase.vercel.app/news#${id}`,
+    url: body.url ?? `https://kickbasemvp.vercel.app/news#${id}`,
     publishedAt: body.timestamp ? new Date(body.timestamp) : new Date(),
     imageUrl: body.imageUrl,
     sourceId,

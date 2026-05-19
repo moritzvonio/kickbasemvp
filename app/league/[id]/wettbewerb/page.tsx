@@ -399,6 +399,13 @@ function buildTeamValueChartData(opts: {
       }
 
       point[u.n] = tv + cash;
+
+      // Diagnose für MD 1 (hilft bei initial-budget-Mismatch)
+      if (d === 1 && process.env.DEBUG_TVCHART === "1") {
+        console.log(
+          `[TVCHART MD1] ${u.n}: tv=${(tv / 1_000_000).toFixed(1)}M + cash=${(cash / 1_000_000).toFixed(1)}M = ${((tv + cash) / 1_000_000).toFixed(1)}M (initial=${(opts.initialBudget / 1_000_000).toFixed(0)}M)`
+        );
+      }
     }
     return point;
   });

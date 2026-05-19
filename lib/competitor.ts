@@ -480,9 +480,14 @@ export function detectInitialBudget(opts: {
   /** Liga-Selection b (eigener aktueller Cash-Stand) */
   selectionBudget?: number;
 }): number {
-  // overview.b liefert das initial konfigurierte Liga-Budget
+  // Höchste Priorität: ENV-Override (für Ligen mit nicht-Standard-Budget,
+  // z.B. 150 Mio statt 50 Mio Cash-Start). Setze INITIAL_BUDGET_EUR=150000000
+  // in Vercel um das zu überschreiben.
+  const envOverride = Number(process.env.INITIAL_BUDGET_EUR);
+  if (Number.isFinite(envOverride) && envOverride > 0) return envOverride;
+  // Liga-Overview b-Field
   if (opts.overviewBudget && opts.overviewBudget > 0) return opts.overviewBudget;
-  // Fallback: 50 Mio (Bundesliga-Default)
+  // Fallback: 50 Mio (Standard-Bundesliga-Default)
   return 50_000_000;
 }
 

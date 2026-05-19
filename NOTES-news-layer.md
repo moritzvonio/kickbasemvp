@@ -7,7 +7,7 @@ sofort lokal. Damit der Cron in Production echte News einsammelt brauchen wir
 ## Bonus diese Session — Audit-Fixes
 - ✅ **I5** SHA-256-Key-Derivation in `lib/session.ts` + `lib/entitlement.ts` (vorher byte-modulo padding — schwächer)
 - ✅ **I7** User-Agent in `lib/kickbase/client.ts` aus env (`NEXT_PUBLIC_APP_NAME`/`URL`) statt hardcoded
-- ✅ **I6** Patch-Files in `~/Documents/Claude/Projects/Venture Machine/.betterbase-patch/` gediffed: **alle 4 sind outdated** (Patch sagt "BetterBase", Repo bereits "KickbaseMVP"). **Mourice kann den Ordner gefahrlos löschen.**
+- ✅ **I6** Patch-Files in `~/Documents/Claude/Projects/Venture Machine/.kickbasemvp-patch/` gediffed: **alle 4 sind outdated** (Patch sagt "KickbaseMVP", Repo bereits "KickbaseMVP"). **Mourice kann den Ordner gefahrlos löschen.**
 - ❌ **C1** „Middleware tot" war FALSE POSITIVE — `proxy.ts` ist Next.js 16 Standard (Middleware wurde umbenannt zu Proxy, siehe `node_modules/next/dist/docs/01-app/01-getting-started/16-proxy.md`). Auth läuft.
 - ✅ **C3** SESSION_SECRET-Default in production crashed jetzt (vorher: stiller Fallback)
 
@@ -16,7 +16,7 @@ sofort lokal. Damit der Cron in Production echte News einsammelt brauchen wir
 auf den 30-min-Cron zu warten:
 
 ```
-cd ~/betterbase
+cd ~/kickbasemvp
 npx tsx scripts/test-news-pipeline.ts
 ```
 
@@ -47,7 +47,7 @@ werden ausgegeben. Lokal ohne KV → Memory-Mode (geht weg bei Restart).
 Ohne dieses Storage läuft der News-Layer in Production mit In-Memory-Fallback,
 d.h. bei jedem Server-Restart sind die News weg. Fix:
 
-1. Vercel-Dashboard → `betterbase` Projekt → **Storage** Tab
+1. Vercel-Dashboard → `kickbasemvp` Projekt → **Storage** Tab
 2. „Browse Marketplace" → **Upstash Redis** auswählen → „Add Integration"
 3. Plan: **Free** (10k commands/Tag = ~300k/Monat reicht easy)
 4. Vercel injiziert automatisch:
@@ -55,7 +55,7 @@ d.h. bei jedem Server-Restart sind die News weg. Fix:
    - `KV_REST_API_TOKEN`
 5. Nach Anlegen: Project muss neu deployed werden (`npx vercel --prod`)
 
-Verify: `https://betterbase.vercel.app/api/news` → leere Liste statt Fehler
+Verify: `https://kickbasemvp.vercel.app/api/news` → leere Liste statt Fehler
 
 ### 2. CRON_SECRET setzen ⚠️ KRITISCH
 Sonst kann der GitHub-Action-Cron den Refresh-Endpoint nicht hitten.
@@ -73,10 +73,10 @@ openssl rand -hex 32
 4. Save
 
 **In GitHub:**
-1. Repo `moritzvonio/betterbase` → Settings → Secrets and variables → Actions
+1. Repo `moritzvonio/kickbasemvp` → Settings → Secrets and variables → Actions
 2. „New repository secret":
    - `CRON_SECRET` = derselbe Wert wie in Vercel
-   - `APP_URL` = `https://betterbase.vercel.app`
+   - `APP_URL` = `https://kickbasemvp.vercel.app`
 3. Speichern
 
 Nach dem Setzen: GitHub → Actions Tab → „News Refresh" → „Run workflow"
@@ -87,7 +87,7 @@ Erste-Mal-Setup. Nachdem du auf der News-Tab eingeloggt warst, läuft das
 automatisch. Falls nicht:
 
 ```
-curl -X POST https://betterbase.vercel.app/api/news/refresh-player-index \
+curl -X POST https://kickbasemvp.vercel.app/api/news/refresh-player-index \
   -H "Cookie: bb_session=<dein-cookie>"
 ```
 
@@ -106,7 +106,7 @@ Wenn du mal Lust hast einen Mod-Channel aufzusetzen:
 1. `DISCORD_INGEST_SECRET` = random Hex (`openssl rand -hex 32`)
 2. In Vercel als Env-Var setzen
 3. Im Discord-Channel: Settings → Integrations → Webhooks → Create
-   - URL: `https://betterbase.vercel.app/api/news/discord-ingest`
+   - URL: `https://kickbasemvp.vercel.app/api/news/discord-ingest`
    - Headers: `x-discord-secret: <der Wert>`
 
 ---
@@ -129,7 +129,7 @@ Twitter-Source da ist.
 ## Lokales Testen
 
 ```
-cd ~/betterbase
+cd ~/kickbasemvp
 npm run dev
 # → http://localhost:3000/news (public)
 # → http://localhost:3000/league/<dein-leagueId>/news (gefiltert)
