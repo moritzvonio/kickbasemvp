@@ -400,10 +400,17 @@ function buildTeamValueChartData(opts: {
 
       point[u.n] = tv + cash;
 
-      // Diagnose für MD 1 (hilft bei initial-budget-Mismatch)
-      if (d === 1 && process.env.DEBUG_TVCHART === "1") {
+      // Diagnose für MD 1 — hilft Bugs aufzuspüren wenn Anfangs-Vermögen
+      // nicht plausibel zur erwarteten ~150 Mio passt
+      if (d === 1) {
+        const buyCount = (userTransfers.get(u.i) ?? []).filter(
+          (t) => cutoff === undefined || t.ts <= cutoff
+        ).length;
+        const bonusSum = (userBonuses.get(u.i) ?? [])
+          .filter((b) => b.day <= 1)
+          .reduce((s, b) => s + b.bn, 0);
         console.log(
-          `[TVCHART MD1] ${u.n}: tv=${(tv / 1_000_000).toFixed(1)}M + cash=${(cash / 1_000_000).toFixed(1)}M = ${((tv + cash) / 1_000_000).toFixed(1)}M (initial=${(opts.initialBudget / 1_000_000).toFixed(0)}M)`
+          `[TVCHART MD1] ${u.n}: tv=${(tv / 1_000_000).toFixed(1)}M cash=${(cash / 1_000_000).toFixed(1)}M (initial=${(opts.initialBudget / 1_000_000).toFixed(0)}M, ${buyCount} txs, +${(bonusSum / 1_000_000).toFixed(1)}M bonus) → netto=${((tv + cash) / 1_000_000).toFixed(1)}M`
         );
       }
     }
