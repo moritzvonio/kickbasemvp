@@ -9,6 +9,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { formatEUR, formatDelta, cn } from "@/lib/utils";
 import {
   computeManagerStats,
+  calibratePointDrivenRate,
   detectInitialBudget,
   SELL_TO_BANK_FACTOR,
   type ManagerComputedStats,
@@ -127,6 +128,36 @@ export default async function WettbewerbPage({
 
   const meRealCash = myRealBudget?.b !== undefined ? myRealBudget.b : undefined;
 
+  // Pass 1: eigenen User berechnen, um die ligaspezifische Punkt-Einkommens-Rate
+  // aus dem EXAKTEN IST-Cash zu eichen. Diese Rate bündelt Punkteprämie +
+  // Erfolge pro Saisonpunkt und wird auf alle anderen Manager angewandt.
+  const meData = memberData.find((d) => d.manager.i === session.userId);
+  let pointDrivenRate: number | undefined;
+  if (meData && meRealCash !== undefined) {
+    const meStats = computeManagerStats({
+      userId: meData.manager.i,
+      name: meData.manager.n,
+      image: meData.manager.uim,
+      initialBudget,
+      transfers: meData.transfers,
+      squad: meData.squad,
+      activities: allActivities,
+      rankingEntry: meData.manager,
+      perMatchdayRankings,
+      achievements: ownAchievements,
+      realCashFromApi: meRealCash,
+    });
+    pointDrivenRate = calibratePointDrivenRate({
+      realCash: meRealCash,
+      initialBudget,
+      totalBought: meStats.totalBought,
+      totalSold: meStats.totalSold,
+      loginBonus: meStats.estimatedLoginBonus,
+      seasonPoints: meStats.seasonPoints ?? 0,
+    });
+  }
+
+  // Pass 2: alle Manager mit der geeichten Rate (eigener User → exakter IST-Cash)
   const stats: ManagerComputedStats[] = memberData.map((d) => {
     const isMe = d.manager.i === session.userId;
     return computeManagerStats({
@@ -141,6 +172,7 @@ export default async function WettbewerbPage({
       perMatchdayRankings,
       achievements: isMe ? ownAchievements : undefined,
       realCashFromApi: isMe ? meRealCash : undefined,
+      pointDrivenRate,
     });
   });
 

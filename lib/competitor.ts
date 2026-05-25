@@ -219,8 +219,9 @@ export interface ManagerComputedStats {
    *  IMMER eine Schätzung — auch für den eigenen User. So sind Manager-Cards
    *  apples-to-apples vergleichbar. */
   cashEstimate: number;
-  /** Echter Cash aus /me/budget (nur für eigenen User verfügbar).
-   *  Wird NUR zur Validierung gegen cashEstimate angezeigt, NICHT als Override. */
+  /** Wie cashEstimate ermittelt wurde: "ist" (exakt), "calibrated", "legacy" */
+  cashMethod?: "ist" | "calibrated" | "legacy";
+  /** Echter Cash aus /me/budget (nur für eigenen User verfügbar). */
   realCashFromApi?: number;
   /** Diff = realCashFromApi − cashEstimate (Schätzfehler) */
   cashEstimateError?: number;
@@ -268,8 +269,45 @@ export interface ComputeManagerInput {
     items: Array<{ t: number; n: string; ac?: number; er: number; total: number }>;
     total: number;
   };
-  /** Echter Cash aus /me/budget (NUR Vergleichsreferenz, kein Override) */
+  /** Echter Cash aus /me/budget. Wenn gesetzt → wird als exakter cashEstimate
+   *  übernommen (eigener User). Für andere Manager nicht verfügbar. */
   realCashFromApi?: number;
+  /**
+   * Selbst-kalibrierte „Punkt-Einkommens-Rate" (€/Saisonpunkt). Bündelt
+   * Punkteprämie + Erfolge in EINER Rate, abgeleitet aus dem IST-Cash des
+   * eingeloggten Users. Wird auf andere Manager angewandt (× deren sp).
+   * Wenn gesetzt UND realCashFromApi fehlt → ersetzt das alte Bonus-Modell.
+   */
+  pointDrivenRate?: number;
+}
+
+/**
+ * Leitet die ligaspezifische Punkt-Einkommens-Rate aus dem eingeloggten User
+ * ab (dessen IST-Cash exakt bekannt ist). Diese eine Rate bündelt Punkteprämie
+ * + alle Erfolge pro Saisonpunkt — so müssen wir für andere Manager keine
+ * Einzelspieler-Erfolge raten.
+ *
+ *   bonus_gesamt = IST − Start − Transferbilanz   (exakt)
+ *   rate         = (bonus_gesamt − Login) / Saisonpunkte
+ *
+ * Login ist für alle die gleiche zeitbasierte Konstante und fällt für andere
+ * fast vollständig heraus (er taucht in Zähler und Anwendung identisch auf).
+ */
+export function calibratePointDrivenRate(opts: {
+  realCash: number;
+  initialBudget: number;
+  totalBought: number;
+  totalSold: number;
+  loginBonus: number;
+  seasonPoints: number;
+}): number | undefined {
+  if (!opts.seasonPoints || opts.seasonPoints <= 0) return undefined;
+  const transferBalance = opts.totalSold - opts.totalBought;
+  const totalBonus = opts.realCash - opts.initialBudget - transferBalance;
+  const pointDriven = totalBonus - opts.loginBonus;
+  const rate = pointDriven / opts.seasonPoints;
+  // Sanity: Rate muss positiv & plausibel sein (sonst Fallback auf alte Logik)
+  return rate > 0 && rate < 20_000 ? rate : undefined;
 }
 
 export function computeManagerStats(inp: ComputeManagerInput): ManagerComputedStats {
@@ -370,14 +408,38 @@ export function computeManagerStats(inp: ComputeManagerInput): ManagerComputedSt
   // Für andere Manager (keine /user/achievements verfügbar) brauchen wir
   // totalBonus weiterhin als beste verfügbare Bonus-Quelle.
   const isOwnUser = realAchievementBonus !== undefined;
-  const cashEstimate =
-    inp.initialBudget -
-    totalBought +
-    totalSold +
-    (isOwnUser ? 0 : totalBonus) +
-    estimatedPointsBonus +
-    estimatedLoginBonus +
-    achievementBonusFinal;
+  const seasonPoints = inp.rankingEntry?.sp ?? totalMatchdayPoints;
+  const transferNet = totalSold - totalBought;
+
+  // Cash-Modell (3 Stufen, nach Genauigkeit):
+  //  1. Eigener User → exakter IST-Cash aus /me/budget.
+  //  2. Andere Manager + kalibrierte Rate → Start + Transfers + Login +
+  //     rate×Saisonpunkte (Rate aus eigenem IST-Cash geeicht, bündelt
+  //     Punkteprämie + Erfolge — kein Raten von Einzelspieler-Erfolgen).
+  //  3. Fallback (keine Kalibrierung) → altes additives Schätzmodell.
+  let cashEstimate: number;
+  let cashMethod: "ist" | "calibrated" | "legacy";
+  if (inp.realCashFromApi !== undefined) {
+    cashEstimate = inp.realCashFromApi;
+    cashMethod = "ist";
+  } else if (inp.pointDrivenRate !== undefined) {
+    cashEstimate =
+      inp.initialBudget +
+      transferNet +
+      estimatedLoginBonus +
+      inp.pointDrivenRate * seasonPoints;
+    cashMethod = "calibrated";
+  } else {
+    cashEstimate =
+      inp.initialBudget -
+      totalBought +
+      totalSold +
+      (isOwnUser ? 0 : totalBonus) +
+      estimatedPointsBonus +
+      estimatedLoginBonus +
+      achievementBonusFinal;
+    cashMethod = "legacy";
+  }
 
   // Diagnose-Log nur für eigenen User wenn DEBUG_CASH_PIPELINE=1 gesetzt ist.
   // Default off, damit der Server-Log nicht zugespamt wird.
@@ -454,6 +516,7 @@ export function computeManagerStats(inp: ComputeManagerInput): ManagerComputedSt
       total: a.total,
     })),
     cashEstimate,
+    cashMethod,
     realCashFromApi: inp.realCashFromApi,
     cashEstimateError,
     transferBalance: totalSold - totalBought,
