@@ -462,35 +462,33 @@ function buildTeamValueChartData(opts: {
       const tv = typeof u.tv === "number" ? u.tv : 0;
 
       let cash = opts.initialBudget;
-      if (cutoff !== undefined) {
-        const txs = userTransfers.get(u.i) ?? [];
-        for (const t of txs) {
-          if (t.ts > cutoff) break;
-          if (t.tty === 1) cash -= t.trp;
-          else if (t.tty === 2) cash += t.trp;
+      // MD 1: HARDCODED — vor MD 1 gab es keine Transfers, keine Bonus-
+      // Auszahlungen, keine Punkteprämien. Cash = initialBudget. Punkt.
+      // (Vermeidet Bug wo cutoff zufällig auf späteres Datum zeigt und alle
+      // Saison-Transfers fälschlich für MD 1 mitgezählt werden.)
+      if (d > 1) {
+        if (cutoff !== undefined) {
+          const txs = userTransfers.get(u.i) ?? [];
+          for (const t of txs) {
+            if (t.ts > cutoff) break;
+            if (t.tty === 1) cash -= t.trp;
+            else if (t.tty === 2) cash += t.trp;
+          }
         }
-      }
-      const bs = userBonuses.get(u.i) ?? [];
-      for (const b of bs) {
-        if (b.day <= d) cash += b.bn;
-      }
+        const bs = userBonuses.get(u.i) ?? [];
+        for (const b of bs) {
+          if (b.day <= d) cash += b.bn;
+        }
 
-      // Punkteprämie: Σ aller mdp dieses Users von MD 1 bis (d ggf. -1 wenn aktuell)
-      // Bei aktuell laufendem Spieltag noch nicht ausgezahlt → ein MD ausschließen.
-      const pointsCutoffIdx = isCurrent ? idx - 1 : idx;
-      let pointsBonus = 0;
-      for (let i = 0; i <= pointsCutoffIdx && i < rankings.length; i++) {
-        const userAtMd = rankings[i]?.find((x) => x.i === u.i);
-        const mdp = userAtMd?.mdp ?? 0;
-        if (mdp > 0) pointsBonus += mdp * EUR_PER_POINT;
-      }
-      cash += pointsBonus;
-
-      // Backtest-Logging zur Live-Diagnose (nur MD 1 + aktueller MD)
-      if (d === 1 || isCurrent) {
-        console.log(
-          `[TVCHART ${isCurrent ? "NOW" : "MD1"}] ${u.n}: tv=${(tv / 1_000_000).toFixed(1)}M cash=${(cash / 1_000_000).toFixed(1)}M (init=${(opts.initialBudget / 1_000_000).toFixed(0)}M, txs=${cutoff !== undefined ? "yes" : "skipped"}, pts=${(pointsBonus / 1_000_000).toFixed(1)}M) → netto=${((tv + cash) / 1_000_000).toFixed(1)}M`
-        );
+        // Punkteprämie: Σ aller mdp von MD 1 bis (d ggf. -1 wenn aktuell)
+        const pointsCutoffIdx = isCurrent ? idx - 1 : idx;
+        let pointsBonus = 0;
+        for (let i = 0; i <= pointsCutoffIdx && i < rankings.length; i++) {
+          const userAtMd = rankings[i]?.find((x) => x.i === u.i);
+          const mdp = userAtMd?.mdp ?? 0;
+          if (mdp > 0) pointsBonus += mdp * EUR_PER_POINT;
+        }
+        cash += pointsBonus;
       }
 
       point[u.n] = tv + cash;

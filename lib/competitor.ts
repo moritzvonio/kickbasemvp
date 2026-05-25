@@ -473,21 +473,19 @@ export function computeManagerStats(inp: ComputeManagerInput): ManagerComputedSt
 
 /** Bestimmt das Initial-Budget aus Liga-Daten (mit Fallbacks). */
 export function detectInitialBudget(opts: {
-  /** Liga-Overview b-Field */
+  /** Liga-Overview b-Field — historisch interpretiert als Initial-Budget,
+   *  ist aber in Wahrheit ein anderes Feld (Bid-Limit?). Wird ignoriert. */
   overviewBudget?: number;
-  /** Eigenes /me/budget b-Field */
   myBudget?: number;
-  /** Liga-Selection b (eigener aktueller Cash-Stand) */
   selectionBudget?: number;
 }): number {
-  // Höchste Priorität: ENV-Override (für Ligen mit nicht-Standard-Budget,
-  // z.B. 150 Mio statt 50 Mio Cash-Start). Setze INITIAL_BUDGET_EUR=150000000
-  // in Vercel um das zu überschreiben.
+  // ENV-Override für Ligen mit nicht-Standard-Cash-Start
   const envOverride = Number(process.env.INITIAL_BUDGET_EUR);
   if (Number.isFinite(envOverride) && envOverride > 0) return envOverride;
-  // Liga-Overview b-Field
-  if (opts.overviewBudget && opts.overviewBudget > 0) return opts.overviewBudget;
-  // Fallback: 50 Mio (Standard-Bundesliga-Default)
+  // Bundesliga-Standard: 50 Mio Cash + Team-Draft (~100 Mio Marktwert)
+  // = ~150 Mio Initial-Netto-Teamwert. User-bestätigt.
+  // NICHT overviewBudget nutzen — das ist NICHT das Initial-Budget in der API.
+  void opts;
   return 50_000_000;
 }
 
