@@ -75,8 +75,6 @@ export async function GET(req: Request) {
       if (!isNaN(ts)) earliestMs = Math.min(earliestMs, ts);
     }
   }
-  const startDay = Math.floor(earliestMs / DAY_MS);
-
   // Startkader pro Manager via Reverse-Replay rekonstruieren
   const distinctPlayers = new Set<string>();
   const reconstructed = perManager.map((pm) => {
@@ -96,31 +94,50 @@ export async function GET(req: Request) {
     const currentTeamMV = (pm.squad?.it ?? []).reduce((acc, p) => acc + (p.mv ?? 0), 0);
     return { m: pm.m, startSquad, currentTeamMV, currentSize: pm.squad?.it?.length ?? 0 };
   });
-
-  // MV-History pro distinct Startkader-Spieler (dedupliziert, begrenzte Parallelität)
   const playerIds = [...distinctPlayers];
-  const mvStartByPlayer = new Map<string, number | null>();
+
+  // MV-History pro distinct Startkader-Spieler (dedupliziert, begrenzte Parallelität).
+  // An mehreren
+  // Kandidaten-Daten — um zu sehen, welcher Anker ~150 Mio liefert.
+  const candidateDates = [
+    "2025-07-11", "2025-07-25", "2025-08-08", "2025-08-15", "2025-08-22", "2025-09-01",
+  ];
+  const histByPlayer = new Map<string, KbMarketValuePoint[]>();
   await mapLimit(playerIds, 16, async (pid) => {
     const hist = await kb.marketValue(s.token, leagueId, pid, 365).catch(() => null);
-    mvStartByPlayer.set(pid, hist ? mvAtDay(hist.it ?? [], startDay) : null);
+    histByPlayer.set(pid, hist?.it ?? []);
   });
 
+  // Pro Kandidaten-Datum: Netto-Verteilung über alle Manager
+  const perDate = candidateDates.map((ds) => {
+    const day = Math.floor(new Date(ds).getTime() / DAY_MS);
+    const nets = reconstructed.map((r) => {
+      let mv = 0;
+      for (const pi of r.startSquad) {
+        const v = mvAtDay(histByPlayer.get(pi) ?? [], day);
+        if (v != null) mv += v;
+      }
+      return 50_000_000 + mv;
+    });
+    const arr = nets.map((n) => M(n));
+    const avg = +(arr.reduce((a, b) => a + b, 0) / arr.length).toFixed(1);
+    return { date: ds, min: Math.min(...arr), max: Math.max(...arr), avg };
+  });
+
+  // Detail-Tabelle am besten passenden Anker (2 Wochen vor MD1 ≈ 2025-08-08)
+  const detailDay = Math.floor(new Date("2025-08-08").getTime() / DAY_MS);
   const rows = reconstructed
     .map((r) => {
-      let startMV = 0;
-      let missing = 0;
+      let mv = 0;
       for (const pi of r.startSquad) {
-        const v = mvStartByPlayer.get(pi);
-        if (v == null) missing++;
-        else startMV += v;
+        const v = mvAtDay(histByPlayer.get(pi) ?? [], detailDay);
+        if (v != null) mv += v;
       }
-      const netStart = 50_000_000 + startMV;
       return {
         manager: r.m.n,
         startSquadSize: r.startSquad.length,
-        startTeamMV_Mio: M(startMV),
-        netWorthStart_Mio: M(netStart),
-        missingMvPlayers: missing,
+        startTeamMV_Mio: M(mv),
+        netWorthStart_Mio: M(50_000_000 + mv),
         currentTeamMV_Mio: M(r.currentTeamMV),
       };
     })
@@ -128,8 +145,10 @@ export async function GET(req: Request) {
 
   return NextResponse.json(
     {
-      startDate: new Date(earliestMs).toISOString().slice(0, 10),
+      earliestTransfer: new Date(earliestMs).toISOString().slice(0, 10),
       distinctStartPlayers: playerIds.length,
+      perDate,
+      detailDate: "2025-08-08",
       rows,
     },
     { headers: { "Cache-Control": "no-store" } }
