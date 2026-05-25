@@ -22,6 +22,8 @@ const DAY_MS = 86_400_000;
 export interface NetWorthChartPoint {
   /** Achsen-Label, z.B. "01.08." */
   label: string;
+  /** Absoluter Zeitstempel (ms) — für client-seitiges Zeitraum-Filtern */
+  ms: number;
   /** Manager-Name → Netto-Teamwert (€) an diesem Datum */
   [manager: string]: number | string;
 }
@@ -53,11 +55,12 @@ export function buildNetWorthSeries(opts: {
   leagueStartMs: number;
   nowMs: number;
   initialBudget: number;
-  /** Anzahl Stützpunkte (inkl. Start & jetzt). Default 32. */
+  /** Anzahl Stützpunkte (inkl. Start & jetzt). Default 64 (dicht genug zum
+   *  Reinzoomen auf kurze Zeiträume client-seitig). */
   sampleCount?: number;
 }): { data: NetWorthChartPoint[]; managers: { id: string; name: string }[] } {
   const { managers, mvHistories, leagueStartMs, nowMs, initialBudget } = opts;
-  const n = Math.max(2, opts.sampleCount ?? 32);
+  const n = Math.max(2, opts.sampleCount ?? 64);
   if (nowMs <= leagueStartMs) return { data: [], managers: [] };
 
   // Sample-Zeitpunkte linear von Start bis jetzt (inkl. beider Endpunkte)
@@ -79,7 +82,7 @@ export function buildNetWorthSeries(opts: {
   });
 
   const data: NetWorthChartPoint[] = sampleMs.map((ms) => {
-    const point: NetWorthChartPoint = { label: fmtLabel(ms) };
+    const point: NetWorthChartPoint = { label: fmtLabel(ms), ms };
     const dayIdx = Math.floor(ms / DAY_MS);
     const progress = span > 0 ? Math.min(1, Math.max(0, (ms - leagueStartMs) / span)) : 1;
 
