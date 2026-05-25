@@ -220,49 +220,56 @@ export default async function WettbewerbPage({
                 <span className="font-mono">build: 3a3954e+points-fix · {new Date().toISOString().slice(0, 16)}</span>
               </p>
 
-              {/* Live-Backtest: MD 1 + aktueller MD pro Manager als Tabelle */}
-              <details className="mt-4 text-xs">
+              {/* Live-Backtest: MD 1 Komponenten aufgeschlüsselt (tv + cash) */}
+              <details className="mt-4 text-xs" open>
                 <summary className="cursor-pointer text-muted-foreground hover:text-foreground font-medium">
-                  🔬 Backtest-Vergleich (MD 1 + aktueller MD) — sollte am MD 1 für alle ~150 Mio sein
+                  🔬 Backtest MD 1 Komponenten — sollte für alle: tv ~100 Mio + cash 50 Mio = ~150 Mio
                 </summary>
                 <div className="mt-2 overflow-x-auto">
                   <table className="w-full text-[11px] tabular">
                     <thead className="border-b border-border">
                       <tr>
                         <th className="text-left py-1 pr-3">Manager</th>
+                        <th className="text-right py-1 pr-3">tv (aus ranking MD 1)</th>
                         <th className="text-right py-1 pr-3">MD 1 Netto</th>
-                        <th className="text-right py-1 pr-3">Aktueller MD Netto</th>
-                        <th className="text-right py-1">Diff MD 1 vs. 150 Mio</th>
+                        <th className="text-right py-1 pr-3">tv-150 Diff</th>
+                        <th className="text-right py-1">Aktueller MD</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {tvChartData.managers.map((m) => {
-                        const md1 = Number(tvChartData.data[0]?.[m.name] ?? 0);
-                        const now = Number(
-                          tvChartData.data[tvChartData.data.length - 1]?.[m.name] ?? 0
+                      {perMatchdayRankings[0]?.map((u) => {
+                        const tv = u.tv ?? 0;
+                        const md1Netto = Number(
+                          tvChartData.data[0]?.[u.n] ?? 0
                         );
-                        const diff = md1 - 150_000_000;
+                        const nowNetto = Number(
+                          tvChartData.data[tvChartData.data.length - 1]?.[u.n] ?? 0
+                        );
+                        const tvDiff = tv - 100_000_000;
                         return (
-                          <tr key={m.id} className="border-b border-border/30">
-                            <td className="py-1 pr-3 truncate max-w-[180px]">{m.name}</td>
+                          <tr key={u.i} className="border-b border-border/30">
+                            <td className="py-1 pr-3 truncate max-w-[180px]">{u.n}</td>
                             <td className="text-right py-1 pr-3 font-mono">
-                              {(md1 / 1_000_000).toFixed(1)} Mio
+                              {(tv / 1_000_000).toFixed(1)}
                             </td>
-                            <td className="text-right py-1 pr-3 font-mono">
-                              {(now / 1_000_000).toFixed(1)} Mio
+                            <td className="text-right py-1 pr-3 font-mono font-semibold">
+                              {(md1Netto / 1_000_000).toFixed(1)}
                             </td>
                             <td
                               className={
-                                "text-right py-1 font-mono " +
-                                (Math.abs(diff) < 5_000_000
+                                "text-right py-1 pr-3 font-mono " +
+                                (Math.abs(tvDiff) < 5_000_000
                                   ? "text-emerald-700"
-                                  : Math.abs(diff) < 20_000_000
+                                  : Math.abs(tvDiff) < 20_000_000
                                   ? "text-amber-700"
                                   : "text-rose-700")
                               }
                             >
-                              {diff >= 0 ? "+" : ""}
-                              {(diff / 1_000_000).toFixed(1)} Mio
+                              {tvDiff >= 0 ? "+" : ""}
+                              {(tvDiff / 1_000_000).toFixed(1)}
+                            </td>
+                            <td className="text-right py-1 font-mono">
+                              {(nowNetto / 1_000_000).toFixed(1)}
                             </td>
                           </tr>
                         );
@@ -270,6 +277,11 @@ export default async function WettbewerbPage({
                     </tbody>
                   </table>
                 </div>
+                <p className="text-[10px] text-muted-foreground mt-2">
+                  Wenn tv-Spalte für alle ähnlich hoch wie aktueller Teamwert ist
+                  (statt ~100 Mio), liefert <code>kb.ranking(day=1)</code> den
+                  aktuellen tv zurück, NICHT den historischen → API-Quirk.
+                </p>
               </details>
             </CardContent>
           </Card>
