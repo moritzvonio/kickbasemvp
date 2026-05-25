@@ -51,6 +51,7 @@ export async function GET(req: Request) {
   let actMin = Infinity, actMax = -Infinity;
   const byType: Record<string, { count: number; bnSum: number; sample: unknown }> = {};
   let totalBnAll = 0;
+  const bnEvents: Array<{ t: number; date: string; day: unknown; bn_k: number; keys: string[] }> = [];
   for (const a of mine) {
     const d = (a.data ?? a.d ?? {}) as Record<string, unknown>;
     const bn = typeof d.bn === "number" ? d.bn : 0;
@@ -61,7 +62,15 @@ export async function GET(req: Request) {
     totalBnAll += bn;
     const ts = new Date(a.dt ?? "").getTime();
     if (!isNaN(ts)) { actMin = Math.min(actMin, ts); actMax = Math.max(actMax, ts); }
+    if (bn > 0) bnEvents.push({
+      t: a.t as number,
+      date: new Date(a.dt ?? "").toISOString().slice(0, 10),
+      day: d.day ?? d.md ?? null,
+      bn_k: Math.round(bn / 1000),
+      keys: Object.keys(d),
+    });
   }
+  bnEvents.sort((a, b) => (a.date < b.date ? -1 : 1));
   const byTypeOut = Object.fromEntries(
     Object.entries(byType).map(([k, v]) => [k, { count: v.count, bnSumMio: M(v.bnSum) }])
   );
@@ -108,6 +117,7 @@ export async function GET(req: Request) {
         byType: byTypeOut,
       },
       transfers: { count: transfers.length, dateRange: { from: iso(txMin), to: iso(txMax) } },
+      bnEvents,
       achievements: ach.items
         .filter((a) => (a.ac ?? 0) > 0 || a.total > 0)
         .map((a) => ({ t: a.t, n: a.n, ac: a.ac ?? 0, er_Mio: M(a.er), total_Mio: M(a.total) })),
