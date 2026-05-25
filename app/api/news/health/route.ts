@@ -40,6 +40,9 @@ export async function GET() {
 
   return NextResponse.json(
     {
+      // BUILD-MARKER: ändert sich bei jedem Code-Push. Wenn dieser String
+      // nach Deploy nicht aktuell ist, deployt Vercel deinen Push NICHT.
+      buildMarker: "v2-2026-05-07-backtest-table+points-fix",
       backend: NEWS_STORE_BACKEND,
       kvAvailable: !!process.env.KV_REST_API_URL,
       hasItems: recent.length > 0,
