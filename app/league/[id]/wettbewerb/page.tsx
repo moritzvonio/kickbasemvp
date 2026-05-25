@@ -215,8 +215,62 @@ export default async function WettbewerbPage({
                 highlightUserId={session.userId}
               />
               <p className="text-[10px] text-muted-foreground mt-2 text-center">
-                Pro Spieltag: Σ Marktwert deines Squads + Cash (Initial − Käufe + Verkäufe + Boni bis dahin).
+                Pro Spieltag: Σ Marktwert deines Squads + Cash (Initial − Käufe + Verkäufe + Boni + Punkteprämie 1k€/Pkt bis dahin).
+                <br />
+                <span className="font-mono">build: 3a3954e+points-fix · {new Date().toISOString().slice(0, 16)}</span>
               </p>
+
+              {/* Live-Backtest: MD 1 + aktueller MD pro Manager als Tabelle */}
+              <details className="mt-4 text-xs">
+                <summary className="cursor-pointer text-muted-foreground hover:text-foreground font-medium">
+                  🔬 Backtest-Vergleich (MD 1 + aktueller MD) — sollte am MD 1 für alle ~150 Mio sein
+                </summary>
+                <div className="mt-2 overflow-x-auto">
+                  <table className="w-full text-[11px] tabular">
+                    <thead className="border-b border-border">
+                      <tr>
+                        <th className="text-left py-1 pr-3">Manager</th>
+                        <th className="text-right py-1 pr-3">MD 1 Netto</th>
+                        <th className="text-right py-1 pr-3">Aktueller MD Netto</th>
+                        <th className="text-right py-1">Diff MD 1 vs. 150 Mio</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {tvChartData.managers.map((m) => {
+                        const md1 = Number(tvChartData.data[0]?.[m.name] ?? 0);
+                        const now = Number(
+                          tvChartData.data[tvChartData.data.length - 1]?.[m.name] ?? 0
+                        );
+                        const diff = md1 - 150_000_000;
+                        return (
+                          <tr key={m.id} className="border-b border-border/30">
+                            <td className="py-1 pr-3 truncate max-w-[180px]">{m.name}</td>
+                            <td className="text-right py-1 pr-3 font-mono">
+                              {(md1 / 1_000_000).toFixed(1)} Mio
+                            </td>
+                            <td className="text-right py-1 pr-3 font-mono">
+                              {(now / 1_000_000).toFixed(1)} Mio
+                            </td>
+                            <td
+                              className={
+                                "text-right py-1 font-mono " +
+                                (Math.abs(diff) < 5_000_000
+                                  ? "text-emerald-700"
+                                  : Math.abs(diff) < 20_000_000
+                                  ? "text-amber-700"
+                                  : "text-rose-700")
+                              }
+                            >
+                              {diff >= 0 ? "+" : ""}
+                              {(diff / 1_000_000).toFixed(1)} Mio
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </details>
             </CardContent>
           </Card>
         </section>
@@ -431,6 +485,13 @@ function buildTeamValueChartData(opts: {
         if (mdp > 0) pointsBonus += mdp * EUR_PER_POINT;
       }
       cash += pointsBonus;
+
+      // Backtest-Logging zur Live-Diagnose (nur MD 1 + aktueller MD)
+      if (d === 1 || isCurrent) {
+        console.log(
+          `[TVCHART ${isCurrent ? "NOW" : "MD1"}] ${u.n}: tv=${(tv / 1_000_000).toFixed(1)}M cash=${(cash / 1_000_000).toFixed(1)}M (init=${(opts.initialBudget / 1_000_000).toFixed(0)}M, txs=${cutoff !== undefined ? "yes" : "skipped"}, pts=${(pointsBonus / 1_000_000).toFixed(1)}M) → netto=${((tv + cash) / 1_000_000).toFixed(1)}M`
+        );
+      }
 
       point[u.n] = tv + cash;
     }
