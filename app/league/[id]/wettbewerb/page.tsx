@@ -380,6 +380,12 @@ function buildTeamValueChartData(opts: {
 
   const currentMd = days[days.length - 1];
 
+  // Punkteprämie 1k €/Spieltagspunkt — Kickbase-Doku, automatisch ausgezahlt
+  // nach Abschluss eines Spieltags. Wir summieren mdp aus allen rankings bis
+  // zum aktuellen MD und multiplizieren mit 1000. Das war der größte fehlende
+  // Posten im Wettbewerb-Chart (bei stark-punktenden Managern ~30-40 Mio Diff).
+  const EUR_PER_POINT = 1_000;
+
   const data: TVChartPoint[] = days.map((d, idx) => {
     const usersAtDay = rankings[idx] ?? [];
     const isCurrent = d === currentMd;
@@ -415,21 +421,18 @@ function buildTeamValueChartData(opts: {
         if (b.day <= d) cash += b.bn;
       }
 
-      point[u.n] = tv + cash;
-
-      // Diagnose für MD 1 — hilft Bugs aufzuspüren wenn Anfangs-Vermögen
-      // nicht plausibel zur erwarteten ~150 Mio passt
-      if (d === 1) {
-        const buyCount = (userTransfers.get(u.i) ?? []).filter(
-          (t) => cutoff === undefined || t.ts <= cutoff
-        ).length;
-        const bonusSum = (userBonuses.get(u.i) ?? [])
-          .filter((b) => b.day <= 1)
-          .reduce((s, b) => s + b.bn, 0);
-        console.log(
-          `[TVCHART MD1] ${u.n}: tv=${(tv / 1_000_000).toFixed(1)}M cash=${(cash / 1_000_000).toFixed(1)}M (initial=${(opts.initialBudget / 1_000_000).toFixed(0)}M, ${buyCount} txs, +${(bonusSum / 1_000_000).toFixed(1)}M bonus) → netto=${((tv + cash) / 1_000_000).toFixed(1)}M`
-        );
+      // Punkteprämie: Σ aller mdp dieses Users von MD 1 bis (d ggf. -1 wenn aktuell)
+      // Bei aktuell laufendem Spieltag noch nicht ausgezahlt → ein MD ausschließen.
+      const pointsCutoffIdx = isCurrent ? idx - 1 : idx;
+      let pointsBonus = 0;
+      for (let i = 0; i <= pointsCutoffIdx && i < rankings.length; i++) {
+        const userAtMd = rankings[i]?.find((x) => x.i === u.i);
+        const mdp = userAtMd?.mdp ?? 0;
+        if (mdp > 0) pointsBonus += mdp * EUR_PER_POINT;
       }
+      cash += pointsBonus;
+
+      point[u.n] = tv + cash;
     }
     return point;
   });
