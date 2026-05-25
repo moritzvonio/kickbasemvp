@@ -29,7 +29,9 @@ import {
   Swords,
   LineChart as LineChartIcon,
 } from "lucide-react";
-import { TeamValueChart, type TVChartPoint } from "./TeamValueChart";
+import { TeamValueChart } from "./TeamValueChart";
+import { buildNetWorthSeries } from "@/lib/networth-history";
+import { getMarketValueHistories } from "@/lib/kickbase/mv-cache";
 import { ActivityTypeDebug } from "./activity-debug";
 
 export const metadata: Metadata = { title: "Wettbewerb" };
@@ -104,11 +106,6 @@ export default async function WettbewerbPage({
       };
     })
   );
-
-  const transferLists = memberData.map((d) => ({
-    user: d.manager,
-    transfers: d.transfers,
-  }));
 
   // Per-Matchday-Rankings einmal fetchen (für Chart UND Matchday-Bonus-Berechnung)
   const currentMatchday =
@@ -201,15 +198,47 @@ export default async function WettbewerbPage({
     { key: "points", label: "Punkte", icon: Trophy },
   ];
 
-  // Step 3: Build chart data using already-fetched per-matchday rankings
-  const tvChartData = buildTeamValueChartData({
-    members,
-    transferLists,
-    bonusActivities: allActivities,
-    initialBudget,
-    matchdaysToFetch,
-    perMatchdayRankings,
-  });
+  // Step 3: Netto-Teamwert-Verlauf seit Liga-Start (exakte Reconstruction aus
+  // Transfer-Replay + gecachte MV-Historien). Anker = Liga-Erstellungsdatum.
+  const leagueStartMs =
+    typeof ovRecord.dt === "string" ? Date.parse(ovRecord.dt) : NaN;
+
+  // Alle je-besessenen Spieler (aktuelle Kader + alle Transfer-Spieler)
+  const allPlayerIds = new Set<string>();
+  for (const d of memberData) {
+    for (const p of d.squad?.it ?? []) allPlayerIds.add(p.pi);
+    for (const t of d.transfers) allPlayerIds.add(t.pi);
+  }
+
+  const mvHistories = Number.isFinite(leagueStartMs)
+    ? await getMarketValueHistories(session.token, leagueId, [...allPlayerIds])
+    : new Map();
+
+  const statsById = new Map(stats.map((s) => [s.userId, s]));
+  const tvChartData = Number.isFinite(leagueStartMs)
+    ? buildNetWorthSeries({
+        managers: memberData.map((d) => {
+          const st = statsById.get(d.manager.i);
+          const transferNetNow = st ? st.totalSold - st.totalBought : 0;
+          // Gesamt-Bonus bis jetzt = Cash − Start − Transferbilanz (eigener
+          // User: exakt via IST-Cash; andere: kalibriert).
+          const totalBonusNow = st
+            ? st.cashEstimate - initialBudget - transferNetNow
+            : 0;
+          return {
+            id: d.manager.i,
+            name: d.manager.n,
+            squad: d.squad,
+            transfers: d.transfers,
+            totalBonusNow,
+          };
+        }),
+        mvHistories,
+        leagueStartMs,
+        nowMs: Date.now(),
+        initialBudget,
+      })
+    : { data: [], managers: [] };
 
   return (
     <div className="space-y-6">
@@ -234,10 +263,12 @@ export default async function WettbewerbPage({
                 <span className="size-7 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
                   <LineChartIcon className="size-4" />
                 </span>
-                Netto-Teamwert-Verlauf
-                <Badge variant="muted" className="ml-auto text-[10px]">
-                  {tvChartData.data.length} Spieltage
-                </Badge>
+                Netto-Teamwert seit Liga-Start
+                {Number.isFinite(leagueStartMs) && (
+                  <Badge variant="muted" className="ml-auto text-[10px]">
+                    seit {new Date(leagueStartMs).toLocaleDateString("de-DE")}
+                  </Badge>
+                )}
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -247,74 +278,10 @@ export default async function WettbewerbPage({
                 highlightUserId={session.userId}
               />
               <p className="text-[10px] text-muted-foreground mt-2 text-center">
-                Pro Spieltag: Σ Marktwert deines Squads + Cash (Initial − Käufe + Verkäufe + Boni + Punkteprämie 1k€/Pkt bis dahin).
-                <br />
-                <span className="font-mono">build: 3a3954e+points-fix · {new Date().toISOString().slice(0, 16)}</span>
+                Teamwert pro Stichtag aus der Marktwert-History des
+                zurückgerechneten Kaders + Cash. Alle starten bei ~150 Mio
+                (50 Mio Cash + ~100 Mio Team) — bestätigt am Liga-Start.
               </p>
-
-              {/* Live-Backtest: MD 1 Komponenten aufgeschlüsselt (tv + cash) */}
-              <details className="mt-4 text-xs" open>
-                <summary className="cursor-pointer text-muted-foreground hover:text-foreground font-medium">
-                  🔬 Backtest MD 1 Komponenten — sollte für alle: tv ~100 Mio + cash 50 Mio = ~150 Mio
-                </summary>
-                <div className="mt-2 overflow-x-auto">
-                  <table className="w-full text-[11px] tabular">
-                    <thead className="border-b border-border">
-                      <tr>
-                        <th className="text-left py-1 pr-3">Manager</th>
-                        <th className="text-right py-1 pr-3">tv (aus ranking MD 1)</th>
-                        <th className="text-right py-1 pr-3">MD 1 Netto</th>
-                        <th className="text-right py-1 pr-3">tv-150 Diff</th>
-                        <th className="text-right py-1">Aktueller MD</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {perMatchdayRankings[0]?.map((u) => {
-                        const tv = u.tv ?? 0;
-                        const md1Netto = Number(
-                          tvChartData.data[0]?.[u.n] ?? 0
-                        );
-                        const nowNetto = Number(
-                          tvChartData.data[tvChartData.data.length - 1]?.[u.n] ?? 0
-                        );
-                        const tvDiff = tv - 100_000_000;
-                        return (
-                          <tr key={u.i} className="border-b border-border/30">
-                            <td className="py-1 pr-3 truncate max-w-[180px]">{u.n}</td>
-                            <td className="text-right py-1 pr-3 font-mono">
-                              {(tv / 1_000_000).toFixed(1)}
-                            </td>
-                            <td className="text-right py-1 pr-3 font-mono font-semibold">
-                              {(md1Netto / 1_000_000).toFixed(1)}
-                            </td>
-                            <td
-                              className={
-                                "text-right py-1 pr-3 font-mono " +
-                                (Math.abs(tvDiff) < 5_000_000
-                                  ? "text-emerald-700"
-                                  : Math.abs(tvDiff) < 20_000_000
-                                  ? "text-amber-700"
-                                  : "text-rose-700")
-                              }
-                            >
-                              {tvDiff >= 0 ? "+" : ""}
-                              {(tvDiff / 1_000_000).toFixed(1)}
-                            </td>
-                            <td className="text-right py-1 font-mono">
-                              {(nowNetto / 1_000_000).toFixed(1)}
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-                <p className="text-[10px] text-muted-foreground mt-2">
-                  Wenn tv-Spalte für alle ähnlich hoch wie aktueller Teamwert ist
-                  (statt ~100 Mio), liefert <code>kb.ranking(day=1)</code> den
-                  aktuellen tv zurück, NICHT den historischen → API-Quirk.
-                </p>
-              </details>
             </CardContent>
           </Card>
         </section>
@@ -418,144 +385,6 @@ export default async function WettbewerbPage({
       </Card>
     </div>
   );
-}
-
-/* ─── Chart-Daten: Netto-Teamwert pro Spieltag ───────────────────── */
-function buildTeamValueChartData(opts: {
-  members: KbRankingUser[];
-  transferLists: { user: KbRankingUser; transfers: import("@/lib/kickbase/types").KbManagerTransfer[] }[];
-  bonusActivities: KbActivity[];
-  initialBudget: number;
-  /** Spieltag-Nummern parallel zu perMatchdayRankings */
-  matchdaysToFetch: number[];
-  perMatchdayRankings: KbRankingUser[][];
-}): { data: TVChartPoint[]; managers: { id: string; name: string }[] } {
-  if (opts.matchdaysToFetch.length < 2) return { data: [], managers: [] };
-
-  // Chart zeigt vollen Saisonverlauf (kein Cap mehr — User sieht von MD 1
-  // bis aktuell). Recharts handled X-Achse-Spacing automatisch.
-  const days = opts.matchdaysToFetch.slice();
-  const rankings = opts.perMatchdayRankings.slice();
-
-  // matchday → latest bonus date (für Transfer-Cutoff)
-  const matchdayEndDate = new Map<number, number>();
-  for (const a of opts.bonusActivities) {
-    if (a.t !== 22) continue;
-    const data = (a.data ?? a.d ?? {}) as Record<string, unknown>;
-    const day = data.day;
-    if (typeof day !== "number") continue;
-    const ts = parseFlexibleDateMs(a.dt);
-    if (ts == null) continue;
-    const existing = matchdayEndDate.get(day);
-    if (!existing || ts > existing) matchdayEndDate.set(day, ts);
-  }
-
-  // transfers per user (sorted by ts)
-  const userTransfers = new Map<
-    string,
-    { ts: number; tty: number; trp: number }[]
-  >();
-  for (const tl of opts.transferLists) {
-    const sorted = tl.transfers
-      .map((t) => ({ ts: new Date(t.dt).getTime(), tty: t.tty, trp: t.trp }))
-      .filter((t) => !isNaN(t.ts))
-      .sort((a, b) => a.ts - b.ts);
-    userTransfers.set(tl.user.i, sorted);
-  }
-
-  // bonuses (with day attribution)
-  const userBonuses = new Map<string, { day: number; bn: number }[]>();
-  for (const a of opts.bonusActivities) {
-    const data = (a.data ?? a.d ?? {}) as Record<string, unknown>;
-    const bn = data.bn;
-    const day = data.day;
-    if (typeof day !== "number" || typeof bn !== "number") continue;
-    if (!a.u?.i) continue;
-    const arr = userBonuses.get(a.u.i) ?? [];
-    arr.push({ day, bn });
-    userBonuses.set(a.u.i, arr);
-  }
-
-  const currentMd = days[days.length - 1];
-
-  // Punkteprämie 1k €/Spieltagspunkt — Kickbase-Doku, automatisch ausgezahlt
-  // nach Abschluss eines Spieltags. Wir summieren mdp aus allen rankings bis
-  // zum aktuellen MD und multiplizieren mit 1000. Das war der größte fehlende
-  // Posten im Wettbewerb-Chart (bei stark-punktenden Managern ~30-40 Mio Diff).
-  const EUR_PER_POINT = 1_000;
-
-  const data: TVChartPoint[] = days.map((d, idx) => {
-    const usersAtDay = rankings[idx] ?? [];
-    const isCurrent = d === currentMd;
-    // Cutoff-Strategie:
-    //  - Wenn Bonus-Activity für diesen MD im Feed: nutze deren Timestamp.
-    //  - Wenn nicht UND es ist der aktuelle MD: nutze Date.now() — alle bisher
-    //    getätigten Transfers zählen (Spieltag läuft noch / Bonus nicht ausgezahlt).
-    //  - Wenn nicht UND es ist ein alter MD: KEINE Transfers zählen (sonst
-    //    werden alle Saison-Transfers fälschlich in den frühen MD gerechnet).
-    const cutoffRaw = matchdayEndDate.get(d);
-    const cutoff =
-      cutoffRaw !== undefined
-        ? cutoffRaw
-        : isCurrent
-        ? Date.now()
-        : undefined;
-    const point: TVChartPoint = { day: d };
-
-    for (const u of usersAtDay) {
-      const tv = typeof u.tv === "number" ? u.tv : 0;
-
-      let cash = opts.initialBudget;
-      // MD 1: HARDCODED — vor MD 1 gab es keine Transfers, keine Bonus-
-      // Auszahlungen, keine Punkteprämien. Cash = initialBudget. Punkt.
-      // (Vermeidet Bug wo cutoff zufällig auf späteres Datum zeigt und alle
-      // Saison-Transfers fälschlich für MD 1 mitgezählt werden.)
-      if (d > 1) {
-        if (cutoff !== undefined) {
-          const txs = userTransfers.get(u.i) ?? [];
-          for (const t of txs) {
-            if (t.ts > cutoff) break;
-            if (t.tty === 1) cash -= t.trp;
-            else if (t.tty === 2) cash += t.trp;
-          }
-        }
-        const bs = userBonuses.get(u.i) ?? [];
-        for (const b of bs) {
-          if (b.day <= d) cash += b.bn;
-        }
-
-        // Punkteprämie: Σ aller mdp von MD 1 bis (d ggf. -1 wenn aktuell)
-        const pointsCutoffIdx = isCurrent ? idx - 1 : idx;
-        let pointsBonus = 0;
-        for (let i = 0; i <= pointsCutoffIdx && i < rankings.length; i++) {
-          const userAtMd = rankings[i]?.find((x) => x.i === u.i);
-          const mdp = userAtMd?.mdp ?? 0;
-          if (mdp > 0) pointsBonus += mdp * EUR_PER_POINT;
-        }
-        cash += pointsBonus;
-      }
-
-      point[u.n] = tv + cash;
-    }
-    return point;
-  });
-
-  return {
-    data,
-    managers: opts.members.map((m) => ({ id: m.i, name: m.n })),
-  };
-}
-
-function parseFlexibleDateMs(v: unknown): number | null {
-  if (v == null) return null;
-  if (typeof v === "string") {
-    const t = new Date(v).getTime();
-    return isNaN(t) ? null : t;
-  }
-  if (typeof v === "number") {
-    return v < 1e11 ? v * 1000 : v;
-  }
-  return null;
 }
 
 function Header() {

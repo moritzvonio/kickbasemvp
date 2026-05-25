@@ -13,9 +13,9 @@ import {
 import { formatEUR } from "@/lib/utils";
 
 export interface TVChartPoint {
-  /** Matchday number */
-  day: number;
-  /** Manager-Name → Netto-Teamwert für diesen Spieltag */
+  /** Datums-Label, z.B. "01.08." */
+  label: string;
+  /** Manager-Name → Netto-Teamwert an diesem Stichtag */
   [manager: string]: number | string;
 }
 
@@ -60,9 +60,9 @@ export function TeamValueChart({
           <defs />
           <CartesianGrid stroke="#e2e8f0" strokeDasharray="3 3" vertical={false} />
           <XAxis
-            dataKey="day"
+            dataKey="label"
             tick={{ fill: "#64748b", fontSize: 11 }}
-            tickFormatter={(v) => `MD ${v}`}
+            minTickGap={24}
             stroke="#cbd5e1"
           />
           <YAxis
@@ -81,7 +81,6 @@ export function TeamValueChart({
               boxShadow: "0 4px 16px -4px rgba(15,23,42,0.08)",
             }}
             labelStyle={{ color: "#64748b", fontWeight: 600 }}
-            labelFormatter={(v) => `Spieltag ${v}`}
             formatter={(value, name) => [formatEUR(Number(value), { compact: true }), name]}
           />
           <Legend
