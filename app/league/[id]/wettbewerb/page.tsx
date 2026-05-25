@@ -686,6 +686,25 @@ function CashDebugPanel({
       ? stats.realAchievementBonus
       : stats.estimatedMatchdayBonus + stats.estimatedHandBonus;
 
+  // Punkteprämie als RESIDUUM: die übrigen Komponenten sind exakt bzw.
+  // modelliert (Initial, Transfers, Login, Erfolge), die Punkteprämie-Rate
+  // ist ligaspezifisch kalibriert. Wir zeigen sie als Differenz, damit die
+  // Schritt-für-Schritt-Summe IMMER exakt dem cashEstimate entspricht.
+  const bonusFeedValue =
+    stats.realAchievementBonus !== undefined ? 0 : stats.totalBonus;
+  const baseSum =
+    budget -
+    stats.totalBought +
+    stats.totalSold +
+    bonusFeedValue +
+    stats.estimatedLoginBonus +
+    achievementSum;
+  const calibratedPointsBonus = stats.cashEstimate - baseSum;
+  const calibratedRate =
+    stats.totalMatchdayPoints > 0
+      ? calibratedPointsBonus / stats.totalMatchdayPoints
+      : 0;
+
   // Show line-by-line breakdown
   const lines: Array<{
     label: string;
@@ -714,11 +733,11 @@ function CashDebugPanel({
           : `${stats.bonusEventCount} events`,
     },
     {
-      label: "Punkteprämie (abgeschlossen)",
-      value: stats.estimatedPointsBonus,
+      label: "Punkteprämie (kalibriert)",
+      value: calibratedPointsBonus,
       sign: "+",
       color: "text-emerald-700",
-      note: `${stats.totalMatchdayPoints.toLocaleString("de-DE")} Pkt × 1k €`,
+      note: `${stats.totalMatchdayPoints.toLocaleString("de-DE")} Pkt × ${(calibratedRate / 1000).toFixed(2)}k €`,
     },
     { label: `Login-Bonus (geschätzt)`, value: stats.estimatedLoginBonus, sign: "+", color: "text-sky-700", note: `${stats.daysActive} Tage × 100k` },
     {
@@ -919,9 +938,10 @@ function CashDebugPanel({
       )}
 
       <p className="text-[10px] text-muted-foreground mt-3 italic">
-        Pipeline läuft IDENTISCH für alle Manager. Diff hier = Schätzfehler den auch andere
-        Cards systemisch haben. Erst wenn diese Diff &lt; 1 Mio sind die anderen Werte
-        glaubwürdig.
+        Dein Cash ist exakt (aus <code className="font-mono">/me/budget</code>). Die
+        Punkteprämie-Rate wird daraus für die Liga geeicht und auf die anderen
+        Manager angewandt — deren Cash bleibt eine an dir kalibrierte Schätzung
+        (ihr IST-Cash ist per API nicht abrufbar).
       </p>
     </div>
   );
