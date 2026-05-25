@@ -378,20 +378,30 @@ function buildTeamValueChartData(opts: {
     userBonuses.set(a.u.i, arr);
   }
 
+  const currentMd = days[days.length - 1];
+
   const data: TVChartPoint[] = days.map((d, idx) => {
     const usersAtDay = rankings[idx] ?? [];
-    const cutoff = matchdayEndDate.get(d);
+    const isCurrent = d === currentMd;
+    // Cutoff-Strategie:
+    //  - Wenn Bonus-Activity für diesen MD im Feed: nutze deren Timestamp.
+    //  - Wenn nicht UND es ist der aktuelle MD: nutze Date.now() — alle bisher
+    //    getätigten Transfers zählen (Spieltag läuft noch / Bonus nicht ausgezahlt).
+    //  - Wenn nicht UND es ist ein alter MD: KEINE Transfers zählen (sonst
+    //    werden alle Saison-Transfers fälschlich in den frühen MD gerechnet).
+    const cutoffRaw = matchdayEndDate.get(d);
+    const cutoff =
+      cutoffRaw !== undefined
+        ? cutoffRaw
+        : isCurrent
+        ? Date.now()
+        : undefined;
     const point: TVChartPoint = { day: d };
 
     for (const u of usersAtDay) {
       const tv = typeof u.tv === "number" ? u.tv : 0;
 
       let cash = opts.initialBudget;
-      // KRITISCH: cutoff MUSS existieren um Transfers korrekt zu filtern.
-      // Wenn keine Bonus-Activity für diesen MD im Feed ist (z.B. weil der
-      // Feed nur N letzte Items hat und MD 1 zu weit zurückliegt),
-      // bleiben wir konservativ: KEINE Transfers zählen → cash = initial.
-      // Sonst würde Cash = initial - ALLE Transfers des ganzen Saisonverlaufs.
       if (cutoff !== undefined) {
         const txs = userTransfers.get(u.i) ?? [];
         for (const t of txs) {
