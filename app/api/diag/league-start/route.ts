@@ -87,7 +87,7 @@ export async function GET(req: Request) {
   const playerIds = [...distinct];
   const hist = new Map<string, KbMarketValuePoint[]>();
   await mapLimit(playerIds, 16, async (pid) => {
-    const h = await kb.marketValue(s.token, leagueId, pid, 400).catch(() => null);
+    const h = await kb.marketValue(s.token, leagueId, pid, 365).catch(() => null);
     hist.set(pid, h?.it ?? []);
   });
 
@@ -99,7 +99,7 @@ export async function GET(req: Request) {
   const firstDataDate = isFinite(firstDataDay) ? new Date(firstDataDay * DAY_MS).toISOString().slice(0, 10) : null;
 
   // Feinraster-Probe: avg/min/max/Streuung pro Datum
-  const probe = ["2025-07-11","2025-07-15","2025-07-18","2025-07-22","2025-07-25","2025-07-29","2025-08-01","2025-08-05","2025-08-08"];
+  const probe = ["2025-07-25","2025-07-29","2025-07-31","2025-08-01","2025-08-02","2025-08-04","2025-08-06","2025-08-08"];
   const perDate = probe.map((ds) => {
     const day = Math.floor(new Date(ds).getTime() / DAY_MS);
     const nets = recon.map((r) => {
@@ -111,9 +111,20 @@ export async function GET(req: Request) {
     return { date: ds, min: Math.min(...nets), max: Math.max(...nets), spread: +(Math.max(...nets) - Math.min(...nets)).toFixed(1), avg };
   });
 
+  // Detail pro Manager am Liga-Start (overview.dt)
+  const startDayExact = Math.floor(new Date("2025-08-01").getTime() / DAY_MS);
+  const detail = recon
+    .map((r) => {
+      let mv = 0;
+      for (const pi of r.startSquad) { const v = mvAtDay(hist.get(pi) ?? [], startDayExact); if (v != null) mv += v; }
+      return { manager: r.m.n, netStart_Mio: M(50_000_000 + mv), startSquadSize: r.startSquad.length };
+    })
+    .sort((a, b) => b.netStart_Mio - a.netStart_Mio);
+
   return NextResponse.json(
     {
       overview: { dateLikeKeys, topLevelKeys: Object.keys(ov), managerBudgets },
+      detailAtLeagueStart: { date: "2025-08-01", rows: detail },
       mvData: { firstDataDate, distinctStartPlayers: playerIds.length },
       earliestTransfer: (() => {
         let e = Infinity;
