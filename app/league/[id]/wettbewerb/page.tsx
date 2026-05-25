@@ -387,11 +387,18 @@ function buildTeamValueChartData(opts: {
       const tv = typeof u.tv === "number" ? u.tv : 0;
 
       let cash = opts.initialBudget;
-      const txs = userTransfers.get(u.i) ?? [];
-      for (const t of txs) {
-        if (cutoff !== undefined && t.ts > cutoff) break;
-        if (t.tty === 1) cash -= t.trp;
-        else if (t.tty === 2) cash += t.trp;
+      // KRITISCH: cutoff MUSS existieren um Transfers korrekt zu filtern.
+      // Wenn keine Bonus-Activity für diesen MD im Feed ist (z.B. weil der
+      // Feed nur N letzte Items hat und MD 1 zu weit zurückliegt),
+      // bleiben wir konservativ: KEINE Transfers zählen → cash = initial.
+      // Sonst würde Cash = initial - ALLE Transfers des ganzen Saisonverlaufs.
+      if (cutoff !== undefined) {
+        const txs = userTransfers.get(u.i) ?? [];
+        for (const t of txs) {
+          if (t.ts > cutoff) break;
+          if (t.tty === 1) cash -= t.trp;
+          else if (t.tty === 2) cash += t.trp;
+        }
       }
       const bs = userBonuses.get(u.i) ?? [];
       for (const b of bs) {
