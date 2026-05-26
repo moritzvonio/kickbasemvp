@@ -6,7 +6,7 @@ import { getPlayerIndex } from "@/lib/news/player-index";
 import { NewsStream } from "@/components/news/news-stream";
 
 export const metadata: Metadata = {
-  title: "Bundesliga-News für Kickbase-Manager · KickbaseMVP",
+  title: "Bundesliga-News für Kickbase-Manager · LigaBase",
   description:
     "Aktuelle News, Verletzungen, Aufstellungen und Transfers — für deine Kickbase-Strategie. Kostenlos, ohne Account.",
   alternates: {
@@ -14,7 +14,7 @@ export const metadata: Metadata = {
     types: { "application/rss+xml": "/news/feed.xml" },
   },
   openGraph: {
-    title: "Bundesliga-News · KickbaseMVP",
+    title: "Bundesliga-News · LigaBase",
     description:
       "Aktuelle Bundesliga-News, Verletzungen und Transfers für Kickbase-Manager.",
     type: "website",

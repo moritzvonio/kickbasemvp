@@ -1,7 +1,7 @@
 {
-  "name": "KickbaseMVP — Kickbase Companion",
-  "short_name": "KickbaseMVP",
-  "description": "Aufstellungs-Planer, Marktwert-Insights und Top-Spieler-Wertung für Kickbase.",
+  "name": "LigaBase — deine Liga-Companion-App",
+  "short_name": "LigaBase",
+  "description": "Aufstellungs-Planer, Marktwert-Insights und Top-Spieler-Wertung für deine Liga.",
   "start_url": "/leagues",
   "scope": "/",
   "display": "standalone",

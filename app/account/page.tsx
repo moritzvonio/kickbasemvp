@@ -122,7 +122,7 @@ export default async function AccountPage() {
         </Card>
 
         <p className="text-xs text-muted-foreground text-center pt-4">
-          KickbaseMVP ist nicht offiziell mit Kickbase verbunden. Nutzung auf eigene Verantwortung.
+          LigaBase ist nicht offiziell mit Kickbase verbunden. Nutzung auf eigene Verantwortung.
         </p>
       </main>
     </div>

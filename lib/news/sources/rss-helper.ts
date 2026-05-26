@@ -15,7 +15,7 @@ const parser = new XMLParser({
 });
 
 const FETCH_TIMEOUT_MS = 10_000;
-const USER_AGENT = "KickbaseMVP/1.0 (+https://kickbasemvp.vercel.app)";
+const USER_AGENT = "LigaBase/1.0 (+https://ligabase.de)";
 
 interface RssRawItem {
   title?: string | { "#text"?: string };
