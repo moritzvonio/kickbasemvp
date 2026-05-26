@@ -154,7 +154,7 @@ function HeroPreviewCard() {
           <span className="size-2.5 rounded-full bg-amber-400/60" />
           <span className="size-2.5 rounded-full bg-emerald-400/60" />
           <span className="ml-3 text-[11px] font-mono text-muted-foreground">
-            kickbasemvp.app/league/haramlig
+            ligabase.de/league/haramlig
           </span>
         </div>
         {/* Preview content */}
