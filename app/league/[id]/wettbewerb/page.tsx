@@ -27,11 +27,9 @@ import {
   Trophy,
   Info,
   Swords,
-  LineChart as LineChartIcon,
 } from "lucide-react";
-import { TeamValueChart } from "./TeamValueChart";
-import { buildNetWorthSeries } from "@/lib/networth-history";
-import { getMarketValueHistories } from "@/lib/kickbase/mv-cache";
+import { Suspense } from "react";
+import { NetWorthChartSection } from "../NetWorthChartSection";
 import { ActivityTypeDebug } from "./activity-debug";
 
 export const metadata: Metadata = { title: "Wettbewerb" };
@@ -107,22 +105,6 @@ export default async function WettbewerbPage({
     })
   );
 
-  // Per-Matchday-Rankings einmal fetchen (für Chart UND Matchday-Bonus-Berechnung)
-  const currentMatchday =
-    typeof ranking.day === "number" ? ranking.day : undefined;
-  const matchdaysToFetch: number[] = [];
-  if (currentMatchday && currentMatchday >= 1) {
-    for (let d = 1; d <= currentMatchday; d++) matchdaysToFetch.push(d);
-  }
-  const perMatchdayRankings = await Promise.all(
-    matchdaysToFetch.map((d) =>
-      kb
-        .ranking(session.token, leagueId, d)
-        .then((r) => r.us ?? r.it ?? [])
-        .catch(() => [] as KbRankingUser[])
-    )
-  );
-
   const meRealCash = myRealBudget?.b !== undefined ? myRealBudget.b : undefined;
 
   // Pass 1: eigenen User berechnen, um die ligaspezifische Punkt-Einkommens-Rate
@@ -140,7 +122,6 @@ export default async function WettbewerbPage({
       squad: meData.squad,
       activities: allActivities,
       rankingEntry: meData.manager,
-      perMatchdayRankings,
       achievements: ownAchievements,
       realCashFromApi: meRealCash,
     });
@@ -166,7 +147,6 @@ export default async function WettbewerbPage({
       squad: d.squad,
       activities: allActivities,
       rankingEntry: d.manager,
-      perMatchdayRankings,
       achievements: isMe ? ownAchievements : undefined,
       realCashFromApi: isMe ? meRealCash : undefined,
       pointDrivenRate,
@@ -203,42 +183,21 @@ export default async function WettbewerbPage({
   const leagueStartMs =
     typeof ovRecord.dt === "string" ? Date.parse(ovRecord.dt) : NaN;
 
-  // Alle je-besessenen Spieler (aktuelle Kader + alle Transfer-Spieler)
-  const allPlayerIds = new Set<string>();
-  for (const d of memberData) {
-    for (const p of d.squad?.it ?? []) allPlayerIds.add(p.pi);
-    for (const t of d.transfers) allPlayerIds.add(t.pi);
-  }
-
-  const mvHistories = Number.isFinite(leagueStartMs)
-    ? await getMarketValueHistories(session.token, leagueId, [...allPlayerIds])
-    : new Map();
-
+  // Chart-Input (günstig): pro Manager Kader/Transfers + Gesamt-Bonus bis jetzt.
+  // Die teure MV-Rekonstruktion läuft Suspense-gestreamt in NetWorthChartSection.
   const statsById = new Map(stats.map((s) => [s.userId, s]));
-  const tvChartData = Number.isFinite(leagueStartMs)
-    ? buildNetWorthSeries({
-        managers: memberData.map((d) => {
-          const st = statsById.get(d.manager.i);
-          const transferNetNow = st ? st.totalSold - st.totalBought : 0;
-          // Gesamt-Bonus bis jetzt = Cash − Start − Transferbilanz (eigener
-          // User: exakt via IST-Cash; andere: kalibriert).
-          const totalBonusNow = st
-            ? st.cashEstimate - initialBudget - transferNetNow
-            : 0;
-          return {
-            id: d.manager.i,
-            name: d.manager.n,
-            squad: d.squad,
-            transfers: d.transfers,
-            totalBonusNow,
-          };
-        }),
-        mvHistories,
-        leagueStartMs,
-        nowMs: Date.now(),
-        initialBudget,
-      })
-    : { data: [], managers: [] };
+  const chartManagers = memberData.map((d) => {
+    const st = statsById.get(d.manager.i);
+    const transferNetNow = st ? st.totalSold - st.totalBought : 0;
+    const totalBonusNow = st ? st.cashEstimate - initialBudget - transferNetNow : 0;
+    return {
+      id: d.manager.i,
+      name: d.manager.n,
+      squad: d.squad,
+      transfers: d.transfers,
+      totalBonusNow,
+    };
+  });
 
   return (
     <div className="space-y-6">
@@ -254,37 +213,18 @@ export default async function WettbewerbPage({
         </section>
       )}
 
-      {/* Netto-Teamwert chart */}
-      {tvChartData.data.length >= 2 && (
-        <section className="slide-up slide-up-1">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <span className="size-7 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
-                  <LineChartIcon className="size-4" />
-                </span>
-                Netto-Teamwert seit Liga-Start
-                {Number.isFinite(leagueStartMs) && (
-                  <Badge variant="muted" className="ml-auto text-[10px]">
-                    seit {new Date(leagueStartMs).toLocaleDateString("de-DE")}
-                  </Badge>
-                )}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <TeamValueChart
-                data={tvChartData.data}
-                managers={tvChartData.managers}
-                highlightUserId={session.userId}
-              />
-              <p className="text-[10px] text-muted-foreground mt-2 text-center">
-                Teamwert pro Stichtag aus der Marktwert-History des
-                zurückgerechneten Kaders + Cash. Alle starten bei ~150 Mio
-                (50 Mio Cash + ~100 Mio Team) — bestätigt am Liga-Start.
-              </p>
-            </CardContent>
-          </Card>
-        </section>
+      {/* Netto-Teamwert chart — Suspense-gestreamt, blockiert die Seite nicht */}
+      {Number.isFinite(leagueStartMs) && (
+        <Suspense fallback={<ChartSkeleton startMs={leagueStartMs} />}>
+          <NetWorthChartSection
+            leagueId={leagueId}
+            token={session.token}
+            managers={chartManagers}
+            leagueStartMs={leagueStartMs}
+            initialBudget={initialBudget}
+            highlightUserId={session.userId}
+          />
+        </Suspense>
       )}
 
       {/* Sort tabs */}
@@ -384,6 +324,31 @@ export default async function WettbewerbPage({
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+function ChartSkeleton({ startMs }: { startMs: number }) {
+  return (
+    <section className="slide-up slide-up-1">
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <span className="size-7 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
+              <TrendingUp className="size-4" />
+            </span>
+            Netto-Teamwert seit Liga-Start
+            <Badge variant="muted" className="ml-auto text-[10px]">
+              seit {new Date(startMs).toLocaleDateString("de-DE")}
+            </Badge>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="h-72 sm:h-80 w-full rounded-lg bg-muted/40 animate-pulse flex items-center justify-center">
+            <span className="text-xs text-muted-foreground">Verlauf wird geladen …</span>
+          </div>
+        </CardContent>
+      </Card>
+    </section>
   );
 }
 
@@ -700,10 +665,8 @@ function CashDebugPanel({
     stats.estimatedLoginBonus +
     achievementSum;
   const calibratedPointsBonus = stats.cashEstimate - baseSum;
-  const calibratedRate =
-    stats.totalMatchdayPoints > 0
-      ? calibratedPointsBonus / stats.totalMatchdayPoints
-      : 0;
+  const ratePoints = stats.seasonPoints ?? 0;
+  const calibratedRate = ratePoints > 0 ? calibratedPointsBonus / ratePoints : 0;
 
   // Show line-by-line breakdown
   const lines: Array<{
@@ -737,7 +700,7 @@ function CashDebugPanel({
       value: calibratedPointsBonus,
       sign: "+",
       color: "text-emerald-700",
-      note: `${stats.totalMatchdayPoints.toLocaleString("de-DE")} Pkt × ${(calibratedRate / 1000).toFixed(2)}k €`,
+      note: `${ratePoints.toLocaleString("de-DE")} Pkt × ${(calibratedRate / 1000).toFixed(2)}k €`,
     },
     { label: `Login-Bonus (geschätzt)`, value: stats.estimatedLoginBonus, sign: "+", color: "text-sky-700", note: `${stats.daysActive} Tage × 100k` },
     {
