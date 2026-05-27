@@ -8,7 +8,7 @@ import type { KbManagerSquadResponse, KbManagerTransfer } from "@/lib/kickbase/t
 import { kv } from "@vercel/kv";
 
 const KV = !!(process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN);
-const SHOW_DEBUG = true; // TEMP: Diagnose Johan/Benny — danach env-gaten
+const SHOW_DEBUG = process.env.NETWORTH_DEBUG === "1";
 const CACHE_VERSION = "v2"; // bei Logik-Änderung erhöhen → Cache-Bust
 
 export interface ChartManager {
