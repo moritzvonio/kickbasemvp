@@ -188,14 +188,12 @@ export default async function WettbewerbPage({
   const statsById = new Map(stats.map((s) => [s.userId, s]));
   const chartManagers = memberData.map((d) => {
     const st = statsById.get(d.manager.i);
-    const transferNetNow = st ? st.totalSold - st.totalBought : 0;
-    const totalBonusNow = st ? st.cashEstimate - initialBudget - transferNetNow : 0;
     return {
       id: d.manager.i,
       name: d.manager.n,
       squad: d.squad,
       transfers: d.transfers,
-      totalBonusNow,
+      currentCash: st ? st.cashEstimate : initialBudget,
     };
   });
 

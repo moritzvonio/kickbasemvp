@@ -33,8 +33,10 @@ export interface ManagerHistoryInput {
   name: string;
   squad: KbManagerSquadResponse | null;
   transfers: KbManagerTransfer[];
-  /** Gesamt-Bonus bis JETZT (eigener User: exakt; andere: kalibriert). */
-  totalBonusNow: number;
+  /** Aktuelles Cash (eigener User: exakt aus /me/budget; andere: kalibriert).
+   *  Daraus + Post-Reset-Transferbilanz wird der Bonus-Anteil abgeleitet,
+   *  damit der Endpunkt exakt das aktuelle Vermögen trifft. */
+  currentCash: number;
 }
 
 function mvAtDay(pts: KbMarketValuePoint[], targetDay: number): number {
@@ -70,15 +72,21 @@ export function buildNetWorthSeries(opts: {
   }
   const span = nowMs - leagueStartMs;
 
-  // Pro Manager: Transfers vorbereiten
+  // Pro Manager: Transfers vorbereiten.
+  // WICHTIG: Zum Liga-Start werden Cash & Transfers zurückgesetzt — Transfers
+  // VOR dem Liga-Start (Vorsaison/Reset) zählen NICHT. Sonst starten Manager
+  // mit vielen Vorsaison-Trades fälschlich nicht bei ~150 Mio.
   const prepared = managers.map((m) => {
     const txs = (m.transfers ?? [])
       .map((t) => ({ ts: new Date(t.dt).getTime(), tty: t.tty, trp: t.trp ?? 0, pi: t.pi }))
-      .filter((t) => !isNaN(t.ts));
+      .filter((t) => !isNaN(t.ts) && t.ts > leagueStartMs);
     const currentOwned = new Map<string, number>();
     for (const p of m.squad?.it ?? []) currentOwned.set(p.pi, (currentOwned.get(p.pi) ?? 0) + 1);
     const transferNetNow = txs.reduce((s, t) => s + (t.tty === 2 ? t.trp : t.tty === 1 ? -t.trp : 0), 0);
-    return { m, txs, currentOwned, transferNetNow };
+    // Bonus bis jetzt = aktuelles Cash − Start − Post-Reset-Transferbilanz.
+    // So trifft cash(jetzt) exakt currentCash und cash(start) exakt initialBudget.
+    const totalBonus = m.currentCash - initialBudget - transferNetNow;
+    return { m, txs, currentOwned, transferNetNow, totalBonus };
   });
 
   const data: NetWorthChartPoint[] = sampleMs.map((ms) => {
@@ -107,7 +115,7 @@ export function buildNetWorthSeries(opts: {
         if (c > 0) teamValue += mvAtDay(mvHistories.get(pi) ?? [], dayIdx) * c;
       }
 
-      const cash = initialBudget + transferNetUpTo + pm.m.totalBonusNow * progress;
+      const cash = initialBudget + transferNetUpTo + pm.totalBonus * progress;
       point[pm.m.name] = Math.round(teamValue + cash);
     }
     return point;

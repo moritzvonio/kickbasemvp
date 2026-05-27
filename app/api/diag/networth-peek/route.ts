@@ -24,7 +24,7 @@ export async function GET(req: Request) {
   }
   const leagueId = url.searchParams.get("leagueId") ?? "6871934";
   const today = new Date().toISOString().slice(0, 10);
-  const cacheKey = `networth:series:v1:${leagueId}:${today}`;
+  const cacheKey = `networth:series:v2:${leagueId}:${today}`;
 
   let series: Series | null = null;
   try {

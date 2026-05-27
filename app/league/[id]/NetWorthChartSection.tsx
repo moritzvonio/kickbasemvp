@@ -9,14 +9,14 @@ import { kv } from "@vercel/kv";
 
 const KV = !!(process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN);
 const SHOW_DEBUG = true; // TEMP: Diagnose Johan/Benny — danach env-gaten
-const CACHE_VERSION = "v1"; // bei Logik-Änderung erhöhen → Cache-Bust
+const CACHE_VERSION = "v2"; // bei Logik-Änderung erhöhen → Cache-Bust
 
 export interface ChartManager {
   id: string;
   name: string;
   squad: KbManagerSquadResponse | null;
   transfers: KbManagerTransfer[];
-  totalBonusNow: number;
+  currentCash: number;
 }
 
 interface Series {
