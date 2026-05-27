@@ -91,6 +91,20 @@ export default async function TopSpielerPage({
   // Final-Sort nach echten Saison-Punkten
   const all = candidates.slice().sort((a, b) => seasonPoints(b) - seasonPoints(a));
   const top = all.slice(0, limit);
+
+  // TEMP-DIAG: Pool-Größe ins KV schreiben → Backend-Verifikation per Peek
+  if (process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN) {
+    try {
+      const { kv } = await import("@vercel/kv");
+      await kv.set(
+        `diag:top50:${leagueId}`,
+        { poolSize: data.it?.length ?? 0, detailed: toDetail.length, shown: top.length, filter: posFilter.key, ts: Date.now() },
+        { ex: 3600 }
+      );
+    } catch {
+      /* best-effort */
+    }
+  }
   const max = seasonPoints(top[0] ?? candidates[0]) || 1;
 
   return (

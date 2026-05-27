@@ -26,6 +26,9 @@ export async function GET(req: Request) {
   const today = new Date().toISOString().slice(0, 10);
   const cacheKey = `networth:series:v2:${leagueId}:${today}`;
 
+  // Top-50-Pool-Diagnose (separat, unabhängig vom Networth-Cache)
+  const top50 = await kv.get(`diag:top50:${leagueId}`).catch(() => null);
+
   let series: Series | null = null;
   try {
     series = await kv.get<Series>(cacheKey);
@@ -33,7 +36,7 @@ export async function GET(req: Request) {
     /* */
   }
   if (!series || !series.data?.length) {
-    return NextResponse.json({ error: "no cache yet", cacheKey, hint: "Wettbewerb-Seite einmal öffnen, dann erneut" });
+    return NextResponse.json({ error: "no networth cache yet", cacheKey, top50, hint: "Seite einmal öffnen, dann erneut" });
   }
   const first = series.data[0];
   const last = series.data[series.data.length - 1];
@@ -45,6 +48,7 @@ export async function GET(req: Request) {
     startLabel: first.label,
     nowLabel: last.label,
     points: series.data.length,
+    top50,
     rows,
   });
 }
