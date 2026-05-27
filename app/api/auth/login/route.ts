@@ -3,6 +3,7 @@ import { z } from "zod";
 import { kb } from "@/lib/kickbase/api";
 import { KickbaseError } from "@/lib/kickbase/client";
 import { decodeKickbaseToken, setSessionCookie } from "@/lib/session";
+import { recordLogin } from "@/lib/admin/analytics";
 
 export const runtime = "nodejs";
 
@@ -62,13 +63,17 @@ export async function POST(req: Request) {
     );
   }
 
+  const displayName = decoded.name ?? user.n ?? user.name;
   await setSessionCookie({
     token,
     userId,
-    name: decoded.name ?? user.n ?? user.name,
+    name: displayName,
     email: parsed.email,
     exp: decoded.exp ?? Math.floor(Date.now() / 1000) + 60 * 60 * 24 * 6,
   });
+
+  // First-Party-Analytics: Login protokollieren (best-effort, blockiert nie)
+  await recordLogin(userId, displayName).catch(() => {});
 
   return NextResponse.json({
     ok: true,

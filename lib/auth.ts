@@ -9,6 +9,19 @@ export async function requireSessionOrRedirect(currentPath = "/"): Promise<Sessi
 }
 
 /**
+ * Admin-Check für das Owner-Dashboard. Erlaubte Kickbase-User-IDs aus
+ * ADMIN_USER_IDS (kommagetrennt); Default = Owner-ID.
+ */
+export function isAdmin(userId: string | undefined | null): boolean {
+  if (!userId) return false;
+  const ids = (process.env.ADMIN_USER_IDS ?? "1270088")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+  return ids.includes(userId);
+}
+
+/**
  * Wrap a server-side Kickbase call. If the token has expired (401/403),
  * we redirect to /login so the user can re-auth.
  */

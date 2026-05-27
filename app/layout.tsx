@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/components/providers";
-import { env } from "@/lib/env";
+import { env, isProd } from "@/lib/env";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -48,6 +48,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     >
       <body className="min-h-full bg-background text-foreground flex flex-col">
         <Providers>{children}</Providers>
+        {/* Vercel Web Analytics (cookielos, DSGVO-freundlich) — nur in Production */}
+        {isProd && <script defer src="/_vercel/insights/script.js" />}
       </body>
     </html>
   );

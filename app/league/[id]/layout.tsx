@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { LogoutButton } from "@/components/logout-button";
 import { LeagueTabs } from "./LeagueTabs";
+import { TrackPageView } from "@/components/track-page-view";
 import { Logo } from "@/components/ui/logo";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { getSession } from "@/lib/session";
@@ -30,6 +31,7 @@ export default async function LeagueLayout({
 
   return (
     <div className="flex-1 flex flex-col min-h-screen">
+      <TrackPageView />
       <header className="sticky top-0 z-40 border-b border-border/60 glass">
         {/* Top brand bar */}
         <div className="mx-auto max-w-5xl px-4 h-14 flex items-center justify-between">

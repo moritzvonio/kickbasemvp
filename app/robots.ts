@@ -12,6 +12,7 @@ export default function robots(): MetadataRoute.Robots {
           "/leagues",
           "/league/",
           "/account",
+          "/admin",
           "/upgrade",
           "/upgrade/",
         ],
