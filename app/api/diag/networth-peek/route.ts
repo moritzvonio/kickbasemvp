@@ -28,6 +28,7 @@ export async function GET(req: Request) {
 
   // Top-50-Pool-Diagnose (separat, unabhängig vom Networth-Cache)
   const top50 = await kv.get(`diag:top50:${leagueId}`).catch(() => null);
+  const compExplore = await kv.get("diag:comp-explore").catch(() => null);
 
   let series: Series | null = null;
   try {
@@ -36,7 +37,7 @@ export async function GET(req: Request) {
     /* */
   }
   if (!series || !series.data?.length) {
-    return NextResponse.json({ error: "no networth cache yet", cacheKey, top50, hint: "Seite einmal öffnen, dann erneut" });
+    return NextResponse.json({ error: "no networth cache yet", cacheKey, top50, compExplore, hint: "Seite einmal öffnen, dann erneut" });
   }
   const first = series.data[0];
   const last = series.data[series.data.length - 1];
