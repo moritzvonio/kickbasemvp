@@ -251,7 +251,7 @@ export const kb = {
   async competitionPlayers(
     token: string,
     competitionId = "1",
-    opts?: { position?: number | string; sorting?: string }
+    opts?: { position?: number | string; sorting?: string; start?: number; max?: number }
   ) {
     return kbFetch<import("./types").KbCompetitionPlayersResponse>(
       `/v4/competitions/${competitionId}/players`,
@@ -260,6 +260,8 @@ export const kb = {
         query: {
           position: opts?.position,
           sorting: opts?.sorting,
+          start: opts?.start,
+          max: opts?.max,
         },
       }
     );
@@ -276,27 +278,42 @@ export const kb = {
     competitionId = "1",
     opts?: { sorting?: string }
   ): Promise<import("./types").KbCompetitionPlayersResponse> {
+    type CP = import("./types").KbCompetitionPlayer;
     const positions = [1, 2, 3, 4];
-    const results = await Promise.all(
-      positions.map((position) =>
-        kbFetch<import("./types").KbCompetitionPlayersResponse>(
-          `/v4/competitions/${competitionId}/players`,
-          { token, query: { position, sorting: opts?.sorting } }
-        )
-          .then((r) => r.it ?? [])
-          .catch(() => [] as import("./types").KbCompetitionPlayer[])
-      )
-    );
     const seen = new Set<string>();
-    const merged: import("./types").KbCompetitionPlayer[] = [];
-    for (const arr of results) {
-      for (const p of arr) {
-        if (p?.pi && !seen.has(p.pi)) {
-          seen.add(p.pi);
-          merged.push(p);
+    const merged: CP[] = [];
+
+    // Pro Position durchpaginieren: Der Endpoint liefert nur ~25 Spieler je
+    // Seite. Wir zählen `start` hoch bis ein Batch keine neuen Spieler bringt
+    // (Stop-Bedingung greift auch, falls der Endpoint Pagination ignoriert).
+    await Promise.all(
+      positions.map(async (position) => {
+        let start = 0;
+        for (let page = 0; page < 15; page++) {
+          let batch: CP[] = [];
+          try {
+            const r = await kbFetch<import("./types").KbCompetitionPlayersResponse>(
+              `/v4/competitions/${competitionId}/players`,
+              { token, query: { position, start, max: 100, sorting: opts?.sorting } }
+            );
+            batch = r.it ?? [];
+          } catch {
+            break;
+          }
+          if (batch.length === 0) break;
+          let newCount = 0;
+          for (const p of batch) {
+            if (p?.pi && !seen.has(p.pi)) {
+              seen.add(p.pi);
+              merged.push(p);
+              newCount++;
+            }
+          }
+          if (newCount === 0) break; // keine neuen → Ende (oder Pagination ignoriert)
+          start += batch.length;
         }
-      }
-    }
+      })
+    );
     return { it: merged };
   },
 
