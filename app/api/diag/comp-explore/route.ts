@@ -22,7 +22,10 @@ function summarize(it: KbCompetitionPlayer[]) {
   };
 }
 
-async function probe(token: string, query: Record<string, unknown>) {
+async function probe(
+  token: string,
+  query: Record<string, string | number | boolean | null | undefined>
+) {
   try {
     const r = await kbFetch<KbCompetitionPlayersResponse>(
       `/v4/competitions/1/players`,

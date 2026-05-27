@@ -42,7 +42,7 @@ export async function GET() {
     {
       // BUILD-MARKER: ändert sich bei jedem Code-Push. Wenn dieser String
       // nach Deploy nicht aktuell ist, deployt Vercel deinen Push NICHT.
-      buildMarker: "v19-2026-05-27-comp-explore",
+      buildMarker: "v20-2026-05-27-comp-explore",
       backend: NEWS_STORE_BACKEND,
       kvAvailable: !!process.env.KV_REST_API_URL,
       hasItems: recent.length > 0,
