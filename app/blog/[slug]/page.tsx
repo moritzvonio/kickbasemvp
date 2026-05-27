@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Logo } from "@/components/ui/logo";
 import { JsonLd } from "@/components/seo/json-ld";
-import { BLOG_POSTS, getPost } from "@/lib/blog/posts";
+import { BLOG_POSTS, getPost, type BlogSection } from "@/lib/blog/posts";
 import { blogPostingSchema, breadcrumbSchema } from "@/lib/seo/schema";
 import { env } from "@/lib/env";
 import { Clock, ArrowLeft, ArrowRight, CheckCircle2 } from "lucide-react";
@@ -95,24 +95,50 @@ export default async function BlogPostPage({
           {post.excerpt}
         </p>
 
-        {post.status === "coming-soon" && (
-          <div className="mt-6 rounded-xl border border-amber-200 bg-amber-50/60 p-4 text-sm text-amber-800">
-            ✍️ Der ausführliche Guide erscheint in Kürze. Hier ist der geplante
-            Aufbau – schau bald wieder vorbei oder starte direkt mit LigaBase.
-          </div>
+        {post.body && post.body.length > 0 ? (
+          <>
+            <PostBody sections={post.body} />
+            {post.sources && post.sources.length > 0 && (
+              <section className="mt-12 border-t border-border/60 pt-6">
+                <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+                  Quellen
+                </h2>
+                <ul className="mt-3 space-y-1.5 text-sm">
+                  {post.sources.map((s) => (
+                    <li key={s.url}>
+                      <a
+                        href={s.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-primary hover:underline break-words"
+                      >
+                        {s.label}
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )}
+          </>
+        ) : (
+          <>
+            <div className="mt-6 rounded-xl border border-amber-200 bg-amber-50/60 p-4 text-sm text-amber-800">
+              ✍️ Der ausführliche Guide erscheint in Kürze. Hier ist der geplante
+              Aufbau – schau bald wieder vorbei oder starte direkt mit LigaBase.
+            </div>
+            <section className="mt-8">
+              <h2 className="text-xl font-semibold">Das erwartet dich</h2>
+              <ul className="mt-4 space-y-2.5">
+                {post.outline.map((item) => (
+                  <li key={item} className="flex items-start gap-2.5 text-[15px] leading-relaxed">
+                    <CheckCircle2 className="size-5 text-primary shrink-0 mt-0.5" />
+                    <span>{item}</span>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          </>
         )}
-
-        <section className="mt-8">
-          <h2 className="text-xl font-semibold">Das erwartet dich</h2>
-          <ul className="mt-4 space-y-2.5">
-            {post.outline.map((item) => (
-              <li key={item} className="flex items-start gap-2.5 text-[15px] leading-relaxed">
-                <CheckCircle2 className="size-5 text-primary shrink-0 mt-0.5" />
-                <span>{item}</span>
-              </li>
-            ))}
-          </ul>
-        </section>
 
         <div className="mt-10 rounded-2xl border border-border bg-gradient-to-br from-emerald-50/60 to-transparent p-6 text-center">
           <p className="font-semibold">Direkt ausprobieren statt nur lesen?</p>
@@ -160,6 +186,60 @@ export default async function BlogPostPage({
           Kickbase, der DFL oder einem Bundesliga-Verein verbunden.
         </p>
       </main>
+    </div>
+  );
+}
+
+function PostBody({ sections }: { sections: BlogSection[] }) {
+  return (
+    <div className="mt-8">
+      {sections.map((sec) => (
+        <section key={sec.h2} className="mb-8">
+          <h2 className="text-xl sm:text-2xl font-semibold tracking-tight mb-3 scroll-mt-20">
+            {sec.h2}
+          </h2>
+          {sec.blocks.map((b, i) => {
+            switch (b.type) {
+              case "p":
+                return (
+                  <p key={i} className="text-[15px] leading-relaxed text-foreground/90 mb-4">
+                    {b.text}
+                  </p>
+                );
+              case "ul":
+                return (
+                  <ul key={i} className="list-disc ml-5 space-y-1.5 mb-4 text-[15px] text-foreground/90">
+                    {b.items.map((it, j) => (
+                      <li key={j}>{it}</li>
+                    ))}
+                  </ul>
+                );
+              case "ol":
+                return (
+                  <ol key={i} className="list-decimal ml-5 space-y-1.5 mb-4 text-[15px] text-foreground/90">
+                    {b.items.map((it, j) => (
+                      <li key={j}>{it}</li>
+                    ))}
+                  </ol>
+                );
+              case "tip":
+                return (
+                  <div key={i} className="rounded-xl border border-primary/20 bg-primary/[0.05] p-4 mb-4 text-[15px] leading-relaxed">
+                    <span className="font-semibold text-primary">💡 Tipp: </span>
+                    {b.text}
+                  </div>
+                );
+              case "quote":
+                return (
+                  <blockquote key={i} className="border-l-4 border-primary/40 pl-4 italic text-muted-foreground mb-4">
+                    {b.text}
+                    {b.cite && <span className="block not-italic text-xs mt-1">— {b.cite}</span>}
+                  </blockquote>
+                );
+            }
+          })}
+        </section>
+      ))}
     </div>
   );
 }
