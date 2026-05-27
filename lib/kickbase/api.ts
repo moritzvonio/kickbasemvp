@@ -265,6 +265,41 @@ export const kb = {
     );
   },
 
+  /**
+   * Vollständigen Spielerpool holen: Der `/players`-Endpoint ohne Position
+   * liefert nur eine gekappte Teilmenge. Wir fragen daher pro Position
+   * (1=TW, 2=ABW, 3=MIT, 4=STU) parallel ab und mergen (dedupe per pi) —
+   * so bekommen wir alle Bundesliga-Spieler statt nur eine Handvoll.
+   */
+  async competitionPlayersAll(
+    token: string,
+    competitionId = "1",
+    opts?: { sorting?: string }
+  ): Promise<import("./types").KbCompetitionPlayersResponse> {
+    const positions = [1, 2, 3, 4];
+    const results = await Promise.all(
+      positions.map((position) =>
+        kbFetch<import("./types").KbCompetitionPlayersResponse>(
+          `/v4/competitions/${competitionId}/players`,
+          { token, query: { position, sorting: opts?.sorting } }
+        )
+          .then((r) => r.it ?? [])
+          .catch(() => [] as import("./types").KbCompetitionPlayer[])
+      )
+    );
+    const seen = new Set<string>();
+    const merged: import("./types").KbCompetitionPlayer[] = [];
+    for (const arr of results) {
+      for (const p of arr) {
+        if (p?.pi && !seen.has(p.pi)) {
+          seen.add(p.pi);
+          merged.push(p);
+        }
+      }
+    }
+    return { it: merged };
+  },
+
   async managerSquad(token: string, leagueId: string, managerId: string) {
     return kbFetch<import("./types").KbManagerSquadResponse>(
       `/v4/leagues/${leagueId}/managers/${managerId}/squad`,

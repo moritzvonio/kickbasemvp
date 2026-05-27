@@ -44,10 +44,12 @@ export default async function TopSpielerPage({
     ? Number(sp.limit)
     : 50;
 
+  // "Alle": vollständigen Pool über alle Positionen mergen (der Endpoint ohne
+  // Position liefert nur eine gekappte Teilmenge → es fehlten viele Spieler).
   const data = await withKbAuth(path, () =>
-    kb.competitionPlayers(session.token, "1", {
-      position: posFilter.value,
-    })
+    posFilter.value === undefined
+      ? kb.competitionPlayersAll(session.token, "1")
+      : kb.competitionPlayers(session.token, "1", { position: posFilter.value })
   ).catch(() => ({ it: [] as KbCompetitionPlayer[] }));
 
   // Erster Sort nach competitionPlayer.p — das ist aber bei der Kickbase-API
@@ -57,13 +59,15 @@ export default async function TopSpielerPage({
   const preSorted = (data.it ?? []).slice().sort((a, b) => (b.p ?? 0) - (a.p ?? 0));
   const candidates = preSorted.slice(0, Math.min(limit + 20, preSorted.length));
 
-  // Parallel Detail-Calls für Saison-Punkte
+  // Detail-Calls (echte Saison-Punkte tp) auf die Top-Kandidaten begrenzen,
+  // damit große Limits (z.B. 250) bei vollem Pool nicht hunderte Calls auslösen.
+  const toDetail = candidates.slice(0, 80);
   const detailMap = new Map<
     string,
     { tp?: number; ap?: number; g?: number; a?: number }
   >();
   await Promise.all(
-    candidates.map(async (cp) => {
+    toDetail.map(async (cp) => {
       try {
         const d = await kb.player(session.token, leagueId, cp.pi);
         detailMap.set(cp.pi, {
