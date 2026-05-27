@@ -26,10 +26,54 @@ import {
   CheckCircle2,
   Globe,
 } from "lucide-react";
+import type { Metadata } from "next";
+import { JsonLd } from "@/components/seo/json-ld";
+import { FAQ_ITEMS, type FaqEntry } from "@/lib/seo/faq-data";
+import {
+  softwareApplicationSchema,
+  organizationSchema,
+  faqPageSchema,
+} from "@/lib/seo/schema";
+import { env } from "@/lib/env";
+
+const BASE = env.NEXT_PUBLIC_APP_URL.replace(/\/$/, "");
+
+export const metadata: Metadata = {
+  title: { absolute: "Kickbase Tool – Marktwerte, Trading & Punkte | LigaBase" },
+  description:
+    "LigaBase ist dein kostenloses Kickbase-Tool: Marktwert-Prognosen, Transfer-Advisor, Live-Punkte, Top-50-Rangliste & Teamwert-Vergleich. Jetzt starten.",
+  keywords: [
+    "Kickbase Tool",
+    "Kickbase Marktwerte",
+    "Kickbase Marktwert Prognose",
+    "Kickbase Trading",
+    "Kickbase Tipps",
+    "Kickbase Analyse Tool",
+    "Kickbase Statistiken",
+    "Kickbase Aufstellung",
+    "Bundesliga Fantasy Manager Tool",
+  ],
+  alternates: { canonical: `${BASE}/` },
+  openGraph: {
+    title: "Kickbase Tool – Marktwert-Prognosen, Trading & Live-Punkte",
+    description:
+      "Dein kostenloses Kickbase-Tool: Marktwert-Prognosen, Transfer-Advisor, Live-Punkte & Top-50-Rangliste für deine Liga.",
+    type: "website",
+    locale: "de_DE",
+    url: `${BASE}/`,
+  },
+};
 
 export default function HomePage() {
   return (
     <>
+      <JsonLd
+        data={[
+          softwareApplicationSchema(BASE),
+          organizationSchema(BASE),
+          faqPageSchema(),
+        ]}
+      />
       <SiteHeader />
       <main className="flex-1">
         <Hero />
@@ -59,6 +103,7 @@ function SiteHeader() {
           <a href="#preview" className="hover:text-foreground transition">Preview</a>
           <a href="#pricing" className="hover:text-foreground transition">Preise</a>
           <a href="#faq" className="hover:text-foreground transition">FAQ</a>
+          <Link href="/blog" className="hover:text-foreground transition">Blog</Link>
         </nav>
         <div className="flex items-center gap-2">
           <Button asChild variant="ghost" size="sm" className="hidden sm:inline-flex">
@@ -99,7 +144,8 @@ function Hero() {
           </h1>
 
           <p className="mt-6 text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed slide-up slide-up-2">
-            Liga-Sozial-Layer, Marktwert-Insights und Transfer-Coach in einer App.
+            Das kostenlose Kickbase-Tool mit Marktwert-Prognosen, Transfer-Advisor
+            und Live-Punkten — alles für deine Liga in einer App.
             Login mit deinem Kickbase-Account — Passwort wird{" "}
             <span className="text-foreground font-medium">nicht gespeichert</span>.
           </p>
@@ -704,41 +750,20 @@ function FAQ() {
       <div className="mx-auto max-w-3xl px-4">
         <SectionHeading
           eyebrow="FAQ"
-          title="Häufige Fragen"
-          description="Alles was du wissen musst, bevor du loslegst."
+          title="Kickbase FAQ: Marktwert, Punkte & Trading"
+          description="Die wichtigsten Fragen zu Kickbase und LigaBase – kurz beantwortet, mit offiziellen Quellen."
         />
         <div className="mt-12 space-y-4">
-          <FaqItem q="Ist LigaBase offiziell von Kickbase?">
-            Nein. Wir nutzen die öffentliche Kickbase-App-API (v4) und sind ein
-            unabhängiges Drittanbieter-Tool.
-          </FaqItem>
-          <FaqItem q="Kann mein Account gesperrt werden?">
-            Uns ist kein Fall bekannt. Wir respektieren Rate-Limits, lesen nur was du selbst
-            sehen kannst, und schreiben nichts ohne deine ausdrückliche Aktion.
-          </FaqItem>
-          <FaqItem q="Was passiert mit meinem Passwort?">
-            Wir leiten es einmalig an die Kickbase-Login-API weiter, bekommen einen Token zurück
-            und werfen das Passwort weg. Token wird verschlüsselt in einem httpOnly-Cookie gespeichert.
-          </FaqItem>
-          <FaqItem q="Wann startet ihr?">
-            Saison 26/27 — Mitte August 2026. Bis dahin Beta. Saison-Pass-Käufe ab Launch
-            rückwirkend gültig für die ganze Saison.
-          </FaqItem>
-          <FaqItem q="Gibt's eine App?">
-            LigaBase ist eine PWA — du installierst sie aus dem Browser auf deinen Home-Screen.
-            Push-Notifications, Offline-Cache, Vollbild — alles dabei.
-          </FaqItem>
-          <FaqItem q="Kann ich kündigen?">
-            Pro Monatlich: jederzeit, sofortiger Effekt zum Periodenende.
-            Pro Saison: keine Kündigung nötig — läuft einmalig 9 Monate ab.
-          </FaqItem>
+          {FAQ_ITEMS.map((item) => (
+            <FaqItem key={item.q} {...item} />
+          ))}
         </div>
       </div>
     </section>
   );
 }
 
-function FaqItem({ q, children }: { q: string; children: React.ReactNode }) {
+function FaqItem({ q, a, source }: FaqEntry) {
   return (
     <details className="group rounded-xl border border-border bg-card p-5 [&_summary::-webkit-details-marker]:hidden">
       <summary className="flex items-center justify-between cursor-pointer list-none font-semibold">
@@ -747,7 +772,22 @@ function FaqItem({ q, children }: { q: string; children: React.ReactNode }) {
           +
         </span>
       </summary>
-      <p className="mt-3 text-sm text-muted-foreground leading-relaxed">{children}</p>
+      <div className="mt-3 text-sm text-muted-foreground leading-relaxed">
+        <p>{a}</p>
+        {source && (
+          <p className="mt-2 text-xs">
+            Quelle:{" "}
+            <a
+              href={source.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-primary hover:underline"
+            >
+              {source.label}
+            </a>
+          </p>
+        )}
+      </div>
     </details>
   );
 }
@@ -805,6 +845,7 @@ function SiteFooter() {
             <a href="#features">Features</a>
             <a href="#pricing">Preise</a>
             <a href="#faq">FAQ</a>
+            <Link href="/blog">Blog & Tipps</Link>
           </FooterCol>
           <FooterCol title="Rechtliches">
             <Link href="/impressum">Impressum</Link>

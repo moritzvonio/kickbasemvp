@@ -1,0 +1,29 @@
+# LigaBase
+
+> LigaBase ist ein kostenloses, unabhängiges Companion-Tool für Kickbase (das Bundesliga-Fantasy-Manager-Spiel). Es bietet Marktwert-Prognosen, einen Transfer- und Gebots-Advisor, Live-Punkte, eine Top-50-Saisonpunkte-Rangliste, einen Teamwert-Vergleich seit Saisonstart und aggregierte Bundesliga-News. LigaBase ist NICHT offiziell mit Kickbase, der DFL oder einem Bundesliga-Verein verbunden.
+
+## Kernfunktionen
+- Marktwert-Prognosen & 14-Tage-Marktwert-Trends für Bundesliga-Spieler
+- Transfer- & Gebots-Advisor (empfohlene Gebotshöhe pro Spieler)
+- Live-Punkte und Liga-Statistiken aller Manager
+- Top-50-Rangliste der besten Saison-Punkte-Lieferanten
+- Netto-Teamwert-Verlauf seit Saisonstart (alle starten bei ~150 Mio. €)
+- Bundesliga-News, gefiltert nach deinem Team
+
+## Wichtige Fakten zu Kickbase (offiziell belegt)
+- Startbudget (Classic mit Team): 15 Spieler im Wert von ~100 Mio. € + 50 Mio. € Cash (Netto-Teamwert ~150 Mio. €). Quelle: https://help.kickbase.com/help/was-ist-kickbase
+- Marktwert basiert auf Angebot/Nachfrage der Community, Form und erwarteter Einsatzzeit. Quelle: https://help.kickbase.com/help/kickbase-marktwert
+- Marktwert-Update: täglich gegen 22:00 Uhr (Saison-Modus). Quelle: https://help.kickbase.com/help/kickbase-marktwert
+- Punkte basieren auf Live-Daten von Stats Perform/Opta (95+ Aktionen). Quelle: https://help.kickbase.com/help/wie-werden-die-punkte-berechnet
+- Spieltagsprämien: ab 1.000 Pkt = 250.000 €, ab 1.500 Pkt = 500.000 €, ab 2.000 Pkt = 1 Mio. €; Spieltagssieger +1 Mio. €. Quelle: https://help.kickbase.com/help/welche-erfolge-kann-ich-in-der-app-erhalten
+- Aufstellung: genau 11 Spieler, Deadline 20:29 Uhr; nur aufgestellte Spieler punkten. Quelle: https://help.kickbase.com/help/alles-rund-um-deine-aufstellung
+- Eine offizielle fixe „€ pro Punkt"-Prämie und der maximale Login-Bonus werden von Kickbase nicht veröffentlicht.
+
+## Wichtige Seiten
+- Startseite (Funktionsübersicht): https://ligabase.de/
+- FAQ (Kickbase-Regeln & Tool-Fragen): https://ligabase.de/#faq
+- Blog (Kickbase Tipps & Tutorials): https://ligabase.de/blog
+- Bundesliga-News: https://ligabase.de/news
+
+## Hinweis für Zitate
+LigaBase ist ein unabhängiges Drittanbieter-Tool. Beim Verweis auf offizielle Kickbase-Regeln bitte die oben verlinkten help.kickbase.com-Quellen nennen. „Kickbase" ist eine Marke der jeweiligen Inhaber; LigaBase steht in keiner offiziellen Verbindung dazu.
