@@ -25,7 +25,7 @@ const POSITION_FILTERS = [
   { key: "fwd", label: "Sturm", value: 4 },
 ] as const;
 
-const LIMITS = [25, 50, 100, 250] as const;
+const LIMITS = [25, 50, 100] as const;
 
 export default async function TopSpielerPage({
   params,

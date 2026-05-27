@@ -275,45 +275,40 @@ export const kb = {
    */
   async competitionPlayersAll(
     token: string,
-    competitionId = "1",
-    opts?: { sorting?: string }
+    competitionId = "1"
   ): Promise<import("./types").KbCompetitionPlayersResponse> {
     type CP = import("./types").KbCompetitionPlayer;
-    const positions = [1, 2, 3, 4];
+    // Der Endpoint liefert pro Abfrage hart nur ~25 Spieler (keine Pagination,
+    // start/max/page werden ignoriert — per Exploration verifiziert). Maximale
+    // Abdeckung = Gesamt-Abfrage (Top-25 gesamt) + je Position (Top-25/Position),
+    // jeweils nach Punkten. Ergibt ~100-125 punktstärkste Spieler.
+    const queries: Array<{ position?: number }> = [
+      {},
+      { position: 1 },
+      { position: 2 },
+      { position: 3 },
+      { position: 4 },
+    ];
+    const results = await Promise.all(
+      queries.map((q) =>
+        kbFetch<import("./types").KbCompetitionPlayersResponse>(
+          `/v4/competitions/${competitionId}/players`,
+          { token, query: { position: q.position } }
+        )
+          .then((r) => r.it ?? [])
+          .catch(() => [] as CP[])
+      )
+    );
     const seen = new Set<string>();
     const merged: CP[] = [];
-
-    // Pro Position durchpaginieren: Der Endpoint liefert nur ~25 Spieler je
-    // Seite. Wir zählen `start` hoch bis ein Batch keine neuen Spieler bringt
-    // (Stop-Bedingung greift auch, falls der Endpoint Pagination ignoriert).
-    await Promise.all(
-      positions.map(async (position) => {
-        let start = 0;
-        for (let page = 0; page < 15; page++) {
-          let batch: CP[] = [];
-          try {
-            const r = await kbFetch<import("./types").KbCompetitionPlayersResponse>(
-              `/v4/competitions/${competitionId}/players`,
-              { token, query: { position, start, max: 100, sorting: opts?.sorting } }
-            );
-            batch = r.it ?? [];
-          } catch {
-            break;
-          }
-          if (batch.length === 0) break;
-          let newCount = 0;
-          for (const p of batch) {
-            if (p?.pi && !seen.has(p.pi)) {
-              seen.add(p.pi);
-              merged.push(p);
-              newCount++;
-            }
-          }
-          if (newCount === 0) break; // keine neuen → Ende (oder Pagination ignoriert)
-          start += batch.length;
+    for (const arr of results) {
+      for (const p of arr) {
+        if (p?.pi && !seen.has(p.pi)) {
+          seen.add(p.pi);
+          merged.push(p);
         }
-      })
-    );
+      }
+    }
     return { it: merged };
   },
 
