@@ -7,7 +7,7 @@
  * wenn ein Service-Token verfügbar ist.
  *
  * Fallback: wenn kein Index in KV verfügbar, läuft der Tagger leer (keine
- * Spieler-Tags) — News werden trotzdem nach Club gespeichert wenn Source
+ * Spieler-Tags) – News werden trotzdem nach Club gespeichert wenn Source
  * einen clubSlug liefert.
  */
 
@@ -57,7 +57,7 @@ const EMPTY_INDEX: PlayerIndex = {
 
 /**
  * Liefert den aktuellen Player-Index aus dem Cache. Wenn kein Index da
- * ist, returns EMPTY_INDEX (leerer Index — Tagger findet keine Spieler).
+ * ist, returns EMPTY_INDEX (leerer Index – Tagger findet keine Spieler).
  */
 export async function getPlayerIndex(): Promise<PlayerIndex> {
   if (KV_AVAILABLE) {
@@ -85,7 +85,7 @@ export async function rebuildPlayerIndex(token: string): Promise<PlayerIndex> {
     pim?: string;
   }> = [];
 
-  // Vollständiger Pool via Team-Sweep (alle Vereinskader) — die alten
+  // Vollständiger Pool via Team-Sweep (alle Vereinskader) – die alten
   // per-Position-Abfragen kappten bei ~25 Spielern pro Position.
   try {
     const res = await kb.competitionPlayersAll(token, "1");
@@ -152,7 +152,7 @@ export function isIndexStale(idx: PlayerIndex): boolean {
 }
 
 /**
- * Liefert einen frischen Index — mit Service-Account-Selbstheilung:
+ * Liefert einen frischen Index – mit Service-Account-Selbstheilung:
  * Ist der gecachte Index leer/stale und KICKBASE_EMAIL/KICKBASE_PASSWORD
  * sind gesetzt (Vercel-Env), loggt sich der Aufrufer (typisch der
  * News-Cron) selbst bei Kickbase ein und rebuildet den Index.
@@ -170,7 +170,7 @@ export async function ensureFreshPlayerIndex(): Promise<PlayerIndex> {
   if (!em || !pass) {
     if (idx.count === 0) {
       console.warn(
-        "[player-index] Index leer/stale und kein Service-Account (KICKBASE_EMAIL/KICKBASE_PASSWORD) konfiguriert — Tagger läuft ohne Spieler-Tags"
+        "[player-index] Index leer/stale und kein Service-Account (KICKBASE_EMAIL/KICKBASE_PASSWORD) konfiguriert – Tagger läuft ohne Spieler-Tags"
       );
     }
     return idx;

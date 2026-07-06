@@ -80,7 +80,7 @@ export default async function LeagueLayout({
           </div>
         </div>
 
-        {/* Tabs row — pill-style segmented control */}
+        {/* Tabs row – pill-style segmented control */}
         <LeagueTabs leagueId={id} />
       </header>
 

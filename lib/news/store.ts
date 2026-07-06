@@ -87,7 +87,7 @@ export async function storeIfNew(item: TaggedNewsItem): Promise<boolean> {
   }
   // Items ohne Player- UND Club-Tag → nur skippen wenn aus Vereins-Source
   // (dort sollte ein Club-Tag immer da sein). Bei Reporter/Media/Community
-  // lassen wir auch untaggierte News durch — User kann via Filter steuern.
+  // lassen wir auch untaggierte News durch – User kann via Filter steuern.
   if (
     item.playerIds.length === 0 &&
     !item.clubSlug &&

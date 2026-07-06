@@ -18,7 +18,7 @@ export class KickbaseError extends Error {
     this.body = opts.body;
   }
 
-  /** Returns true for 401/403 — token expired or rejected */
+  /** Returns true for 401/403 – token expired or rejected */
   get isAuthError(): boolean {
     return this.status === 401 || this.status === 403;
   }

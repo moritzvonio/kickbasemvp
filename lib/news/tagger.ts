@@ -9,7 +9,7 @@
  * Edge-Cases (TODOs für GPT-Migration):
  *  - Kurze Namen (Kane, Sané, Tah) brauchen Vereins-Co-Mention für Präzision
  *  - Häufige Nachnamen (Müller, Schmidt) werden geskippt
- *  - Sonderzeichen (Müller, Özil) — UTF-8-lowercase-handling muss korrekt sein
+ *  - Sonderzeichen (Müller, Özil) – UTF-8-lowercase-handling muss korrekt sein
  *
  * Migration-Hook: am Ende, wenn 0 Spieler gefunden UND OPENAI_API_KEY gesetzt,
  * könnte ein GPT-Fallback aktiviert werden (siehe TODO).
@@ -18,7 +18,7 @@
 import type { RawNewsItem, TaggedNewsItem, NewsSourceType } from "./types";
 import { getPlayerIndex, type PlayerIndex } from "./player-index";
 
-/** Source-Display-Daten — wird vom Aggregator gesetzt */
+/** Source-Display-Daten – wird vom Aggregator gesetzt */
 let SOURCE_REGISTRY: Map<
   string,
   { displayName: string; type: NewsSourceType; clubSlug?: string }
@@ -55,7 +55,7 @@ export async function tagItem(
     if (text.includes(fullname)) found.add(playerId);
   }
 
-  // 2) Surname-Match — eindeutige Nachnamen mit ≥ 4 Zeichen
+  // 2) Surname-Match – eindeutige Nachnamen mit ≥ 4 Zeichen
   // Bei mehrdeutigen Nachnamen: nur taggen wenn Vereins-Name auch im Text
   // (verhindert false positives: "Müller" beim FCB-Artikel = Thomas, beim
   // Eintracht-Artikel = anderer Müller).

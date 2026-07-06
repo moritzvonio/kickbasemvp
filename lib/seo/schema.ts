@@ -11,11 +11,11 @@ type Json = Record<string, unknown>;
 const ORG = (base: string): Json => ({
   "@type": "Organization",
   "@id": `${base}/#organization`,
-  name: "LigaBase",
+  name: "Ligabase",
   url: base,
   logo: `${base}/icons/icon-512.svg`,
   description:
-    "LigaBase ist ein unabhängiges Companion-Tool für Kickbase mit Marktwert-Prognosen, Transfer-Advisor, Live-Punkten und Liga-Statistiken.",
+    "Ligabase ist ein unabhängiges Companion-Tool für Kickbase mit Marktwert-Prognosen, Transfer-Advisor, Live-Punkten und Liga-Statistiken.",
 });
 
 export function organizationSchema(base: string): Json {
@@ -26,7 +26,7 @@ export function softwareApplicationSchema(base: string): Json {
   return {
     "@context": "https://schema.org",
     "@type": "WebApplication",
-    name: "LigaBase",
+    name: "Ligabase",
     url: base,
     applicationCategory: "SportsApplication",
     operatingSystem: "Web, iOS, Android (PWA)",
@@ -77,7 +77,7 @@ export function blogPostingSchema(post: BlogPost, base: string): Json {
     author: ORG(base),
     publisher: {
       "@type": "Organization",
-      name: "LigaBase",
+      name: "Ligabase",
       logo: { "@type": "ImageObject", url: `${base}/icons/icon-512.svg` },
     },
     mainEntityOfPage: { "@type": "WebPage", "@id": url },
@@ -90,7 +90,7 @@ export function blogCollectionSchema(posts: BlogPost[], base: string): Json {
   return {
     "@context": "https://schema.org",
     "@type": "Blog",
-    name: "LigaBase Blog – Kickbase Tipps & Tutorials",
+    name: "Ligabase Blog – Kickbase Tipps & Tutorials",
     url: `${base}/blog`,
     inLanguage: "de-DE",
     publisher: ORG(base),

@@ -22,7 +22,7 @@ export function NewsCard({
   item: TaggedNewsItem;
   /** playerId → Display-Name oder reichere PlayerMeta (Name + Bild + Team) */
   playerNameMap?: Record<string, string | PlayerMeta>;
-  /** Spieler aus dem eigenen Squad — werden farblich hervorgehoben */
+  /** Spieler aus dem eigenen Squad – werden farblich hervorgehoben */
   highlightPlayerIds?: Set<string>;
   /** Wenn gesetzt → Player-Tags werden Links zur Spieler-Detail-Page (mit #news-Anchor) */
   leagueId?: string;
@@ -115,7 +115,7 @@ export function NewsCard({
                       href={`/league/${leagueId}/spieler/${p.id}#news`}
                       className={className}
                       onClick={(e) => e.stopPropagation()}
-                      title={`${p.name} — alle News + Spieler-Detail öffnen`}
+                      title={`${p.name} – alle News + Spieler-Detail öffnen`}
                     >
                       {p.name}
                     </Link>

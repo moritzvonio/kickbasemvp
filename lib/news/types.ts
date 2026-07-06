@@ -1,9 +1,9 @@
 /**
- * News-Layer Types — Pluggable Source Interface.
+ * News-Layer Types – Pluggable Source Interface.
  *
  * Jede News-Quelle implementiert das gleiche Interface. Heute liefert die
  * MockTwitterSource einen JSON-Seed, später wird sie durch RssAppTwitterSource
- * oder TwitterApiSource ersetzt — ohne irgendwo anders Code zu ändern.
+ * oder TwitterApiSource ersetzt – ohne irgendwo anders Code zu ändern.
  */
 
 export interface NewsSource {
@@ -13,7 +13,7 @@ export interface NewsSource {
   displayName: string;
   /** Source-Type für UI-Icons + Filter */
   type: NewsSourceType;
-  /** Verein-Slug (Bundesliga-Team) für Filterung — optional */
+  /** Verein-Slug (Bundesliga-Team) für Filterung – optional */
   clubSlug?: string;
   /** Polling-Interval in Minuten (für Cron-Scheduler) */
   intervalMinutes: number;
@@ -24,13 +24,13 @@ export interface NewsSource {
 export type NewsSourceType = "club" | "reporter" | "media" | "community";
 
 export interface RawNewsItem {
-  /** Stable ID — meist URL-Hash oder Tweet-ID */
+  /** Stable ID – meist URL-Hash oder Tweet-ID */
   externalId: string;
   /** Headline / Tweet-Text */
   title: string;
   /** Optionaler längerer Text (max 280 Zeichen, Pressespiegel-Recht §87f UrhG) */
   body?: string;
-  /** Original-URL (Pflicht — Quellenangabe) */
+  /** Original-URL (Pflicht – Quellenangabe) */
   url: string;
   /** Erscheinungs-Zeitpunkt */
   publishedAt: Date;

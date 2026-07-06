@@ -1,23 +1,23 @@
 /**
- * Kickbase-Bonus-Katalog — EMPIRISCH VERIFIZIERT gegen die echte API
+ * Kickbase-Bonus-Katalog – EMPIRISCH VERIFIZIERT gegen die echte API
  * (Snapshots 2026-07-06, 3 Ligen, eigener Account als Wahrheits-Anker).
  *
  * Validierung: Σ ac×er == /user/achievements API-total (Liga 089: 42,85M ✓,
- * Liga 23/24: 66,65M ✓). Der Detail-Endpoint kann in Alt-Ligen er=0 liefern —
+ * Liga 23/24: 66,65M ✓). Der Detail-Endpoint kann in Alt-Ligen er=0 liefern –
  * dann diesen Katalog als Fallback nutzen.
  *
  * Siehe docs/kickbase-bonus-regeln.md für die Herleitung.
  */
 
-/** Auszahlung (er) pro Achievement-Typ (t) — aus /user/achievements/{t}. */
+/** Auszahlung (er) pro Achievement-Typ (t) – aus /user/achievements/{t}. */
 export const ACHIEVEMENT_ER: Record<number, number> = {
-  // Spieltagssieger-Serie (triggert in unseren Ligen NICHT — ac=0 trotz Siegen)
+  // Spieltagssieger-Serie (triggert in unseren Ligen NICHT – ac=0 trotz Siegen)
   1: 500_000, // Spieltagssieger Bronze
   2: 1_000_000, // Spieltagssieger Silber
   3: 1_500_000, // Spieltagssieger Gold
   4: 2_000_000, // The Special One
   5: 1_000_000, // Spieltagssieger
-  // Spieltagspunkte-Tiers — EXKLUSIV: nur der höchste erreichte Tier pro
+  // Spieltagspunkte-Tiers – EXKLUSIV: nur der höchste erreichte Tier pro
   // Spieltag zahlt (verifiziert: 1/24/5/0 bei 34 Spieltagen, avg 1165 Pkt)
   100: 100_000, // Bronze (>= 500)
   101: 250_000, // Silber (>= 1000)
@@ -40,7 +40,7 @@ export const ACHIEVEMENT_ER: Record<number, number> = {
   402: 500_000, // Gold
   403: 1_000_000, // Platin
   404: 2_000_000, // Die Galaktischen
-  // Transferkönig-Serie (in unseren Ligen nie getriggert — vermutlich inaktiv)
+  // Transferkönig-Serie (in unseren Ligen nie getriggert – vermutlich inaktiv)
   500: 100_000, // Erster Deal
   501: 250_000,
   502: 500_000,
@@ -96,7 +96,7 @@ export const POINTS_PREMIUM_PER_POINT = 1_000;
 
 /**
  * Spieltagssieg-Prämie: 1M pro Sieg (offiziell, help.kickbase.com "Erfolge").
- * Zahlt als eigenständige Prämie — das Achievement t=5 bleibt dabei ac=0.
+ * Zahlt als eigenständige Prämie – das Achievement t=5 bleibt dabei ac=0.
  * Platz 2/3 erhalten nichts (offiziell bestätigt, keine Staffelung).
  */
 export const MATCHDAY_WIN_PREMIUM = 1_000_000;

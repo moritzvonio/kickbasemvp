@@ -159,7 +159,7 @@ export default async function LeaguesPage() {
             Live mit Kickbase verbunden
           </Badge>
           <p className="text-xs text-muted-foreground mt-3">
-            LigaBase ist nicht offiziell mit Kickbase verbunden.
+            Ligabase ist nicht offiziell mit Kickbase verbunden.
           </p>
         </div>
       </main>

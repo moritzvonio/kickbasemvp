@@ -17,7 +17,7 @@ export interface BlogPost {
   category: "Marktwert" | "Trading" | "Grundlagen" | "Aufstellung" | "Tools" | "Spieler";
   /** Kurzer Intro-/Teaser-Absatz für Index + Stub-Seite. */
   excerpt: string;
-  /** Geplante Gliederung (H2s) — strukturiert die Stub-Seite. */
+  /** Geplante Gliederung (H2s) – strukturiert die Stub-Seite. */
   outline: string[];
   readingMinutes: number;
   publishedAt: string;
@@ -57,7 +57,7 @@ export const BLOG_POSTS: BlogPost[] = [
       "Die wichtigsten Einflussfaktoren: Form, Einsatzzeit, News",
       "Update-Uhrzeit: Warum 22:00 Uhr alles entscheidet",
       "So liest du eine Marktwert-Prognose richtig",
-      "Praxis: Mit LigaBase Gewinner von morgen finden",
+      "Praxis: Mit Ligabase Gewinner von morgen finden",
     ],
     readingMinutes: 6,
     publishedAt: "2026-05-27",
@@ -77,7 +77,7 @@ export const BLOG_POSTS: BlogPost[] = [
       "Der richtige Kauf- und Verkaufszeitpunkt (22-Uhr-Regel)",
       "Ins Minus gehen: Chancen & Risiken der Minus-Strategie",
       "Risikomanagement: Wie viel Teamwert ist gesund?",
-      "Trading mit dem LigaBase Transfer-Advisor",
+      "Trading mit dem Ligabase Transfer-Advisor",
     ],
     readingMinutes: 9,
     publishedAt: "2026-05-27",
@@ -139,7 +139,7 @@ export const BLOG_POSTS: BlogPost[] = [
             "Vertreter bei Verletzungen oder Sperren: fällt ein Stammspieler aus, ist sein Ersatz oft günstig und steigt mit Einsatzzeit; Rückkehrer aus langer Verletzung ziehen beim Comeback an.",
             "Unterbewertete Punkte-Lieferanten: Spieler, deren Punktpotenzial höher ist als ihr aktueller Marktwert.",
           ] },
-          { type: "p", text: "Für die Bewertung helfen Rating- und Scouting-Tools sowie Marktwert-Verlaufsdaten (etwa von LigaInsider oder KickbaseNerd) – und natürlich LigaBase mit seinen Marktwert-Prognosen." },
+          { type: "p", text: "Für die Bewertung helfen Rating- und Scouting-Tools sowie Marktwert-Verlaufsdaten (etwa von LigaInsider oder KickbaseNerd) – und natürlich Ligabase mit seinen Marktwert-Prognosen." },
         ],
       },
       {
@@ -194,9 +194,9 @@ export const BLOG_POSTS: BlogPost[] = [
         ],
       },
       {
-        h2: "So hilft dir LigaBase beim Trading",
+        h2: "So hilft dir Ligabase beim Trading",
         blocks: [
-          { type: "p", text: "LigaBase nimmt dir die Routine ab: Marktwert-Prognosen und 14-Tage-Trends zeigen dir die Gewinner von morgen, der Transfer- und Gebots-Advisor empfiehlt dir die sinnvolle Gebotshöhe, und der Teamwert-Vergleich seit Saisonstart zeigt dir, wie du gegenüber deiner Liga abschneidest – alles kostenlos und direkt im Browser." },
+          { type: "p", text: "Ligabase nimmt dir die Routine ab: Marktwert-Prognosen und 14-Tage-Trends zeigen dir die Gewinner von morgen, der Transfer- und Gebots-Advisor empfiehlt dir die sinnvolle Gebotshöhe, und der Teamwert-Vergleich seit Saisonstart zeigt dir, wie du gegenüber deiner Liga abschneidest – alles kostenlos und direkt im Browser." },
         ],
       },
     ],
@@ -235,7 +235,7 @@ export const BLOG_POSTS: BlogPost[] = [
       "Warum der Marktwert zum Transferzeitpunkt entscheidet",
       "Der richtige Gebots-Puffer über dem Marktwert",
       "Gegen die Liga-Bank vs. gegen andere Manager bieten",
-      "Gebots-Empfehlungen mit LigaBase",
+      "Gebots-Empfehlungen mit Ligabase",
     ],
     readingMinutes: 5,
     publishedAt: "2026-05-27",
@@ -275,7 +275,7 @@ export const BLOG_POSTS: BlogPost[] = [
       "Marktwert-Prognose & Trends im Vergleich",
       "Live-Punkte, Scouting & Liga-Statistiken",
       "Kostenlos vs. Premium: Was lohnt sich?",
-      "LigaBase im Überblick",
+      "Ligabase im Überblick",
     ],
     readingMinutes: 7,
     publishedAt: "2026-05-27",
@@ -295,7 +295,7 @@ export const BLOG_POSTS: BlogPost[] = [
       "Voraussichtliche Aufstellungen richtig nutzen",
       "Die 20:29-Uhr-Deadline und ihre Tücken",
       "Rotation, Verletzungen & Last-Minute-Wechsel",
-      "Aufstellung optimieren mit LigaBase",
+      "Aufstellung optimieren mit Ligabase",
     ],
     readingMinutes: 6,
     publishedAt: "2026-05-27",
@@ -309,13 +309,13 @@ export const BLOG_POSTS: BlogPost[] = [
     keyword: "Kickbase beste Spieler",
     category: "Spieler",
     excerpt:
-      "Wer sind die zuverlässigsten Punkte-Lieferanten der Saison? Wir zeigen, wie du echte Saison-Punkte (statt Marktwert) bewertest und mit der LigaBase Top-50-Rangliste die konstantesten Spieler für deine Liga findest.",
+      "Wer sind die zuverlässigsten Punkte-Lieferanten der Saison? Wir zeigen, wie du echte Saison-Punkte (statt Marktwert) bewertest und mit der Ligabase Top-50-Rangliste die konstantesten Spieler für deine Liga findest.",
     outline: [
       "Punkte vs. Marktwert: Worauf es wirklich ankommt",
       "Konstanz schlagen: Wer liefert Woche für Woche?",
       "Die Top-50 Saison-Punkte-Liste erklärt",
       "Schnäppchen mit hoher Punkte-Ausbeute finden",
-      "Spielerwahl mit LigaBase",
+      "Spielerwahl mit Ligabase",
     ],
     readingMinutes: 6,
     publishedAt: "2026-05-27",

@@ -1,7 +1,7 @@
 /**
  * Vereins-RSS-Sources für die 18 Bundesliga-Klubs.
  *
- * URLs unten sind beste Schätzungen Stand 2026 — manche Vereine haben
+ * URLs unten sind beste Schätzungen Stand 2026 – manche Vereine haben
  * keine offiziellen RSS-Feeds publiziert. Diese sind als `null` markiert
  * und Mourice kann die manuell ergänzen wenn er passende URLs findet.
  *
@@ -68,7 +68,7 @@ export function makeClubRssSource(cfg: {
     clubSlug: cfg.slug,
     intervalMinutes: 30,
     async fetch() {
-      // Limit auf 10 — bei 26 Sources × 10 = 260 max items, passt in 60s
+      // Limit auf 10 – bei 26 Sources × 10 = 260 max items, passt in 60s
       return fetchRssFeed(cfg.rssUrl, sourceId, { maxItems: 10 });
     },
   };

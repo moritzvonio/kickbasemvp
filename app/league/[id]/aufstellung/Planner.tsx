@@ -285,7 +285,7 @@ export function Planner({
   );
   const slotIds = useMemo(() => buildSlotIds(derivedFormation), [derivedFormation]);
 
-  // Sicherstellen dass state.slots zur derived Formation passt — falls nach
+  // Sicherstellen dass state.slots zur derived Formation passt – falls nach
   // Hydrate eine inkonsistente Slot-Belegung kommt, sauber neu bauen.
   useEffect(() => {
     const expected = new Set(slotIds);
@@ -439,7 +439,7 @@ export function Planner({
   return (
     <DndContext sensors={sensors} onDragStart={onDragStart} onDragEnd={onDragEnd}>
       <div className="space-y-5">
-        {/* KPI bar — always full width */}
+        {/* KPI bar – always full width */}
         <section className="grid grid-cols-2 sm:grid-cols-5 gap-3 slide-up">
           <KpiTile
             icon={<Layers className="size-4" />}
@@ -495,7 +495,7 @@ export function Planner({
           </div>
 
           <aside className="lg:col-span-5 space-y-3">
-            {/* Geplantes Budget — prominent oben */}
+            {/* Geplantes Budget – prominent oben */}
             <Card className="bg-primary/[0.04] border-primary/30">
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
@@ -664,7 +664,7 @@ function DeadlineTile({ deadline, matchday }: { deadline?: string; matchday?: st
       <KpiTile
         icon={<Calendar className="size-4" />}
         label="Spieltag"
-        value={matchday !== undefined ? `MD ${matchday}` : "—"}
+        value={matchday !== undefined ? `MD ${matchday}` : "–"}
       />
     );
   }
@@ -674,7 +674,7 @@ function DeadlineTile({ deadline, matchday }: { deadline?: string; matchday?: st
       <KpiTile
         icon={<Calendar className="size-4" />}
         label="Spieltag"
-        value={matchday !== undefined ? `MD ${matchday}` : "—"}
+        value={matchday !== undefined ? `MD ${matchday}` : "–"}
       />
     );
   }
@@ -1122,7 +1122,7 @@ function PlayerCard({
                 title={
                   canPlace
                     ? "Aufstellen"
-                    : "Position voll — keine valide Formation mehr möglich"
+                    : "Position voll – keine valide Formation mehr möglich"
                 }
                 aria-label="Aufstellen"
               >

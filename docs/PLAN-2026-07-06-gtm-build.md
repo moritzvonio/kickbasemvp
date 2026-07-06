@@ -379,11 +379,11 @@ verspricht Features, die nicht existieren, Rechtsseiten fehlen (404!), und auf M
 - **Edge-Cases:** Rename darf `betterbase` als Vercel-Projekt-Slug in `app/admin/page.tsx:26`
   NICHT anfassen (ist eine URL); package-Name `kickbasemvp` bleibt.
 - **Akzeptanzkriterien:**
-  - [ ] `grep -rn "LigaBase" app/ components/ lib/ public/` → 0 Treffer (außer ggf. „LIGABASE" Display-Kontexte)
-  - [ ] `grep -rn "—" app/ components/ lib/seo lib/blog public/llms.txt` → 0 Treffer in User-Strings
-  - [ ] /impressum + /datenschutz rendern mit Navigation, Footer-Links stimmen, kein /agb-Link
-  - [ ] Landing enthält weder „kostenlos"-Dauerversprechen noch „AI-Coach"/„Email Alerts"/„147 API-Endpoints"/„Wirtz"
-  - [ ] Browser-Tab auf /news zeigt genau EINMAL „· Ligabase"
+  - [x] `grep -rn "LigaBase" app/ components/ lib/ public/` → 0 Treffer
+  - [x] `grep -rn "—" app/ components/ lib/seo lib/blog public/llms.txt` → 0 Treffer in User-Strings
+  - [x] /impressum + /datenschutz rendern (HTTP 200) mit AppHeader-Navigation, Footer ohne /agb-Link
+  - [x] Landing frei von „AI-Coach"/„Email Alerts"/„147 API-Endpoints"/„Wirtz"/„Coming V2"/„Made in Berlin" (nur RSC-Ref `$147` im Stream, kein Text)
+  - [x] Browser-Tab auf /news zeigt genau EINMAL „· Ligabase"
 - **Verify:** Greps aus Akzeptanzkriterien; Dev-Server-Sichtprüfung Landing komplett
   durchscrollen (Desktop + 390px); `pnpm build` grün.
 
@@ -532,3 +532,20 @@ wettbewerb/page.tsx — dort S0 zuerst, S7 danach).
   Prod-Smoke (§7.5) mit echtem KV bestätigt.
 - **`.env.example` ist im Repo gitignored** → Umbenennung der Price-Vars dort nur lokal;
   die kanonische Referenz sind Ops §7.2 + `lib/env.ts`.
+
+### S6 (2026-07-06)
+- **`components/app-header.tsx` in S6 angelegt** (per §5-Notiz: wer zuerst baut, legt ihn an);
+  Server-Component, liest Session → „Zu deinen Ligen" vs. Login. S7 nutzt ihn für /news + /upgrade mit.
+- **Em-Dash-Sweep zusätzlich über `.css`** (ein Kommentar in `app/globals.css`), damit der
+  Akzeptanz-Grep repo-weit 0 ergibt. Insgesamt 60 Dateien (U+2014 → U+2013), rein Kommentar/String.
+- **DashboardPreview:** „Florian Wirtz" → „Granit Xhaka" (Leverkusen, tid 7), „Harry Kane" →
+  „Serhou Guirassy" (Dortmund, tid 3 — behebt zugleich eine bestehende Name/Wappen-Diskrepanz).
+- **Trust-Sektion:** „Plausible statt Google Analytics" → „Vercel Analytics (cookielos)" —
+  entspricht dem tatsächlichen Stack (layout.tsx lädt Vercel Insights).
+- **HeroPreviewCard-Manager** auf neutrale Namen (Jonas/Lena/Max) gebracht, konsistent mit der
+  Neutral-Namen-Regel der Features-Visuals.
+- **Impressum/Datenschutz:** sichtbare amber-Platzhalter + JSX-`TODO Mourice`-Kommentar (TSX kann
+  keinen rohen HTML-Kommentar tragen), `robots: noindex`. Paragraphen auf aktuelles Recht
+  (§ 5 DDG / § 18 MStV) statt veraltetem TMG/RStV.
+- **Ungenutzte Icon-Importe** in app/page.tsx entfernt (Bell/Eye/Users/Smartphone/ChartBar) nach dem
+  Features-Umbau.

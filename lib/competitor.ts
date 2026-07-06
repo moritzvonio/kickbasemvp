@@ -1,8 +1,8 @@
 /**
- * Competitor Analysis — schätzt Konkurrenten-Cash aus beobachtbaren Signalen.
+ * Competitor Analysis – schätzt Konkurrenten-Cash aus beobachtbaren Signalen.
  *
  * Strukturmodell (v2, empirisch verifiziert gegen eigenen IST-Cash,
- * Snapshots 2026-07-06 — Herleitung: docs/kickbase-bonus-regeln.md):
+ * Snapshots 2026-07-06 – Herleitung: docs/kickbase-bonus-regeln.md):
  *
  *   cash = 50M Start
  *        + TransferNetto (nur Transfers NACH Liga-Start)
@@ -72,7 +72,7 @@ export interface CashCalibration {
 /**
  * Eicht den Rest-Term aus dem eigenen Account: (IST-Cash − Strukturschätzung)
  * pro Saisonpunkt. computeManagerStats liefert cashEstimateError für den
- * eigenen User — daraus direkt die Rate. Ausreißer werden gekappt, damit ein
+ * eigenen User – daraus direkt die Rate. Ausreißer werden gekappt, damit ein
  * Daten-Problem (z.B. fehlende Transfers) nicht alle Schätzungen verbiegt.
  */
 export function calibrateResidualPerPoint(ownStats: ManagerComputedStats): number | undefined {
@@ -91,7 +91,7 @@ export interface OwnAchievements {
 
 /**
  * Kalibriert die weichen Raten aus den ECHTEN Achievements des eingeloggten
- * Users — dadurch tragen Liga-Eigenheiten (Punktniveau, Handelsintensität)
+ * Users – dadurch tragen Liga-Eigenheiten (Punktniveau, Handelsintensität)
  * in die Schätzung der anderen Manager.
  */
 export function calibrateFromOwnAccount(opts: {
@@ -123,7 +123,7 @@ export function calibrateFromOwnAccount(opts: {
 
 /**
  * Tagesbonus über einen Zeitraum: Tag 1–10 rampen 10k→100k, danach 100k/Tag.
- * Annahme EIN durchgehender Streak (Resets nicht beobachtbar) — leichte
+ * Annahme EIN durchgehender Streak (Resets nicht beobachtbar) – leichte
  * Überschätzung, die fehlende Login-Tage ungefähr ausgleicht.
  */
 export function estimateDailyBonus(days: number): number {
@@ -180,7 +180,7 @@ export interface ManagerComputedStats {
   realAchievementBonus?: number;
   /** Achievement-Detail (nur eigener User) */
   achievementBreakdown?: Array<{ t: number; n: string; ac: number; er: number; total: number }>;
-  /** Geschätzter Cash-Stand (Strukturmodell — auch für eigenen User berechnet) */
+  /** Geschätzter Cash-Stand (Strukturmodell – auch für eigenen User berechnet) */
   cashEstimate: number;
   /** "ist" = echter Wert übernommen, "structural" = Schätzung */
   cashMethod: "ist" | "structural";
@@ -218,9 +218,9 @@ export interface ComputeManagerInput {
   squad?: KbManagerSquadResponse | null;
   /** Ranking-Eintrag (sp/spl) */
   rankingEntry?: KbRankingUser;
-  /** Manager-Dashboard: tp (Saisonpunkte), mdw (Spieltagssiege) — für ALLE Manager verfügbar */
+  /** Manager-Dashboard: tp (Saisonpunkte), mdw (Spieltagssiege) – für ALLE Manager verfügbar */
   dashboard?: { tp?: number; mdw?: number; pl?: number } | null;
-  /** Liga-Start (overview.dt) — Transfers davor werden ignoriert (Reset-Modell) */
+  /** Liga-Start (overview.dt) – Transfers davor werden ignoriert (Reset-Modell) */
   leagueStartMs: number;
   /** "Jetzt" für Tages-Berechnungen (Default Date.now()) */
   nowMs?: number;
@@ -236,7 +236,7 @@ export interface ComputeManagerInput {
   achievements?: OwnAchievements;
   /** Echter Cash aus /me/budget (nur eigener User) */
   realCashFromApi?: number;
-  /** @deprecated Feed-Aktivitäten — für das Cash-Modell nicht mehr genutzt */
+  /** @deprecated Feed-Aktivitäten – für das Cash-Modell nicht mehr genutzt */
   activities?: KbActivity[];
 }
 
@@ -315,7 +315,7 @@ export function computeManagerStats(inp: ComputeManagerInput): ManagerComputedSt
   // Kalibrierter Rest-Term (Quelle unbekannt, aus eigenem IST-Cash geeicht)
   const calibratedResidualBonus = cal.residualPerPoint * tp;
 
-  // Strukturmodell — für ALLE gerechnet (eigener User: Validierung)
+  // Strukturmodell – für ALLE gerechnet (eigener User: Validierung)
   const structuralEstimate =
     initialBudget +
     transferNet +
@@ -380,7 +380,7 @@ export function computeManagerStats(inp: ComputeManagerInput): ManagerComputedSt
 
 /**
  * Meister/Vize wird als Achievement ausgezahlt und ist im API-total des
- * eigenen Users bereits enthalten, sobald die Saison vorbei ist — dann NICHT
+ * eigenen Users bereits enthalten, sobald die Saison vorbei ist – dann NICHT
  * doppelt addieren. Nur wenn die API den Saisonende-Bonus noch nicht listet
  * (ac=0), wäre er zu ergänzen; das prüfen wir konservativ über die Items.
  */

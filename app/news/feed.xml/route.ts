@@ -24,7 +24,7 @@ export async function GET() {
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0">
   <channel>
-    <title>LigaBase — Bundesliga-News</title>
+    <title>Ligabase – Bundesliga-News</title>
     <link>${baseUrl}/news</link>
     <description>News, Verletzungen, Aufstellungen und Transfers für deine Kickbase-Strategie.</description>
     <language>de-DE</language>

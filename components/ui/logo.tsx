@@ -1,7 +1,7 @@
 import { cn } from "@/lib/utils";
 
 /**
- * LigaBase-Logo.
+ * Ligabase-Logo.
  * Mark = aufsteigende Balken auf einer Grundlinie:
  *   - Balken = Liga-Tabelle / Marktwert-Wachstum (Klettern in der Tabelle)
  *   - Grundlinie = „Base" (das Fundament, auf dem alles steht)
@@ -28,7 +28,7 @@ export function Logo({
             textClassName
           )}
         >
-          Liga<span className="text-primary">Base</span>
+          Liga<span className="text-primary">base</span>
         </span>
       )}
     </span>
@@ -45,7 +45,7 @@ export function LogoMark({ size = 28 }: { size?: number }) {
         background:
           "linear-gradient(135deg, #10b981 0%, #059669 55%, #047857 100%)",
       }}
-      aria-label="LigaBase"
+      aria-label="Ligabase"
     >
       <svg viewBox="0 0 100 100" className="w-full h-full" aria-hidden>
         {/* Aufsteigende Tabellen-/Wert-Balken */}

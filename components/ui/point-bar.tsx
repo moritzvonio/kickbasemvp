@@ -2,7 +2,7 @@ import { cn } from "@/lib/utils";
 
 /**
  * Horizontal performance bar (slim).
- * Shows points filled relative to max — color tier indicates "hotness".
+ * Shows points filled relative to max – color tier indicates "hotness".
  */
 export function PointBar({
   value,
@@ -48,7 +48,7 @@ export function PointBar({
 }
 
 /**
- * Battery-style performance indicator — chunky, prominent display
+ * Battery-style performance indicator – chunky, prominent display
  * for primary stats. Has a battery cap on the right.
  *
  * Skala: linear interpolierte HSL-Hue von rot (0°) → gelb (60°) → grün (120°)
@@ -103,7 +103,7 @@ export function BatteryBar({
       style={{ width, height }}
       title={
         hasData
-          ? `${safeValue} Pkt Ø — Skala ${min}-${max} (${Math.round(colorPct * 100)} %)`
+          ? `${safeValue} Pkt Ø – Skala ${min}-${max} (${Math.round(colorPct * 100)} %)`
           : "Nicht gespielt"
       }
     >

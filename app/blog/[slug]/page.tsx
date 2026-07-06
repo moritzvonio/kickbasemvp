@@ -69,7 +69,7 @@ export default async function BlogPostPage({
 
       <header className="border-b border-border/60">
         <div className="mx-auto max-w-3xl px-4 h-16 flex items-center justify-between">
-          <Link href="/" aria-label="LigaBase Startseite">
+          <Link href="/" aria-label="Ligabase Startseite">
             <Logo size={30} />
           </Link>
           <Link href="/blog" className="text-sm font-medium text-primary hover:underline">
@@ -124,7 +124,7 @@ export default async function BlogPostPage({
           <>
             <div className="mt-6 rounded-xl border border-amber-200 bg-amber-50/60 p-4 text-sm text-amber-800">
               ✍️ Der ausführliche Guide erscheint in Kürze. Hier ist der geplante
-              Aufbau – schau bald wieder vorbei oder starte direkt mit LigaBase.
+              Aufbau – schau bald wieder vorbei oder starte direkt mit Ligabase.
             </div>
             <section className="mt-8">
               <h2 className="text-xl font-semibold">Das erwartet dich</h2>
@@ -143,7 +143,7 @@ export default async function BlogPostPage({
         <div className="mt-10 rounded-2xl border border-border bg-gradient-to-br from-emerald-50/60 to-transparent p-6 text-center">
           <p className="font-semibold">Direkt ausprobieren statt nur lesen?</p>
           <p className="mt-1 text-sm text-muted-foreground">
-            LigaBase zeigt dir Marktwert-Prognosen, Gebots-Empfehlungen und
+            Ligabase zeigt dir Marktwert-Prognosen, Gebots-Empfehlungen und
             Live-Statistiken für deine Liga – kostenlos.
           </p>
           <Link
@@ -182,7 +182,7 @@ export default async function BlogPostPage({
         </div>
 
         <p className="mt-10 text-xs text-muted-foreground">
-          LigaBase ist ein unabhängiges Companion-Tool und nicht offiziell mit
+          Ligabase ist ein unabhängiges Companion-Tool und nicht offiziell mit
           Kickbase, der DFL oder einem Bundesliga-Verein verbunden.
         </p>
       </main>
@@ -233,7 +233,7 @@ function PostBody({ sections }: { sections: BlogSection[] }) {
                 return (
                   <blockquote key={i} className="border-l-4 border-primary/40 pl-4 italic text-muted-foreground mb-4">
                     {b.text}
-                    {b.cite && <span className="block not-italic text-xs mt-1">— {b.cite}</span>}
+                    {b.cite && <span className="block not-italic text-xs mt-1">– {b.cite}</span>}
                   </blockquote>
                 );
             }

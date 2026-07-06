@@ -61,7 +61,7 @@ export function TeamValueSpark({
   if (data.length < 2) {
     return (
       <div className="flex items-center justify-center h-full min-h-[200px] text-sm text-muted-foreground">
-        Nicht genug Daten — kommt mit den Spieltagen.
+        Nicht genug Daten – kommt mit den Spieltagen.
       </div>
     );
   }
@@ -98,7 +98,7 @@ export function TeamValueSpark({
               compareId && "border-blue-300 bg-blue-50/40"
             )}
           >
-            <option value="">— kein Vergleich —</option>
+            <option value="">– kein Vergleich –</option>
             {managers.map((m) => (
               <option key={m.id} value={m.id}>
                 {m.name}
@@ -157,7 +157,7 @@ export function TeamValueSpark({
               labelFormatter={(v) => `Spieltag ${v}`}
               formatter={(value, name) => [
                 value === null || value === undefined
-                  ? "—"
+                  ? "–"
                   : formatEUR(Number(value), { compact: true }),
                 name,
               ]}

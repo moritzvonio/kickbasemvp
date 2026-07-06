@@ -8,7 +8,7 @@ const SIZES = {
 } as const;
 
 /**
- * Inline team tag — renders the actual club logo when known,
+ * Inline team tag – renders the actual club logo when known,
  * falls back to the colored abbreviation pill otherwise.
  */
 export function TeamTag({
@@ -88,7 +88,7 @@ export function TeamTag({
 }
 
 /**
- * Full crest — actual SVG logo when known, else fallback color tile with letters.
+ * Full crest – actual SVG logo when known, else fallback color tile with letters.
  */
 export function TeamCrest({
   tid,

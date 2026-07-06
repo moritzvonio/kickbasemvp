@@ -1,6 +1,6 @@
 {
-  "name": "LigaBase — deine Liga-Companion-App",
-  "short_name": "LigaBase",
+  "name": "Ligabase – deine Liga-Companion-App",
+  "short_name": "Ligabase",
   "description": "Aufstellungs-Planer, Marktwert-Insights und Top-Spieler-Wertung für deine Liga.",
   "start_url": "/leagues",
   "scope": "/",

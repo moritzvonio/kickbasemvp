@@ -63,7 +63,7 @@ export default async function WettbewerbPage({
 
   // Step 1: Ranking + Overview + eigene Achievements + eigener IST-Cash.
   // Der Activity-Feed wird fürs Cash-Modell NICHT mehr gebraucht (trunkiert,
-  // Boni nur für eigenen User sichtbar — siehe docs/kickbase-bonus-regeln.md).
+  // Boni nur für eigenen User sichtbar – siehe docs/kickbase-bonus-regeln.md).
   const [ranking, overview, ownAchievements, myRealBudget] = await Promise.all([
     withKbAuth(path, () => kb.ranking(session.token, leagueId)).catch(() => ({} as Awaited<ReturnType<typeof kb.ranking>>)),
     withKbAuth(path, () => kb.leagueOverviewWithManagers(session.token, leagueId)).catch(() => ({} as Awaited<ReturnType<typeof kb.leagueOverviewWithManagers>>)),
@@ -208,7 +208,7 @@ export default async function WettbewerbPage({
         </section>
       )}
 
-      {/* Netto-Teamwert chart — Suspense-gestreamt, blockiert die Seite nicht */}
+      {/* Netto-Teamwert chart – Suspense-gestreamt, blockiert die Seite nicht */}
       {!locked && Number.isFinite(leagueStartMs) && (
         <Suspense fallback={<ChartSkeleton startMs={leagueStartMs} />}>
           <NetWorthChartSection
@@ -288,9 +288,8 @@ export default async function WettbewerbPage({
           <div>
             Cash = <span className="font-mono text-foreground">{formatEUR(initialBudget, { compact: true })}</span> Start
             + Transferbilanz + Punkteprämie (1.000 € × Punkt) + Spieltagssiege (1 Mio × Sieg)
-            + Tagesbonus (100k-Streak) + Erfolge. Regelwerk empirisch gegen den echten
-            Kontostand verifiziert — Details in{" "}
-            <code className="font-mono">docs/kickbase-bonus-regeln.md</code>.
+            + Tagesbonus (100k-Streak) + Erfolge. Das Regelwerk ist empirisch gegen
+            echte Kontostände verifiziert.
           </div>
           <div className="grid sm:grid-cols-2 gap-x-4 gap-y-1.5">
             <div>
@@ -476,7 +475,7 @@ function ManagerCard({
           </div>
         </div>
 
-        {/* Stat grid — 2 zeilen × 3 spalten auf mobile, 6 spalten auf desktop */}
+        {/* Stat grid – 2 zeilen × 3 spalten auf mobile, 6 spalten auf desktop */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5 text-sm">
           <Stat
             label="Teamwert"
@@ -541,7 +540,7 @@ function ManagerCard({
             value={
               stats.seasonPoints !== undefined
                 ? stats.seasonPoints.toLocaleString("de-DE")
-                : "—"
+                : "–"
             }
             icon={<Trophy className="size-3" />}
             sub={
@@ -552,7 +551,7 @@ function ManagerCard({
           />
         </div>
 
-        {/* Estimate-vs-Real Vergleich (nur eigener User) — Validierung */}
+        {/* Estimate-vs-Real Vergleich (nur eigener User) – Validierung */}
         {stats.realCashFromApi !== undefined && (
           <CashValidationPanel stats={stats} />
         )}
@@ -607,7 +606,7 @@ function ManagerCard({
             )}
           </div>
 
-          {/* Achievement-Breakdown — nur für eigenen User */}
+          {/* Achievement-Breakdown – nur für eigenen User */}
           {stats.achievementBreakdown && stats.achievementBreakdown.length > 0 && (
             <details className="mt-2 text-[10px]">
               <summary className="cursor-pointer text-muted-foreground hover:text-foreground tabular">
@@ -724,7 +723,7 @@ function CashValidationPanel({ stats }: { stats: ManagerComputedStats }) {
 
       <p className="text-[10px] text-muted-foreground mt-3 italic">
         Dein Kontostand kommt exakt aus <code className="font-mono">/me/budget</code>.
-        Dasselbe Strukturmodell schätzt die anderen Manager — die Abweichung oben
+        Dasselbe Strukturmodell schätzt die anderen Manager – die Abweichung oben
         zeigt, wie gut es aktuell trifft (Rest-Term wird daraus geeicht).
       </p>
     </div>
@@ -777,7 +776,7 @@ function CompareTable({
 }: {
   stats: ManagerComputedStats[];
   myUserId: string;
-  /** Anzahl gesperrter Platzhalterzeilen (Free-Teaser) — enthalten KEINE echten Daten. */
+  /** Anzahl gesperrter Platzhalterzeilen (Free-Teaser) – enthalten KEINE echten Daten. */
   lockedRows?: number;
 }) {
   return (
@@ -830,10 +829,10 @@ function CompareTable({
                     </div>
                   </td>
                   <td className="text-right py-2.5 font-mono font-semibold">
-                    {s.seasonPoints?.toLocaleString("de-DE") ?? "—"}
+                    {s.seasonPoints?.toLocaleString("de-DE") ?? "–"}
                   </td>
                   <td className="text-right py-2.5 font-mono text-amber-700">
-                    {s.matchdayWins > 0 ? `${s.matchdayWins}×` : "—"}
+                    {s.matchdayWins > 0 ? `${s.matchdayWins}×` : "–"}
                   </td>
                   <td className="text-right py-2.5 font-mono">
                     {formatEUR(s.teamValue, { compact: true })}
@@ -868,7 +867,7 @@ function CompareTable({
                     )}
                   >
                     {s.transferBalance === 0
-                      ? "—"
+                      ? "–"
                       : (s.transferBalance > 0 ? "+" : "") +
                         formatEUR(s.transferBalance, { compact: true })}
                   </td>
@@ -883,14 +882,14 @@ function CompareTable({
                     )}
                   >
                     {s.dayGain === 0
-                      ? "—"
+                      ? "–"
                       : (s.dayGain > 0 ? "+" : "") +
                         formatEUR(s.dayGain, { compact: true })}
                   </td>
                 </tr>
               );
             })}
-            {/* Gesperrte Platzhalterzeilen — bewusst OHNE echte Manager-Werte
+            {/* Gesperrte Platzhalterzeilen – bewusst OHNE echte Manager-Werte
                 (kein View-Source-Leak), nur geblurrte Punkte. */}
             {Array.from({ length: lockedRows }).map((_, i) => (
               <tr

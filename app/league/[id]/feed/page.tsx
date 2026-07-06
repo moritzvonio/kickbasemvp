@@ -135,7 +135,7 @@ export default async function FeedPage({
   const dedupedActivities = activityEntries.filter((e) => {
     const t = e.activity.t;
     if (t === 1 || t === 2 || t === 3 || t === 15 || t === 16) {
-      // skip activity-feed transfers — we have the rich version
+      // skip activity-feed transfers – we have the rich version
       return false;
     }
     return true;

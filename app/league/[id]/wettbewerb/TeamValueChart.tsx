@@ -16,7 +16,7 @@ import { formatEUR, cn } from "@/lib/utils";
 export interface TVChartPoint {
   /** Datums-Label, z.B. "01.08." */
   label: string;
-  /** Absoluter Zeitstempel (ms) — für Zeitraum-Filter */
+  /** Absoluter Zeitstempel (ms) – für Zeitraum-Filter */
   ms: number;
   /** Manager-Name → Netto-Teamwert an diesem Stichtag */
   [manager: string]: number | string;
@@ -79,7 +79,7 @@ export function TeamValueChart({
   if (data.length < 2) {
     return (
       <div className="text-center py-12 text-sm text-muted-foreground">
-        Nicht genug Daten — kommt im Lauf der Saison automatisch.
+        Nicht genug Daten – kommt im Lauf der Saison automatisch.
       </div>
     );
   }

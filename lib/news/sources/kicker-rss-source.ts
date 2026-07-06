@@ -1,5 +1,5 @@
 /**
- * kicker.de RSS — Bundesliga-Übersicht.
+ * kicker.de RSS – Bundesliga-Übersicht.
  * Tagger erkennt Spieler und Vereine via Player-Index.
  */
 

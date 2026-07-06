@@ -25,7 +25,7 @@ export async function POST(req: Request) {
     );
   }
 
-  // V1 placeholder — full event handling lands once we have a DB.
+  // V1 placeholder – full event handling lands once we have a DB.
   // For now we just log the relevant ones; entitlement is set at /upgrade/success
   // by reading the checkout session synchronously.
   switch (event.type) {

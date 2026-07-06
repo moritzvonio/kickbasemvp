@@ -10,21 +10,19 @@ import {
   ArrowRight,
   ShieldCheck,
   TrendingUp,
-  Users,
-  Bell,
   Sparkles,
   Lock,
   Zap,
   Trophy,
   Wallet,
   Activity,
-  Eye,
   Crown,
-  Smartphone,
-  ChartBar,
   Star,
   CheckCircle2,
   Globe,
+  MapPin,
+  Newspaper,
+  Swords,
 } from "lucide-react";
 import type { Metadata } from "next";
 import { JsonLd } from "@/components/seo/json-ld";
@@ -39,9 +37,9 @@ import { env } from "@/lib/env";
 const BASE = env.NEXT_PUBLIC_APP_URL.replace(/\/$/, "");
 
 export const metadata: Metadata = {
-  title: { absolute: "Kickbase Tool – Marktwerte, Trading & Punkte | LigaBase" },
+  title: { absolute: "Kickbase Tool – Kontostände, Max-Gebote & Marktwerte | Ligabase" },
   description:
-    "LigaBase ist dein kostenloses Kickbase-Tool: Marktwert-Prognosen, Transfer-Advisor, Live-Punkte, Top-50-Rangliste & Teamwert-Vergleich. Jetzt starten.",
+    "Ligabase zeigt dir die geschätzten Kontostände und Max-Gebote aller Mitspieler deiner Kickbase-Liga – plus Bid-Advisor, Live-Punkte und Top-50. Kostenlos testen bis Spieltag 2.",
   keywords: [
     "Kickbase Tool",
     "Kickbase Marktwerte",
@@ -55,9 +53,9 @@ export const metadata: Metadata = {
   ],
   alternates: { canonical: `${BASE}/` },
   openGraph: {
-    title: "Kickbase Tool – Marktwert-Prognosen, Trading & Live-Punkte",
+    title: "Kickbase Tool – Kontostände, Max-Gebote & Live-Punkte",
     description:
-      "Dein kostenloses Kickbase-Tool: Marktwert-Prognosen, Transfer-Advisor, Live-Punkte & Top-50-Rangliste für deine Liga.",
+      "Sieh die geschätzten Kontostände und Max-Gebote aller Mitspieler deiner Kickbase-Liga. Plus Bid-Advisor, Live-Punkte und Top-50.",
     type: "website",
     locale: "de_DE",
     url: `${BASE}/`,
@@ -135,18 +133,18 @@ function Hero() {
         <div className="text-center">
           <Badge variant="default" className="mb-6 slide-up gap-1.5 py-1 px-3">
             <span className="size-1.5 rounded-full bg-primary pulse-dot" />
-            Saison 26/27 — jetzt einsteigen
+            Saison 26/27 – kostenlos testen bis Spieltag 2
           </Badge>
 
           <h1 className="text-5xl sm:text-7xl font-bold tracking-tight max-w-4xl mx-auto leading-[0.95] slide-up slide-up-1">
-            Deine Kickbase-Liga,{" "}
-            <span className="gradient-text">aber mit Superkräften</span>.
+            Sieh, was deine Liga{" "}
+            <span className="gradient-text">wirklich bieten kann</span>.
           </h1>
 
           <p className="mt-6 text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed slide-up slide-up-2">
-            Das kostenlose Kickbase-Tool mit Marktwert-Prognosen, Transfer-Advisor
-            und Live-Punkten — alles für deine Liga in einer App.
-            Login mit deinem Kickbase-Account — Passwort wird{" "}
+            Kontostände und Max-Gebote aller Mitspieler, zurückgerechnet aus den
+            öffentlichen Liga-Daten – mathematisch am eigenen Konto validiert.
+            Login mit deinem Kickbase-Account, dein Passwort wird{" "}
             <span className="text-foreground font-medium">nicht gespeichert</span>.
           </p>
 
@@ -172,7 +170,7 @@ function Hero() {
               <Globe className="size-3.5 text-primary" /> Hosting in DE
             </span>
             <span className="inline-flex items-center gap-1.5">
-              <CheckCircle2 className="size-3.5 text-primary" /> Beta gratis
+              <CheckCircle2 className="size-3.5 text-primary" /> Kostenlos bis Spieltag 2
             </span>
           </div>
         </div>
@@ -214,10 +212,10 @@ function HeroPreviewCard() {
             </div>
             <div className="space-y-2">
               {[
-                { rank: 1, name: "Tobi", pts: 12_847, you: false, badge: "🥇" },
+                { rank: 1, name: "Jonas", pts: 12_847, you: false, badge: "🥇" },
                 { rank: 2, name: "Du", pts: 12_419, you: true, badge: "🥈" },
-                { rank: 3, name: "Lukas", pts: 11_998, you: false, badge: "🥉" },
-                { rank: 4, name: "Anna", pts: 11_502, you: false },
+                { rank: 3, name: "Lena", pts: 11_998, you: false, badge: "🥉" },
+                { rank: 4, name: "Max", pts: 11_502, you: false },
               ].map((r) => (
                 <div
                   key={r.rank}
@@ -293,20 +291,21 @@ function MiniKpi({
 
 /* ─── Stats strip ──────────────────────────────────────── */
 function StatsStrip() {
-  const stats = [
-    { value: "500K+", label: "Kickbase-Spieler" },
-    { value: "147", label: "API-Endpoints" },
-    { value: "0 €", label: "in der Beta" },
-    { value: "<2s", label: "Page-Load" },
-    { value: "🇩🇪", label: "Hosting in Deutschland" },
+  const stats: Array<{ value?: string; icon?: React.ReactNode; label: string }> = [
+    { value: "432", label: "Bundesliga-Spieler im Blick" },
+    { value: "18", label: "Vereins-Quellen + Kicker & Sportschau" },
+    { value: "0 €", label: "bis einschließlich Spieltag 2" },
+    { icon: <MapPin className="size-5 text-primary" />, label: "Hosting in Deutschland" },
   ];
   return (
     <section className="border-y border-border/50 bg-gradient-to-r from-primary/[0.04] via-transparent to-primary/[0.04]">
       <div className="mx-auto max-w-6xl px-4 py-6">
         <div className="flex flex-wrap items-center justify-between gap-y-4 gap-x-8 text-center">
           {stats.map((s) => (
-            <div key={s.label} className="flex-1 min-w-[120px]">
-              <div className="text-2xl font-bold tabular">{s.value}</div>
+            <div key={s.label} className="flex-1 min-w-[130px]">
+              <div className="text-2xl font-bold tabular flex items-center justify-center h-8">
+                {s.value ?? s.icon}
+              </div>
               <div className="text-[11px] uppercase tracking-wider text-muted-foreground mt-0.5">
                 {s.label}
               </div>
@@ -326,26 +325,26 @@ function Features() {
         <SectionHeading
           eyebrow="Was du kriegst"
           title="Drei Hebel, die Kickbase nicht hat"
-          description="Wir bauen genau das, was in der Kickbase-App fehlt — und was Konkurrenten halbherzig machen."
+          description="Genau das, was in der Kickbase-App fehlt – und was kein anderes Tool so zeigt."
         />
         <div className="mt-14 grid gap-5 lg:grid-cols-3">
           <FeatureCard
-            icon={<Users className="size-5" />}
-            title="Liga-Sozial-Layer"
-            desc="Wer hat wieviel Cash, wer ist der heimliche Marktwert-King, wer hat zu billig verkauft. Volle Transparenz in deiner Liga."
-            visual={<LeagueSocialVisual />}
+            icon={<Swords className="size-5" />}
+            title="Cash-Röntgenblick"
+            desc="Kontostände, Max-Gebote und Netto-Teamwert aller Mitspieler – zurückgerechnet aus öffentlichen Liga-Daten und am eigenen Konto validiert. Das kann kein anderes Tool."
+            visual={<CashVisual />}
           />
           <FeatureCard
             icon={<TrendingUp className="size-5" />}
-            title="AI-Transfer-Coach"
-            desc="»Verkauf X heute — Marktwert sinkt in 3 Tagen.« Konkrete Action-Items aus Marktwert, Spielplan, Form und Liga-Nachfrage."
-            visual={<TransferCoachVisual />}
+            title="Bid-Advisor & Trading"
+            desc="Sieh das Bietverhalten deiner Konkurrenten, wie hoch du realistisch bieten musst, plus Squad-Steiger und Auto-Targets aus dem Transfermarkt."
+            visual={<BidVisual />}
           />
           <FeatureCard
-            icon={<Bell className="size-5" />}
-            title="Push-Alerts"
-            desc="Push wenn Marktwert > 100k droppt, neuer Transfer in deiner Liga, oder dein Watchlist-Spieler endlich auf den Markt kommt."
-            visual={<PushAlertsVisual />}
+            icon={<Newspaper className="size-5" />}
+            title="News & Top-50"
+            desc="Bundesliga-News aus 18 Vereins-Quellen plus Kicker und Sportschau, automatisch deinen Spielern zugeordnet. Dazu die Top-50-Punkteliste der Liga."
+            visual={<NewsVisual />}
           />
         </div>
       </div>
@@ -380,29 +379,41 @@ function FeatureCard({
   );
 }
 
-function LeagueSocialVisual() {
+function CashVisual() {
   return (
     <div className="space-y-1.5">
       {[
-        { name: "Tobi", action: "kaufte Musiala", price: "18,2 Mio", color: "text-emerald-600" },
-        { name: "Anna", action: "verkaufte Kane", price: "21,1 Mio", color: "text-rose-600" },
-        { name: "Lukas", action: "+412 Punkte", price: "Spieltag", color: "text-primary" },
+        { name: "Jonas", cash: "31,4 Mio", bid: "48,9 Mio", you: false },
+        { name: "Du", cash: "12,8 Mio", bid: "37,2 Mio", you: true },
+        { name: "Lena", cash: "6,1 Mio", bid: "29,5 Mio", you: false },
       ].map((row, i) => (
-        <div key={i} className="flex items-center justify-between text-[11px]">
-          <span className="font-medium truncate">
+        <div
+          key={i}
+          className={
+            "flex items-center justify-between text-[11px] px-1.5 py-1 rounded " +
+            (row.you ? "bg-primary/[0.07] ring-1 ring-primary/20" : "")
+          }
+        >
+          <span className="font-medium truncate flex items-center">
             <span className="inline-flex size-4 rounded-full bg-primary/15 text-primary text-[8px] items-center justify-center font-bold mr-1.5">
               {row.name[0]}
             </span>
-            {row.name} {row.action}
+            {row.name}
           </span>
-          <span className={"font-mono tabular " + row.color}>{row.price}</span>
+          <span className="flex items-center gap-2 font-mono tabular">
+            <span className="text-foreground">{row.cash}</span>
+            <span className="text-muted-foreground">max {row.bid}</span>
+          </span>
         </div>
       ))}
+      <div className="text-[9px] text-muted-foreground pt-0.5">
+        Kontostand · Max-Gebot (geschätzt)
+      </div>
     </div>
   );
 }
 
-function TransferCoachVisual() {
+function BidVisual() {
   return (
     <div className="space-y-2">
       <div className="flex items-center gap-2 text-[11px]">
@@ -410,8 +421,8 @@ function TransferCoachVisual() {
           <ArrowRight className="size-3" />
         </span>
         <span className="flex-1">
-          <span className="font-semibold">Verkauf Wirtz</span>{" "}
-          <span className="text-muted-foreground">— MV droppt 87 % Confidence</span>
+          <span className="font-semibold">Jonas</span>{" "}
+          <span className="text-muted-foreground">bietet meist +12 % über Marktwert</span>
         </span>
       </div>
       <div className="flex items-center gap-2 text-[11px]">
@@ -419,8 +430,8 @@ function TransferCoachVisual() {
           <ArrowRight className="size-3" />
         </span>
         <span className="flex-1">
-          <span className="font-semibold">Kauf Boniface</span>{" "}
-          <span className="text-muted-foreground">— Form ↑ + leichter Gegner</span>
+          <span className="font-semibold">Auto-Target</span>{" "}
+          <span className="text-muted-foreground">3 Spieler mit steigendem Marktwert</span>
         </span>
       </div>
       <div className="pt-1.5 mt-1.5 border-t border-border/60">
@@ -436,13 +447,13 @@ function TransferCoachVisual() {
   );
 }
 
-function PushAlertsVisual() {
+function NewsVisual() {
   return (
     <div className="space-y-1.5">
       {[
-        { icon: <TrendingUp className="size-3" />, text: "Musiala MV +320k", time: "jetzt" },
-        { icon: <Activity className="size-3" />, text: "Anna kaufte Kane", time: "2 Min" },
-        { icon: <Eye className="size-3" />, text: "Watchlist: Boniface auf Markt", time: "5 Min" },
+        { icon: <Newspaper className="size-3" />, text: "Verletzung: Ausfall bis Winter", time: "12 Min" },
+        { icon: <Activity className="size-3" />, text: "Startelf bestätigt", time: "1 Std" },
+        { icon: <Trophy className="size-3" />, text: "Top-50: 3 aus deiner Liga", time: "heute" },
       ].map((row, i) => (
         <div key={i} className="flex items-center gap-2 text-[11px] p-1.5 rounded bg-card ring-1 ring-border">
           <span className="size-5 rounded bg-primary/15 text-primary inline-flex items-center justify-center">
@@ -468,7 +479,7 @@ function DashboardPreview() {
         />
         <div className="mt-12 grid gap-5 md:grid-cols-2">
           <PlayerCardPreview
-            name="Florian Wirtz"
+            name="Granit Xhaka"
             tid="7"
             pos={3}
             mv="18,4 Mio"
@@ -477,7 +488,7 @@ function DashboardPreview() {
             form={[122, 88, 154, 0, 96]}
           />
           <PlayerCardPreview
-            name="Harry Kane"
+            name="Serhou Guirassy"
             tid="3"
             pos={4}
             mv="42,9 Mio"
@@ -554,23 +565,22 @@ function Pricing() {
     <section id="pricing" className="py-20 sm:py-28">
       <div className="mx-auto max-w-6xl px-4">
         <SectionHeading
-          eyebrow="Pricing"
+          eyebrow="Preise"
           title="Fair gepreist, klar bezahlt"
-          description="Free reicht für die Basics. Pro für die ganze Saison spart 60 %."
+          description="Der komplette Free-Tier plus ein kleiner Pro-Hebel. Kein Abo, keine automatische Verlängerung."
         />
-        <div className="mt-14 grid gap-5 md:grid-cols-3 max-w-5xl mx-auto">
+        <div className="mt-14 grid gap-5 md:grid-cols-2 max-w-3xl mx-auto">
           <PricingCard
             name="Free"
             price="0 €"
             period="für immer"
-            tagline="Teste LigaBase ohne Risiko."
+            tagline="Dashboard, Top-50, News und Planer – dauerhaft frei."
             features={[
-              { ok: true, text: "Liga-Übersicht & Tabelle" },
+              { ok: true, text: "Liga-Dashboard & Tabelle" },
               { ok: true, text: "Eigenes Team & Marktwerte" },
-              { ok: true, text: "Marktwert-Historie 14 Tage" },
-              { ok: false, text: "Liga-Sozial-Layer" },
-              { ok: false, text: "AI-Transfer-Coach" },
-              { ok: false, text: "Push-Alerts" },
+              { ok: true, text: "Top-50-Punkteliste" },
+              { ok: true, text: "News mit Spieler-Tagging" },
+              { ok: true, text: "Aufstellungs-Planer" },
             ]}
             cta={
               <Button asChild variant="outline" className="w-full">
@@ -579,59 +589,30 @@ function Pricing() {
             }
           />
           <PricingCard
-            name="Pro Monatlich"
-            price="4,99 €"
-            period="pro Monat"
-            tagline="Flexibel — jederzeit kündbar."
+            name="Pro"
+            price="6 €"
+            period="pro Halbserie"
+            tagline="Einmalzahlung, kein Abo."
+            highlight="Kostenlos testen"
             features={[
               { ok: true, text: "Alles aus Free" },
-              { ok: true, text: "Liga-Sozial-Layer" },
-              { ok: true, text: "AI-Transfer-Coach" },
-              { ok: true, text: "Push & Email Alerts" },
-              { ok: true, text: "Unbegrenzte MW-Historie" },
-              { ok: true, text: "CSV / PDF Export" },
-            ]}
-            cta={
-              <Button asChild className="w-full">
-                <Link href="/login">Pro starten</Link>
-              </Button>
-            }
-          />
-          <PricingCard
-            name="Pro Saison"
-            price="19,99 €"
-            period="für 9 Monate"
-            tagline="Effektiv 2,22 € / Monat."
-            highlight="Spar 60 %"
-            features={[
-              { ok: true, text: "Alle Pro-Features" },
-              { ok: true, text: "Saison-PDF-Report (V2)" },
-              { ok: true, text: "Beta-Frühzugang" },
-              { ok: true, text: "Lock dir die Pro-Features für die ganze Saison" },
+              { ok: true, text: "Wettbewerb: Kontostände + Max-Gebote aller Manager" },
+              { ok: true, text: "Bid-Advisor" },
+              { ok: true, text: "Netto-Teamwert-Verlauf der Liga" },
             ]}
             cta={
               <Button asChild className="w-full card-glow">
-                <Link href="/login">Saison sichern</Link>
+                <Link href="/upgrade">Pro freischalten</Link>
               </Button>
             }
             featured
           />
         </div>
 
-        <div className="mt-10 max-w-3xl mx-auto p-5 rounded-2xl border border-primary/20 bg-primary/[0.04] text-sm flex items-start gap-3">
-          <span className="size-9 rounded-lg bg-primary/15 text-primary flex items-center justify-center shrink-0">
-            <Users className="size-4" />
-          </span>
-          <div>
-            <div className="font-semibold mb-1">Liga-Pro für Admins</div>
-            <p className="text-muted-foreground">
-              Du bist Liga-Admin? Für{" "}
-              <span className="font-mono text-foreground">9,99 € pro Saison</span> einmalig
-              bekommen alle deine Liga-Mitglieder Pro automatisch. Spar 80 % gegenüber 12 ×
-              Einzel-Pro. <span className="text-foreground font-medium">(Coming V2.)</span>
-            </p>
-          </div>
-        </div>
+        <p className="mt-10 max-w-2xl mx-auto text-center text-sm text-muted-foreground">
+          Alles kostenlos bis einschließlich Spieltag 2 – danach bleiben Wettbewerb und
+          Bid-Advisor mit Pro frei, 6 € pro Halbserie.
+        </p>
       </div>
     </section>
   );
@@ -706,14 +687,15 @@ function Trust() {
         <div className="grid gap-6 md:grid-cols-3">
           <TrustItem icon={<Lock className="size-5" />} title="Passwort wird nicht gespeichert">
             Wir tauschen dein Passwort sofort gegen einen Kickbase-Token. Der Token landet
-            verschlüsselt in einem httpOnly-Cookie — niemals in unserer Datenbank.
+            verschlüsselt in einem httpOnly-Cookie – niemals in unserer Datenbank.
           </TrustItem>
           <TrustItem icon={<ShieldCheck className="size-5" />} title="Nicht offiziell">
-            LigaBase ist nicht mit Kickbase, der DFL oder einem Bundesliga-Verein verbunden.
+            Ligabase ist nicht mit Kickbase, der DFL oder einem Bundesliga-Verein verbunden.
             Die Nutzung erfolgt auf eigene Verantwortung.
           </TrustItem>
           <TrustItem icon={<Sparkles className="size-5" />} title="DSGVO-konform">
-            Hosting in der EU, keine Tracker, kein Cookie-Banner-Spam. Plausible statt Google Analytics.
+            Hosting in der EU, keine Werbe-Tracker, kein Cookie-Banner-Spam. Reichweitenmessung
+            cookielos über Vercel Analytics.
           </TrustItem>
         </div>
       </div>
@@ -751,7 +733,7 @@ function FAQ() {
         <SectionHeading
           eyebrow="FAQ"
           title="Kickbase FAQ: Marktwert, Punkte & Trading"
-          description="Die wichtigsten Fragen zu Kickbase und LigaBase – kurz beantwortet, mit offiziellen Quellen."
+          description="Die wichtigsten Fragen zu Kickbase und Ligabase – kurz beantwortet, mit offiziellen Quellen."
         />
         <div className="mt-12 space-y-4">
           {FAQ_ITEMS.map((item) => (
@@ -836,8 +818,8 @@ function SiteFooter() {
           <div>
             <Logo size={28} />
             <p className="mt-3 text-xs text-muted-foreground leading-relaxed max-w-[220px]">
-              Die smarteste Companion-App für deine Kickbase-Saison.
-              Nicht offiziell mit Kickbase verbunden.
+              Der Companion für deine Kickbase-Liga: Kontostände, Max-Gebote und
+              mehr. Nicht offiziell mit Kickbase verbunden.
             </p>
           </div>
           <FooterCol title="Produkt">
@@ -850,7 +832,6 @@ function SiteFooter() {
           <FooterCol title="Rechtliches">
             <Link href="/impressum">Impressum</Link>
             <Link href="/datenschutz">Datenschutz</Link>
-            <Link href="/agb">AGB</Link>
           </FooterCol>
           <FooterCol title="Status">
             <span className="inline-flex items-center gap-1.5">
@@ -861,8 +842,8 @@ function SiteFooter() {
           </FooterCol>
         </div>
         <div className="mt-8 pt-6 border-t border-border/50 text-xs text-muted-foreground flex items-center justify-between">
-          <span>© 2026 LigaBase</span>
-          <span>Made in Berlin · with ⚽ + 🍺</span>
+          <span>© 2026 Ligabase</span>
+          <span>Made in Hannover</span>
         </div>
       </div>
     </footer>

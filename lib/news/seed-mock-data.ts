@@ -58,7 +58,7 @@ export const MOCK_TWITTER_SEED: MockTweet[] = [
   {
     id: "mock-005",
     handle: "Plettigoal",
-    text: "[MOCK-DEMO] Wolfsburg-Trainer bestätigt: Wind ist nicht im Kader für Sonntag — muskuläre Probleme. #VfL",
+    text: "[MOCK-DEMO] Wolfsburg-Trainer bestätigt: Wind ist nicht im Kader für Sonntag – muskuläre Probleme. #VfL",
     createdAt: HOURS_AGO(20),
   },
   {
@@ -88,7 +88,7 @@ export const MOCK_TWITTER_SEED: MockTweet[] = [
   {
     id: "mock-010",
     handle: "cfbayern",
-    text: "[MOCK-DEMO] Olise mit Kniefuß-Quetschung — auf jeden Fall Einsatz am Sonntag fraglich. #FCBayern",
+    text: "[MOCK-DEMO] Olise mit Kniefuß-Quetschung – auf jeden Fall Einsatz am Sonntag fraglich. #FCBayern",
     createdAt: HOURS_AGO(22),
   },
   {
@@ -112,7 +112,7 @@ export const MOCK_TWITTER_SEED: MockTweet[] = [
   {
     id: "mock-014",
     handle: "TobiAltschaeffl",
-    text: "[MOCK-DEMO] Stuttgart-Stürmer Undav stark in Form — Trainer erwägt 2-Stürmer-System gegen Bremen. #VfB",
+    text: "[MOCK-DEMO] Stuttgart-Stürmer Undav stark in Form – Trainer erwägt 2-Stürmer-System gegen Bremen. #VfB",
     createdAt: HOURS_AGO(17),
   },
   {
@@ -136,7 +136,7 @@ export const MOCK_TWITTER_SEED: MockTweet[] = [
   {
     id: "mock-018",
     handle: "S_Vollmert",
-    text: "[MOCK-DEMO] Köln: Kainz mit Innenbandriss — Saison-Aus. Ersatzplan läuft. #effzeh",
+    text: "[MOCK-DEMO] Köln: Kainz mit Innenbandriss – Saison-Aus. Ersatzplan läuft. #effzeh",
     createdAt: HOURS_AGO(14),
   },
   {
@@ -148,7 +148,7 @@ export const MOCK_TWITTER_SEED: MockTweet[] = [
   {
     id: "mock-020",
     handle: "S_Vollmert",
-    text: "[MOCK-DEMO] Augsburg holt Onyeka aus 2. Bundesliga zurück — Leihe von 1. März. #FCA",
+    text: "[MOCK-DEMO] Augsburg holt Onyeka aus 2. Bundesliga zurück – Leihe von 1. März. #FCA",
     createdAt: HOURS_AGO(25),
   },
   {
@@ -160,13 +160,13 @@ export const MOCK_TWITTER_SEED: MockTweet[] = [
   {
     id: "mock-022",
     handle: "FabrizioRomano",
-    text: "[MOCK-DEMO] Borussia Dortmund close to renewal with key midfielder until 2028 — paper work in progress.",
+    text: "[MOCK-DEMO] Borussia Dortmund close to renewal with key midfielder until 2028 – paper work in progress.",
     createdAt: HOURS_AGO(16),
   },
   {
     id: "mock-023",
     handle: "RominaKickbase",
-    text: "[MOCK-DEMO] Spieltagstipp: Kane top-form, mein Captain-Pick. Wirtz-Marktwert vor Spike — jetzt holen lohnt. #Kickbase",
+    text: "[MOCK-DEMO] Spieltagstipp: Kane top-form, mein Captain-Pick. Wirtz-Marktwert vor Spike – jetzt holen lohnt. #Kickbase",
     createdAt: HOURS_AGO(3),
   },
   {
@@ -184,7 +184,7 @@ export const MOCK_TWITTER_SEED: MockTweet[] = [
   {
     id: "mock-026",
     handle: "Plettigoal",
-    text: "[MOCK-DEMO] Stuttgart: Stiller wechselt nicht im Sommer — Vereinslegende plant 5-Jahres-Verlängerung. #VfB",
+    text: "[MOCK-DEMO] Stuttgart: Stiller wechselt nicht im Sommer – Vereinslegende plant 5-Jahres-Verlängerung. #VfB",
     createdAt: HOURS_AGO(28),
   },
   {
@@ -196,13 +196,13 @@ export const MOCK_TWITTER_SEED: MockTweet[] = [
   {
     id: "mock-028",
     handle: "TobiAltschaeffl",
-    text: "[MOCK-DEMO] Mönchengladbach plant Castrop-Verkauf — Anfragen aus England und Spanien. #Borussia",
+    text: "[MOCK-DEMO] Mönchengladbach plant Castrop-Verkauf – Anfragen aus England und Spanien. #Borussia",
     createdAt: HOURS_AGO(33),
   },
   {
     id: "mock-029",
     handle: "S_Vollmert",
-    text: "[MOCK-DEMO] Heidenheim-Coach im Interview: 'Beste-Mann gehört Pieringer — wir geben ihn nicht ab.' #FCH",
+    text: "[MOCK-DEMO] Heidenheim-Coach im Interview: 'Beste-Mann gehört Pieringer – wir geben ihn nicht ab.' #FCH",
     createdAt: HOURS_AGO(36),
   },
   {

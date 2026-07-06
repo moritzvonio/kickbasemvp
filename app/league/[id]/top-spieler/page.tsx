@@ -44,7 +44,7 @@ export default async function TopSpielerPage({
     ? Number(sp.limit)
     : 50;
 
-  // Vollständiger Pool via Team-Sweep (alle 18 Vereinskader, ~380 Spieler) —
+  // Vollständiger Pool via Team-Sweep (alle 18 Vereinskader, ~380 Spieler) –
   // Positions-Filter läuft über denselben Pool, weil der per-Position-Endpoint
   // genauso hart bei ~25 Spielern kappt (fehlende Stars, Olise-Bug 2026-07).
   const data = await withKbAuth(path, () =>
@@ -56,7 +56,7 @@ export default async function TopSpielerPage({
       ? poolAll
       : poolAll.filter((p) => p.pos === posFilter.value);
 
-  // Vorsortierung: p (Saisonpunkte, wenn vorhanden) bzw. ap × 34 als Proxy —
+  // Vorsortierung: p (Saisonpunkte, wenn vorhanden) bzw. ap × 34 als Proxy –
   // der Team-Sweep liefert nur den Punkteschnitt (ap), keine Gesamtpunkte.
   const preSortKey = (p: KbCompetitionPlayer): number =>
     p.p ?? Math.round((p.ap ?? 0) * 34);
@@ -81,7 +81,7 @@ export default async function TopSpielerPage({
           a: d.a,
         });
       } catch {
-        // ignore — fallback auf cp.p für diesen Spieler
+        // ignore – fallback auf cp.p für diesen Spieler
       }
     })
   );
@@ -277,7 +277,7 @@ function PlayerRow({
           {points.toLocaleString("de-DE")}
         </div>
         <div className="text-[10px] text-muted-foreground tabular">
-          {avg !== undefined ? `Ø ${avg} / Spieltag` : "—"}
+          {avg !== undefined ? `Ø ${avg} / Spieltag` : "–"}
         </div>
       </div>
     </Link>

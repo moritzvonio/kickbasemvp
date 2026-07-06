@@ -109,7 +109,7 @@ export default async function LeagueDashboard({
     pointsBars[0]
   );
 
-  // Form-Dots & Spieltagspunkte je Manager — aus perMatchdayRankings ableiten
+  // Form-Dots & Spieltagspunkte je Manager – aus perMatchdayRankings ableiten
   const last5ByManager = new Map<string, number[]>();
   const recent = perMatchdayRankings.slice(-5);
   for (const m of members) {
@@ -236,12 +236,12 @@ export default async function LeagueDashboard({
         </div>
       </section>
 
-      {/* Top KPIs — kompakter */}
+      {/* Top KPIs – kompakter */}
       <section className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 slide-up slide-up-1">
         <MiniKpi
           icon={<Trophy className="size-3.5" />}
           label="Platz"
-          value={meRanking?.spl !== undefined ? `#${meRanking.spl}` : "—"}
+          value={meRanking?.spl !== undefined ? `#${meRanking.spl}` : "–"}
           sub={members.length ? `von ${members.length}` : undefined}
         />
         <MiniKpi
@@ -250,7 +250,7 @@ export default async function LeagueDashboard({
           value={
             meRanking?.sp !== undefined
               ? meRanking.sp.toLocaleString("de-DE")
-              : "—"
+              : "–"
           }
           sub={
             myAvgPerDay > 0
@@ -348,10 +348,10 @@ export default async function LeagueDashboard({
                             </div>
                           </td>
                           <td className="text-right font-mono font-semibold">
-                            {m.sp?.toLocaleString("de-DE") ?? "—"}
+                            {m.sp?.toLocaleString("de-DE") ?? "–"}
                           </td>
                           <td className="text-right font-mono text-muted-foreground pr-5">
-                            {m.tv ? formatEUR(m.tv, { compact: true }) : "—"}
+                            {m.tv ? formatEUR(m.tv, { compact: true }) : "–"}
                           </td>
                         </tr>
                       );
@@ -519,7 +519,7 @@ export default async function LeagueDashboard({
         </Card>
       )}
 
-      {/* Ausführliche Tabelle — mit Form-Dots, MV-Trend, Squad-Größe */}
+      {/* Ausführliche Tabelle – mit Form-Dots, MV-Trend, Squad-Größe */}
       <Card className="slide-up slide-up-4">
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2">
@@ -594,22 +594,22 @@ export default async function LeagueDashboard({
                           </div>
                         </td>
                         <td className="text-right font-mono font-semibold">
-                          {m.sp?.toLocaleString("de-DE") ?? "—"}
+                          {m.sp?.toLocaleString("de-DE") ?? "–"}
                         </td>
                         <td className="text-right font-mono text-emerald-700 hidden sm:table-cell">
                           {m.mdp !== undefined
                             ? `+${m.mdp.toLocaleString("de-DE")}`
-                            : "—"}
+                            : "–"}
                         </td>
                         <td className="hidden md:table-cell">
                           {last5.length > 0 ? (
                             <FormDots points={last5} />
                           ) : (
-                            <span className="text-xs text-muted-foreground">—</span>
+                            <span className="text-xs text-muted-foreground">–</span>
                           )}
                         </td>
                         <td className="text-right font-mono text-muted-foreground hidden md:table-cell">
-                          {m.tv ? formatEUR(m.tv, { compact: true }) : "—"}
+                          {m.tv ? formatEUR(m.tv, { compact: true }) : "–"}
                         </td>
                         <td className="text-right pr-5 font-mono tabular">
                           {tvDelta !== 0 ? (
@@ -629,7 +629,7 @@ export default async function LeagueDashboard({
                               {formatDelta(tvDelta)}
                             </span>
                           ) : (
-                            <span className="text-xs text-muted-foreground">—</span>
+                            <span className="text-xs text-muted-foreground">–</span>
                           )}
                         </td>
                       </tr>
@@ -701,7 +701,7 @@ function SortPill({
 }
 
 function placementBadge(pl?: number) {
-  if (pl === undefined) return <span className="text-muted-foreground">—</span>;
+  if (pl === undefined) return <span className="text-muted-foreground">–</span>;
   if (pl === 1)
     return (
       <span className="inline-flex items-center justify-center size-7 rounded-lg bg-amber-100 text-base ring-1 ring-amber-200">
@@ -817,7 +817,7 @@ function ActivityRow({
   );
 }
 
-/** Aktivitäten ohne User-Bezug — Liga-System-Events */
+/** Aktivitäten ohne User-Bezug – Liga-System-Events */
 function describeSystemActivity(
   a: import("@/lib/kickbase/types").KbActivity
 ): string {
@@ -873,7 +873,7 @@ function describeActivity(a: import("@/lib/kickbase/types").KbActivity): string 
     if (isBuy) return `kaufte ${playerName}`;
     return `Transfer: ${playerName}`;
   }
-  // Generic Transfer ohne playerName (t=3 oder unbekannt) — wenn ein Preis
+  // Generic Transfer ohne playerName (t=3 oder unbekannt) – wenn ein Preis
   // bekannt ist, zeige ihn; sonst zumindest Buy/Sell-Hinweis statt nichtssagendem
   // "tätigte einen Transfer".
   if (price) {

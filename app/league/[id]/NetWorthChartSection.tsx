@@ -107,7 +107,7 @@ export async function NetWorthChartSection({
           <p className="text-[10px] text-muted-foreground mt-2 text-center">
             Teamwert pro Stichtag aus der Marktwert-History des zurückgerechneten
             Kaders + Cash. Alle starten bei ~150 Mio (50 Mio Cash + ~100 Mio Team)
-            — bestätigt am Liga-Start.
+            – bestätigt am Liga-Start.
           </p>
 
           {SHOW_DEBUG && (

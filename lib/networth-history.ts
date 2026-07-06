@@ -1,11 +1,11 @@
 /**
- * Netto-Teamwert-Verlauf seit Liga-Start — exakte Reconstruction.
+ * Netto-Teamwert-Verlauf seit Liga-Start – exakte Reconstruction.
  *
  * Methode (validiert: alle Manager landen am Liga-Start bei 150 ±2 Mio):
  *  - Kader zu jedem Sample-Datum = aktueller Kader, rückgerechnet über die
  *    Transfers DANACH (Käufe rückgängig = entfernen, Verkäufe = hinzufügen).
  *    Am „jetzt" exakt der echte Kader, am Start der Vor-Saison-Kader.
- *  - Teamwert(Datum) = Σ Marktwert(Kader, Datum) aus MV-History — exakt.
+ *  - Teamwert(Datum) = Σ Marktwert(Kader, Datum) aus MV-History – exakt.
  *  - Cash(Datum) = Start(50M) + Transferbilanz(≤Datum) + Bonus×Zeitfortschritt.
  *    Endpunkte exakt (Start: 50M; jetzt: echtes/kalibriertes Cash); die
  *    Bonus-Verteilung dazwischen ist linear in der Zeit (gute Näherung, da
@@ -22,7 +22,7 @@ const DAY_MS = 86_400_000;
 export interface NetWorthChartPoint {
   /** Achsen-Label, z.B. "01.08." */
   label: string;
-  /** Absoluter Zeitstempel (ms) — für client-seitiges Zeitraum-Filtern */
+  /** Absoluter Zeitstempel (ms) – für client-seitiges Zeitraum-Filtern */
   ms: number;
   /** Manager-Name → Netto-Teamwert (€) an diesem Datum */
   [manager: string]: number | string;
@@ -73,7 +73,7 @@ export function buildNetWorthSeries(opts: {
   const span = nowMs - leagueStartMs;
 
   // Pro Manager: Transfers vorbereiten.
-  // WICHTIG: Zum Liga-Start werden Cash & Transfers zurückgesetzt — Transfers
+  // WICHTIG: Zum Liga-Start werden Cash & Transfers zurückgesetzt – Transfers
   // VOR dem Liga-Start (Vorsaison/Reset) zählen NICHT. Sonst starten Manager
   // mit vielen Vorsaison-Trades fälschlich nicht bei ~150 Mio.
   const prepared = managers.map((m) => {

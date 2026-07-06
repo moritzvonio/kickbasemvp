@@ -163,7 +163,7 @@ export default async function TradingPage({
         </section>
       )}
 
-      {/* My Squad — Movers (gainers + losers) side by side */}
+      {/* My Squad – Movers (gainers + losers) side by side */}
       <section className="grid gap-4 lg:grid-cols-2 slide-up slide-up-2">
         <Card className="overflow-hidden relative">
           <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-emerald-500 to-emerald-300" />
@@ -226,7 +226,7 @@ export default async function TradingPage({
         </Card>
       </section>
 
-      {/* Squad — Saison-Profit Liste (alle Spieler) */}
+      {/* Squad – Saison-Profit Liste (alle Spieler) */}
       <section className="slide-up slide-up-3">
         <Card>
           <CardHeader>

@@ -35,13 +35,13 @@ export interface KbErrorResponse {
   svcs?: unknown[];
 }
 
-/** GET /v4/leagues/selection — featured leagues (logged-out style) */
+/** GET /v4/leagues/selection – featured leagues (logged-out style) */
 export interface KbLeagueSelection {
   it: KbLeagueListItem[];
   anol?: number;
 }
 
-/** GET /v4/leagues — user's leagues (we hope; otherwise use /selection) */
+/** GET /v4/leagues – user's leagues (we hope; otherwise use /selection) */
 export interface KbLeaguesResponse {
   it: KbLeagueListItem[];
 }
@@ -104,7 +104,7 @@ export interface KbManagerSummary {
   [k: string]: unknown;
 }
 
-/** GET /v4/leagues/{id}/me/budget — current user's budget in this league */
+/** GET /v4/leagues/{id}/me/budget – current user's budget in this league */
 export interface KbMeInLeague {
   /** Current budget (€) */
   b?: number;
@@ -125,7 +125,7 @@ export interface KbMeInLeague {
   [k: string]: unknown;
 }
 
-/** GET /v4/leagues/{id}/ranking — league standings */
+/** GET /v4/leagues/{id}/ranking – league standings */
 export interface KbRankingResponse {
   /** League name */
   ti?: string;
@@ -161,7 +161,7 @@ export interface KbRankingUser {
   sp?: number;
   /** Matchday points (this matchday) */
   mdp?: number;
-  /** Show home points / sometimes "shop points" — keep as opaque */
+  /** Show home points / sometimes "shop points" – keep as opaque */
   shp?: number;
   /** Team value */
   tv?: number;
@@ -186,7 +186,7 @@ export interface KbRankingUser {
   [k: string]: unknown;
 }
 
-/** GET /v4/leagues/{id}/squad — full squad list */
+/** GET /v4/leagues/{id}/squad – full squad list */
 export interface KbSquadResponse {
   it: KbSquadPlayer[];
   ua?: string; // user avatar
@@ -217,7 +217,7 @@ export interface KbSquadPlayer {
   [k: string]: unknown;
 }
 
-/** GET /v4/leagues/{id}/market — current transfer market */
+/** GET /v4/leagues/{id}/market – current transfer market */
 export interface KbMarketResponse {
   it: KbMarketEntry[];
   cs?: number;
@@ -252,9 +252,9 @@ export function marketEntryPid(e: KbMarketEntry): string {
   return e.pi ?? e.i ?? "";
 }
 
-/** GET /v4/leagues/{id}/activitiesFeed — wer hat was gemacht
+/** GET /v4/leagues/{id}/activitiesFeed – wer hat was gemacht
  * Kickbase returns the array under `af` (activity feed). Some legacy endpoints
- * use `it` — we accept both for safety.
+ * use `it` – we accept both for safety.
  */
 export interface KbActivitiesFeed {
   /** Primary: activity feed array */
@@ -286,7 +286,7 @@ export interface KbActivity {
   /** Free-form data payload */
   data?: Record<string, unknown>;
   d?: Record<string, unknown>;
-  /** User who triggered the activity (optional — many activity types have no user) */
+  /** User who triggered the activity (optional – many activity types have no user) */
   u?: { i: string; n: string; uim?: string };
   [k: string]: unknown;
 }
@@ -309,7 +309,7 @@ export interface KbMarketValuePoint {
   mv: number;
 }
 
-/** GET /v4/leagues/{id}/players/{pid} — player details (rich) */
+/** GET /v4/leagues/{id}/players/{pid} – player details (rich) */
 export interface KbPlayerDetails {
   i: string;
   /** First name */
@@ -403,7 +403,7 @@ export interface KbManagerDashboard {
   mds?: unknown[];
 }
 
-/** GET /v4/leagues/{id}/managers/{mid}/transfer — manager's transfer history */
+/** GET /v4/leagues/{id}/managers/{mid}/transfer – manager's transfer history */
 export interface KbManagerTransferResponse {
   u?: string;
   unm?: string;
@@ -417,7 +417,7 @@ export interface KbManagerTransfer {
   pn: string;
   /** Bundesliga team id */
   tid: string;
-  /** Transfer type — 1 = bought (cash out), 2 = sold (cash in) */
+  /** Transfer type – 1 = bought (cash out), 2 = sold (cash in) */
   tty: number;
   /** Other party name (other manager / agent / "Mino Raiola" for AI bot) */
   othnm?: string;
@@ -431,7 +431,7 @@ export interface KbManagerTransfer {
   pim?: string;
 }
 
-/** GET /v4/leagues/{id}/managers/{mid}/squad — another manager's squad */
+/** GET /v4/leagues/{id}/managers/{mid}/squad – another manager's squad */
 export interface KbManagerSquadResponse {
   u?: string;
   unm?: string;
@@ -496,7 +496,7 @@ export interface KbMatchdaySummary {
   [k: string]: unknown;
 }
 
-/** GET /v4/leagues/{id}/lineup/overview — current lineup + bench + opponents */
+/** GET /v4/leagues/{id}/lineup/overview – current lineup + bench + opponents */
 export interface KbLineupOverview {
   /** Matchday number this lineup is for */
   mdln?: string | number;
@@ -522,7 +522,7 @@ export interface KbLineupPlayer {
   mdst?: number;
   /** Position 1-4 */
   pos: number;
-  /** Lineup order — 0 = bench, 1..11 = field slot */
+  /** Lineup order – 0 = bench, 1..11 = field slot */
   lo?: number;
   /** Bundesliga team id */
   tid: string;
@@ -603,7 +603,7 @@ export interface KbPerformancePoint {
   [k: string]: unknown;
 }
 
-/** GET /v4/leagues/{id}/user/achievements — eigene Erfolge (Liste) */
+/** GET /v4/leagues/{id}/user/achievements – eigene Erfolge (Liste) */
 export interface KbUserAchievementsResponse {
   it: KbUserAchievement[];
 }
@@ -619,7 +619,7 @@ export interface KbUserAchievement {
   ise?: boolean;
   /** Description (only on detail endpoint) */
   d?: string;
-  /** Earnings — Belohnung pro Auslösung (only on detail endpoint) */
+  /** Earnings – Belohnung pro Auslösung (only on detail endpoint) */
   er?: number;
   /** Date of last unlock */
   dt?: string;
@@ -627,12 +627,12 @@ export interface KbUserAchievement {
   isrp?: boolean;
 }
 
-/** GET /v4/competitions/{id}/table — Bundesliga-Tabelle (mit Team-Logos!) */
+/** GET /v4/competitions/{id}/table – Bundesliga-Tabelle (mit Team-Logos!) */
 export interface KbCompetitionTable {
   it: KbCompetitionTableEntry[];
 }
 
-/** GET /v4/competitions/{id}/teams/{tid}/teamprofile — Kader eines Vereins */
+/** GET /v4/competitions/{id}/teams/{tid}/teamprofile – Kader eines Vereins */
 export interface KbTeamProfile {
   tid?: string;
   /** Team name */
@@ -693,7 +693,7 @@ export interface KbCompetitionTableEntry {
   mi?: string;
 }
 
-/** GET /v4/competitions/{id}/players — Bundesliga-weite Spielerliste */
+/** GET /v4/competitions/{id}/players – Bundesliga-weite Spielerliste */
 export interface KbCompetitionPlayersResponse {
   it: KbCompetitionPlayer[];
 }
@@ -784,7 +784,7 @@ export const BL_TEAMS: Record<string, BlTeamMeta> = {
   "40": { short: "FCU",  name: "1. FC Union Berlin",   color: "#ED1C24", logo: "content/file/8f4c7c08ee9b4dca85c28260fc5917bd.svg" },
   "43": { short: "RBL",  name: "RB Leipzig",           color: "#DC052D", logo: "content/file/29ceb88867954b548ca9e27d39d050c2.svg" },
   "50": { short: "FCH",  name: "1. FC Heidenheim",     color: "#E20613", logo: "content/file/f387dd39aafb47d0b4863381fc4a521c.svg" },
-  // Historical / 2. Bundesliga — kept for older data without logos
+  // Historical / 2. Bundesliga – kept for older data without logos
   "8":  { short: "S04",  name: "Schalke 04",           color: "#004D9D" },
   "24": { short: "VFL",  name: "VfL Bochum",           color: "#005CA9" },
 };

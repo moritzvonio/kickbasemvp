@@ -64,7 +64,7 @@ export function MvMiniSpark({
               <stop offset="100%" stopColor={color} stopOpacity={0} />
             </linearGradient>
           </defs>
-          {/* Hidden axes — wir wollen nur die Datenführung, kein Achsen-Drawing */}
+          {/* Hidden axes – wir wollen nur die Datenführung, kein Achsen-Drawing */}
           <XAxis dataKey="dt" hide />
           <YAxis hide domain={["dataMin", "dataMax"]} />
           <Tooltip

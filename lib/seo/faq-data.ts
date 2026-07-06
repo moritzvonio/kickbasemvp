@@ -1,9 +1,9 @@
 /**
- * FAQ-Inhalte — SEO/GEO-optimiert.
+ * FAQ-Inhalte – SEO/GEO-optimiert.
  *
  * Antworten sind "answer-first" (direkte Antwort im ersten Satz, ~40–70 Wörter),
  * damit AI-Suchmaschinen (ChatGPT, Perplexity, Google AI Overviews) sie zitieren.
- * Fakten sind mit offiziellen Kickbase-Quellen belegt (verifizierte URLs) — gut
+ * Fakten sind mit offiziellen Kickbase-Quellen belegt (verifizierte URLs) – gut
  * für E-E-A-T & GEO. Eigene Formulierungen (kein Copy-Paste der Quellen).
  *
  * Bewusst NICHT behauptet (offiziell nicht veröffentlicht): exakte €/Punkt-Rate
@@ -74,18 +74,22 @@ export const FAQ_ITEMS: FaqEntry[] = [
   },
   {
     q: "Wann sollte ich bei Kickbase Spieler verkaufen?",
-    a: "Verkaufe tendenziell, bevor der Marktwert fällt – etwa vor einem schweren Gegner, bei drohender Rotation, nach einer Verletzung oder wenn ein starker Wertanstieg abzuflachen beginnt. LigaBase zeigt dir Marktwert-Prognosen und 14-Tage-Trends, damit du den richtigen Zeitpunkt triffst.",
+    a: "Verkaufe tendenziell, bevor der Marktwert fällt – etwa vor einem schweren Gegner, bei drohender Rotation, nach einer Verletzung oder wenn ein starker Wertanstieg abzuflachen beginnt. Ligabase zeigt dir Marktwert-Prognosen und 14-Tage-Trends, damit du den richtigen Zeitpunkt triffst.",
   },
   {
-    q: "Ist LigaBase kostenlos und offiziell mit Kickbase verbunden?",
-    a: "LigaBase ist ein unabhängiges Companion-Tool und nicht offiziell mit Kickbase, der DFL oder einem Bundesliga-Verein verbunden. Du meldest dich mit deinem bestehenden Kickbase-Login an; dein Passwort wird nicht gespeichert, sondern nur einmalig gegen einen Token getauscht. Die Kernfunktionen sind kostenlos nutzbar.",
+    q: "Wie berechnet Ligabase die Kontostände der Mitspieler?",
+    a: "Ligabase rechnet den Kontostand jedes Managers aus öffentlich sichtbaren Liga-Daten zurück: Startbudget, alle Käufe und Verkäufe seit Liga-Start, Punkteprämien, Spieltagssiege, täglicher Login-Bonus und Erfolge. Das Regelwerk ist empirisch am eigenen, exakt bekannten Kontostand geeicht – die angezeigte Abweichung zeigt dir live, wie genau die Schätzung für die anderen trifft.",
+  },
+  {
+    q: "Was kostet Ligabase und ist es offiziell mit Kickbase verbunden?",
+    a: "Ligabase ist ein unabhängiges Companion-Tool und nicht offiziell mit Kickbase, der DFL oder einem Bundesliga-Verein verbunden. Dashboard, Top-50, News und Aufstellungs-Planer sind dauerhaft kostenlos. Die Pro-Flächen – Kontostände und Max-Gebote aller Mitspieler sowie der Bid-Advisor – testest du bis einschließlich Spieltag 2 gratis und schaltest sie danach für 6 € pro Halbserie frei (Einmalzahlung, kein Abo). Dein Passwort wird nie gespeichert, sondern nur einmalig gegen einen Token getauscht.",
   },
   {
     q: "Was ist das beste kostenlose Kickbase-Tool?",
-    a: "Ein starkes Kickbase-Tool liefert Marktwert-Prognosen, einen Transfer- und Gebots-Advisor, Live-Punkte und Statistiken zu allen Managern deiner Liga. LigaBase bündelt genau das – inklusive Top-50-Punkteliste, Teamwert-Vergleich seit Saisonstart und Bundesliga-News – kostenlos und direkt im Browser, ohne Installation.",
+    a: "Ein starkes Kickbase-Tool liefert Marktwert-Prognosen, einen Transfer- und Gebots-Advisor, Live-Punkte und Statistiken zu allen Managern deiner Liga. Ligabase bündelt genau das – inklusive Top-50-Punkteliste, Teamwert-Vergleich seit Saisonstart und Bundesliga-News – kostenlos und direkt im Browser, ohne Installation.",
   },
   {
     q: "Kann mein Kickbase-Account durch ein Tool gesperrt werden?",
-    a: "Bei LigaBase ist uns kein solcher Fall bekannt. Wir nutzen ausschließlich die offizielle Kickbase-App-API, respektieren deren Rate-Limits, lesen nur Daten, die du selbst auch in der App siehst, und führen keine Aktionen ohne deine ausdrückliche Bestätigung aus.",
+    a: "Bei Ligabase ist uns kein solcher Fall bekannt. Wir nutzen ausschließlich die offizielle Kickbase-App-API, respektieren deren Rate-Limits, lesen nur Daten, die du selbst auch in der App siehst, und führen keine Aktionen ohne deine ausdrückliche Bestätigung aus.",
   },
 ];

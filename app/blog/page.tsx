@@ -15,7 +15,7 @@ export const metadata: Metadata = {
     "Kickbase Tipps, Trading-Guides & Marktwert-Strategien. Tutorials für Anfänger und Profis, um deine Liga zu gewinnen.",
   alternates: { canonical: `${BASE}/blog` },
   openGraph: {
-    title: "Kickbase Tipps & Tutorials – LigaBase Blog",
+    title: "Kickbase Tipps & Tutorials – Ligabase Blog",
     description:
       "Trading-Guides, Marktwert-Strategien und Einsteiger-Tutorials für Kickbase.",
     type: "website",
@@ -39,7 +39,7 @@ export default function BlogIndexPage() {
 
       <header className="border-b border-border/60">
         <div className="mx-auto max-w-5xl px-4 h-16 flex items-center justify-between">
-          <Link href="/" aria-label="LigaBase Startseite">
+          <Link href="/" aria-label="Ligabase Startseite">
             <Logo size={30} />
           </Link>
           <Link
@@ -54,7 +54,7 @@ export default function BlogIndexPage() {
       <main className="mx-auto max-w-5xl px-4 py-12 sm:py-16">
         <div className="max-w-2xl">
           <div className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-primary">
-            <BookOpen className="size-3.5" /> LigaBase Blog
+            <BookOpen className="size-3.5" /> Ligabase Blog
           </div>
           <h1 className="mt-3 text-3xl sm:text-5xl font-bold tracking-tight">
             Kickbase Tipps & Tutorials
@@ -105,7 +105,7 @@ export default function BlogIndexPage() {
         </div>
 
         <p className="mt-12 text-xs text-muted-foreground">
-          LigaBase ist ein unabhängiges Companion-Tool und nicht offiziell mit
+          Ligabase ist ein unabhängiges Companion-Tool und nicht offiziell mit
           Kickbase, der DFL oder einem Bundesliga-Verein verbunden.
         </p>
       </main>

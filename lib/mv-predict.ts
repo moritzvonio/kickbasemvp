@@ -4,7 +4,7 @@
  * Inputs: idealerweise 60+ Tage MV-History (mehr Samples pro Wochentag).
  *
  * Ansatz:
- *   1) Wochentag-Effekt aus ALLER History — pro DoW Median-Δ (Outlier-resistent)
+ *   1) Wochentag-Effekt aus ALLER History – pro DoW Median-Δ (Outlier-resistent)
  *   2) Recent Trend aus den letzten 14 Tagen (linear regression)
  *   3) Mean-Reversion zu 30d-Mittel (stärker bei großer Abweichung)
  *   4) Volatility-adjusted Gewichte: bei hoher Vola dominiert Reversion;
@@ -47,7 +47,7 @@ export function computeGlobalDowPct(histories: MvPoint[][]): number[] {
       const prev = sorted[i - 1].mv;
       if (prev <= 0) continue;
       const pct = (sorted[i].mv - prev) / prev;
-      // Filter: extreme Outlier (>15% pro Tag) ignorieren — meist Datenfehler
+      // Filter: extreme Outlier (>15% pro Tag) ignorieren – meist Datenfehler
       if (Math.abs(pct) > 0.15) continue;
       const dow = dowFromDt(sorted[i].dt);
       pctByDow[dow].push(pct);
@@ -83,7 +83,7 @@ function median(arr: number[]): number {
 }
 
 /**
- * Trimmed mean — sortiert, schneidet oben + unten je `trimPct` weg, mittelt
+ * Trimmed mean – sortiert, schneidet oben + unten je `trimPct` weg, mittelt
  * den Rest. Gut für leicht-rauschige Daten mit gelegentlichen Outliern.
  * Anders als Median zeigt dies auch kleine systematische Verschiebungen
  * an, wenn die Mehrzahl der Werte 0 ist (typisch für tägliche MV-Δs).
@@ -194,7 +194,7 @@ export function predictMv(
     Math.min(1, 1 - relStddev * 40) * Math.min(1, historyDays / 30)
   );
 
-  // Feste Gewichte. Vola ging vorher ins wTrend-Sinken — das ist falsch:
+  // Feste Gewichte. Vola ging vorher ins wTrend-Sinken – das ist falsch:
   // ein Hot-Spieler hat hohe Vola (große positive Δ) und hat genau den
   // Trend den wir EINFANGEN wollen. Stattdessen nutzen wir Vola nur für
   // Konfidenz (Anzeige), nicht für Gewichtung.
@@ -208,7 +208,7 @@ export function predictMv(
   // Bias enthält). Der absolute Trend kommt vom persönlichen `slope`.
   // Beispiel-Pattern -0.19/-0.19/-0.27/-0.38/-0.60/-0.50/-0.38 mit Mean -0.36:
   //   relativ = +0.17/+0.17/+0.09/-0.02/-0.24/-0.14/-0.02
-  //   → Mo/Di leicht positiv, Fr deutlich negativ — wie erwartet.
+  //   → Mo/Di leicht positiv, Fr deutlich negativ – wie erwartet.
   const useGlobal = opts?.globalDowPct;
   const dowMean =
     useGlobal && useGlobal.length === 7

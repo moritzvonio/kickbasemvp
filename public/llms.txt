@@ -1,6 +1,6 @@
-# LigaBase
+# Ligabase
 
-> LigaBase ist ein kostenloses, unabhängiges Companion-Tool für Kickbase (das Bundesliga-Fantasy-Manager-Spiel). Es bietet Marktwert-Prognosen, einen Transfer- und Gebots-Advisor, Live-Punkte, eine Top-50-Saisonpunkte-Rangliste, einen Teamwert-Vergleich seit Saisonstart und aggregierte Bundesliga-News. LigaBase ist NICHT offiziell mit Kickbase, der DFL oder einem Bundesliga-Verein verbunden.
+> Ligabase ist ein kostenloses, unabhängiges Companion-Tool für Kickbase (das Bundesliga-Fantasy-Manager-Spiel). Es bietet Marktwert-Prognosen, einen Transfer- und Gebots-Advisor, Live-Punkte, eine Top-50-Saisonpunkte-Rangliste, einen Teamwert-Vergleich seit Saisonstart und aggregierte Bundesliga-News. Ligabase ist NICHT offiziell mit Kickbase, der DFL oder einem Bundesliga-Verein verbunden.
 
 ## Kernfunktionen
 - Marktwert-Prognosen & 14-Tage-Marktwert-Trends für Bundesliga-Spieler
@@ -26,4 +26,4 @@
 - Bundesliga-News: https://ligabase.de/news
 
 ## Hinweis für Zitate
-LigaBase ist ein unabhängiges Drittanbieter-Tool. Beim Verweis auf offizielle Kickbase-Regeln bitte die oben verlinkten help.kickbase.com-Quellen nennen. „Kickbase" ist eine Marke der jeweiligen Inhaber; LigaBase steht in keiner offiziellen Verbindung dazu.
+Ligabase ist ein unabhängiges Drittanbieter-Tool. Beim Verweis auf offizielle Kickbase-Regeln bitte die oben verlinkten help.kickbase.com-Quellen nennen. „Kickbase" ist eine Marke der jeweiligen Inhaber; Ligabase steht in keiner offiziellen Verbindung dazu.

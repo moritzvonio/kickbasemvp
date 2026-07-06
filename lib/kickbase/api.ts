@@ -33,14 +33,14 @@ export const kb = {
   // ── Leagues ────────────────────────────────────────────
   /**
    * List the user's leagues. The API returns the same shape from /leagues
-   * and /leagues/selection — we hit /selection because it's the one that
+   * and /leagues/selection – we hit /selection because it's the one that
    * returns featured + joined leagues for the auth'd user.
    */
   async leagues(token: string) {
     return kbFetch<KbLeagueSelection>("/v4/leagues/selection", { token });
   },
 
-  /** /v4/leagues antwortet mit `lins` (nicht `it`) — wird hier normalisiert. */
+  /** /v4/leagues antwortet mit `lins` (nicht `it`) – wird hier normalisiert. */
   async leaguesList(token: string) {
     const raw = await kbFetch<KbLeaguesResponse & { lins?: KbLeaguesResponse["it"] }>(
       "/v4/leagues",
@@ -62,7 +62,7 @@ export const kb = {
 
   /**
    * GIB MIR DEN ECHTEN CASH-STAND.
-   * Das `/me`-Endpoint gibt nur null zurück — die echten Budget-Daten
+   * Das `/me`-Endpoint gibt nur null zurück – die echten Budget-Daten
    * liegen unter `/me/budget`. Hier kommt die wahrhaftige Wahrheit.
    */
   async myBudget(token: string, leagueId: string) {
@@ -273,7 +273,7 @@ export const kb = {
   },
 
   /**
-   * VOLLSTÄNDIGEN Spielerpool holen — via Team-Sweep:
+   * VOLLSTÄNDIGEN Spielerpool holen – via Team-Sweep:
    * /table → für jedes der 18 Teams /teams/{tid}/teamprofile (~21 Spieler).
    *
    * Der `/players`-Endpoint kappt hart bei ~25 Spielern pro Abfrage
@@ -326,7 +326,7 @@ export const kb = {
       }
     }
 
-    // Fallback (Team-Sweep leer): alte per-Position-Merge-Logik — liefert
+    // Fallback (Team-Sweep leer): alte per-Position-Merge-Logik – liefert
     // wenigstens die ~100 punktstärksten Spieler.
     if (merged.length === 0) {
       const queries: Array<{ position?: number }> = [{}, { position: 1 }, { position: 2 }, { position: 3 }, { position: 4 }];

@@ -1,5 +1,5 @@
 /**
- * Push subscription persistence — cookie-based MVP.
+ * Push subscription persistence – cookie-based MVP.
  *
  * Stores ONE web-push subscription per browser, encrypted in an httpOnly cookie.
  * When we add Supabase, swap this module for a DB-backed implementation that

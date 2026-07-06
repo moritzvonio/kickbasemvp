@@ -73,7 +73,7 @@ export default async function MarketPage({
 
   // 2. Per market entry: fetch the league-specific player detail in parallel.
   //    The detail endpoint returns RICH data (tp = total season points, ap = avg,
-  //    g = goals, a = assists) — guaranteed to have the right fields per player.
+  //    g = goals, a = assists) – guaranteed to have the right fields per player.
   const detailFetches = await Promise.all(
     items.map(async (e) => {
       const pid = marketEntryPid(e);
@@ -91,9 +91,9 @@ export default async function MarketPage({
     if (item?.detail) detailMap.set(item.pid, item.detail);
   }
 
-  // 2b. MV-History (letzte 14 Tage) für jeden Markt-Spieler — parallel
+  // 2b. MV-History (letzte 14 Tage) für jeden Markt-Spieler – parallel
   // Endpoint akzeptiert nur den Default 92. Wir holen die volle Historie
-  // — für die Prognose brauchen wir möglichst viele Wochentag-Samples,
+  // – für die Prognose brauchen wir möglichst viele Wochentag-Samples,
   // für die visuelle Sparkline reichen die letzten 14 Tage.
   const mvHistFetches = await Promise.all(
     items.map(async (e) => {
@@ -119,7 +119,7 @@ export default async function MarketPage({
 
   // News-Indikator: für alle Markt-Spieler die letzten News (24h) holen.
   // Differenzierung gegen Kickly: User sieht sofort wenn ein angebotener Spieler
-  // aktuelle News (Verletzung, Aufstellungs-Zweifel) hat — Kaufrisiko-Signal.
+  // aktuelle News (Verletzung, Aufstellungs-Zweifel) hat – Kaufrisiko-Signal.
   const allMarketPids = items.map((it) => marketEntryPid(it)).filter(Boolean);
   const recentNews = await getRecentNewsForPlayers(allMarketPids, { limit: 200 });
   const newsByPlayer = new Map<string, number>();
@@ -152,7 +152,7 @@ export default async function MarketPage({
   }
 
   // 3. Try to also build a Bundesliga-weite player pool for rank computation.
-  //    competitionPlayers is best-effort — if it fails, we skip ranks.
+  //    competitionPlayers is best-effort – if it fails, we skip ranks.
   const compChunks = await Promise.all(
     [1, 2, 3, 4].map((pos) =>
       withKbAuth(path, () =>
@@ -215,7 +215,7 @@ export default async function MarketPage({
     avg: (a, b) => statsFor(marketEntryPid(b)).avg - statsFor(marketEntryPid(a)).avg,
     mv: (a, b) => (b.mv ?? 0) - (a.mv ?? 0),
     mvt: (a, b) => (b.mvt ?? 0) - (a.mvt ?? 0),
-    // Aufsteigend nach Sekunden bis Ablauf — bald ablaufend zuerst.
+    // Aufsteigend nach Sekunden bis Ablauf – bald ablaufend zuerst.
     // Ohne exs (z.B. eigene Angebote) ans Ende sortieren.
     expiry: (a, b) => {
       const ax = a.exs ?? Number.POSITIVE_INFINITY;
@@ -406,7 +406,7 @@ export default async function MarketPage({
                         />
                         <div className="flex flex-col leading-tight">
                           <span className="text-base font-bold tabular leading-none">
-                            {avg > 0 ? avg : "—"}
+                            {avg > 0 ? avg : "–"}
                           </span>
                           <span className="text-[9px] uppercase tracking-wider text-muted-foreground font-medium leading-none mt-0.5">
                             Ø Spieltag

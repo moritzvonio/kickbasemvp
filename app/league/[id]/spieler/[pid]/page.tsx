@@ -200,7 +200,7 @@ export default async function PlayerPage({
         <StatCard
           icon={<Target className="size-4" />}
           label="Punkte gesamt"
-          value={player.tp !== undefined ? player.tp.toLocaleString("de-DE") : "—"}
+          value={player.tp !== undefined ? player.tp.toLocaleString("de-DE") : "–"}
           sub={
             player.g !== undefined || player.a !== undefined
               ? `${player.g ?? 0} Tore · ${player.a ?? 0} Vorlagen`
@@ -211,7 +211,7 @@ export default async function PlayerPage({
         <StatCard
           icon={<Activity className="size-4" />}
           label="Ø pro Spieltag"
-          value={player.ap !== undefined ? String(player.ap) : "—"}
+          value={player.ap !== undefined ? String(player.ap) : "–"}
           accent="info"
         />
       </div>
@@ -235,8 +235,8 @@ export default async function PlayerPage({
             <>
               <MarketValueChart data={points} color="#10b981" />
               <div className="grid grid-cols-3 gap-3 mt-5 text-xs">
-                <Mini label="Tief 92T" value={mv92?.lmv ? formatEUR(mv92.lmv, { compact: true }) : "—"} />
-                <Mini label="Hoch 92T" value={mv92?.hmv ? formatEUR(mv92.hmv, { compact: true }) : "—"} />
+                <Mini label="Tief 92T" value={mv92?.lmv ? formatEUR(mv92.lmv, { compact: true }) : "–"} />
+                <Mini label="Hoch 92T" value={mv92?.hmv ? formatEUR(mv92.hmv, { compact: true }) : "–"} />
                 <Mini
                   label="Heute"
                   value={trend24 ? formatDelta(trend24) : "0 €"}
@@ -320,7 +320,7 @@ export default async function PlayerPage({
                             </div>
                           </td>
                           <td className="text-center text-xs text-muted-foreground tabular hidden sm:table-cell">
-                            {m.mp ?? "—"}
+                            {m.mp ?? "–"}
                           </td>
                           <td className="text-right pr-1 font-mono font-semibold">
                             {pts !== undefined ? (
@@ -340,7 +340,7 @@ export default async function PlayerPage({
                                 {pts}
                               </span>
                             ) : (
-                              "—"
+                              "–"
                             )}
                           </td>
                         </tr>

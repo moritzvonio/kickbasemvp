@@ -24,13 +24,13 @@ export default async function LeagueNewsPage({
   const path = `/league/${leagueId}/news`;
   const session = await requireSessionOrRedirect(path);
 
-  // Player-Index check — wenn stale, rebuild im Hintergrund (lazy)
+  // Player-Index check – wenn stale, rebuild im Hintergrund (lazy)
   let idx = await getPlayerIndex();
   if (isIndexStale(idx)) {
     try {
       idx = await rebuildPlayerIndex(session.token);
     } catch {
-      // ignore — leerer Index ist OK, taggt halt nichts
+      // ignore – leerer Index ist OK, taggt halt nichts
     }
   }
 
@@ -63,7 +63,7 @@ export default async function LeagueNewsPage({
         <p className="text-sm text-muted-foreground mt-2">
           {items.length === 0
             ? NEWS_STORE_BACKEND === "memory"
-              ? "Noch keine News — Cron läuft noch nicht oder KV-Store noch nicht aktiv."
+              ? "Noch keine News – Cron läuft noch nicht oder KV-Store noch nicht aktiv."
               : "Quellen werden alle 30 Min eingelesen. Schau gleich nochmal vorbei."
             : `${items.length} News · Filter "Mein Team" zeigt nur Spieler aus deinem Kader.`}
         </p>
@@ -72,7 +72,7 @@ export default async function LeagueNewsPage({
       {idx.count === 0 && (
         <Card className="bg-amber-50/40 border-amber-200">
           <div className="p-3 text-xs text-amber-900">
-            <strong>Hinweis:</strong> Spieler-Index noch nicht aufgebaut —
+            <strong>Hinweis:</strong> Spieler-Index noch nicht aufgebaut –
             Spielername-Tagging ist deaktiviert. Refreshe die Seite, das passiert
             automatisch.
           </div>

@@ -3,7 +3,7 @@ import { z } from "zod";
 const Env = z.object({
   KICKBASE_API_BASE: z.string().url().default("https://api.kickbase.com"),
   SESSION_SECRET: z.string().min(32, "SESSION_SECRET must be >= 32 chars"),
-  NEXT_PUBLIC_APP_NAME: z.string().default("LigaBase"),
+  NEXT_PUBLIC_APP_NAME: z.string().default("Ligabase"),
   NEXT_PUBLIC_APP_URL: z.string().default("https://ligabase.de"),
   NEXT_PUBLIC_VAPID_PUBLIC_KEY: z.string().optional(),
   NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
@@ -11,14 +11,14 @@ const Env = z.object({
   CRON_SECRET: z.string().min(16).optional(),
   DISCORD_INGEST_SECRET: z.string().optional(),
   NEWS_DISABLE_MOCKS: z.string().optional(),
-  // Stripe (optional — leer lassen deaktiviert den Pro-Checkout)
+  // Stripe (optional – leer lassen deaktiviert den Pro-Checkout)
   STRIPE_SECRET_KEY: z.string().optional(),
   STRIPE_WEBHOOK_SECRET: z.string().optional(),
   STRIPE_PRICE_HINRUNDE_2627: z.string().optional(),
   STRIPE_PRICE_RUECKRUNDE_2627: z.string().optional(),
 });
 
-// Production: KEIN Fallback — fehlt SESSION_SECRET wird der Build crashen
+// Production: KEIN Fallback – fehlt SESSION_SECRET wird der Build crashen
 // statt mit publicly-known Default zu laufen.
 const isProdBuild = process.env.NODE_ENV === "production";
 const sessionSecret =

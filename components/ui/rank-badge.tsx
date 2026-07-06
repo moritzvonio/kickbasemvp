@@ -1,7 +1,7 @@
 import { cn } from "@/lib/utils";
 
 /**
- * Medal-style rank badge — shows the player's actual Bundesliga ranking
+ * Medal-style rank badge – shows the player's actual Bundesliga ranking
  * with a tier-colored medallion background.
  *
  * Tiers (Bundesliga ~500 active players):

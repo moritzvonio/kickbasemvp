@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * App-Install-Banner — macht aus der PWA eine "richtige" App auf dem Homescreen.
+ * App-Install-Banner – macht aus der PWA eine "richtige" App auf dem Homescreen.
  *
  * Zwei Pfade:
  *  - Android/Chrome (+ Edge): natives `beforeinstallprompt`-Event → echter
@@ -58,7 +58,7 @@ export function InstallPrompt() {
     };
     window.addEventListener("beforeinstallprompt", onBeforeInstall);
 
-    // iOS: kein Event — nach kurzer Verzögerung Anleitung zeigen
+    // iOS: kein Event – nach kurzer Verzögerung Anleitung zeigen
     let timer: ReturnType<typeof setTimeout> | undefined;
     if (isIos()) {
       timer = setTimeout(() => {
@@ -95,7 +95,7 @@ export function InstallPrompt() {
       className="fixed inset-x-3 bottom-3 z-50 sm:inset-x-auto sm:right-4 sm:max-w-sm"
       style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
       role="dialog"
-      aria-label="LigaBase als App installieren"
+      aria-label="Ligabase als App installieren"
     >
       <div className="rounded-xl border border-border bg-background/95 backdrop-blur shadow-lg ring-1 ring-primary/15 p-3.5">
         <div className="flex items-start gap-3">
@@ -108,17 +108,17 @@ export function InstallPrompt() {
             className="rounded-lg shrink-0"
           />
           <div className="min-w-0 flex-1 text-sm">
-            <div className="font-semibold">LigaBase als App</div>
+            <div className="font-semibold">Ligabase als App</div>
             {mode === "native" ? (
               <p className="text-xs text-muted-foreground mt-0.5">
-                Direkt auf dem Homescreen — mit Vollbild und Push.
+                Direkt auf dem Homescreen – mit Vollbild und Push.
               </p>
             ) : (
               <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
                 Tipp auf <Share className="inline size-3.5 -mt-0.5 text-primary" aria-label="Teilen" />{" "}
                 <span className="font-medium text-foreground">Teilen</span> und dann{" "}
                 <SquarePlus className="inline size-3.5 -mt-0.5 text-primary" aria-label="Zum Home-Bildschirm" />{" "}
-                <span className="font-medium text-foreground">&bdquo;Zum Home-Bildschirm&ldquo;</span> —
+                <span className="font-medium text-foreground">&bdquo;Zum Home-Bildschirm&ldquo;</span> –
                 fertig ist die App.
               </p>
             )}

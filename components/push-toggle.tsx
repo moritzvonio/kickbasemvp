@@ -39,7 +39,7 @@ export function PushToggle() {
   async function enable() {
     setError(null);
     if (!VAPID_PUBLIC_KEY) {
-      setError("VAPID_PUBLIC_KEY fehlt — bitte Admin kontaktieren.");
+      setError("VAPID_PUBLIC_KEY fehlt – bitte Admin kontaktieren.");
       return;
     }
     if (Notification.permission === "denied") {

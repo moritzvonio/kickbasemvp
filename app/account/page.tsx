@@ -61,8 +61,8 @@ export default async function AccountPage() {
           <CardContent className="p-6 flex items-center gap-4">
             <UserAvatar name={session.name ?? "?"} size="lg" />
             <div className="flex-1 min-w-0">
-              <div className="font-semibold text-lg truncate">{session.name ?? "—"}</div>
-              <div className="text-sm text-muted-foreground truncate">{session.email ?? "—"}</div>
+              <div className="font-semibold text-lg truncate">{session.name ?? "–"}</div>
+              <div className="text-sm text-muted-foreground truncate">{session.email ?? "–"}</div>
               <div className="text-xs text-muted-foreground mt-1 font-mono tabular">
                 ID: {session.userId}
               </div>
@@ -152,7 +152,7 @@ export default async function AccountPage() {
         </Card>
 
         <p className="text-xs text-muted-foreground text-center pt-4">
-          LigaBase ist nicht offiziell mit Kickbase verbunden. Nutzung auf eigene Verantwortung.
+          Ligabase ist nicht offiziell mit Kickbase verbunden. Nutzung auf eigene Verantwortung.
         </p>
       </main>
     </div>

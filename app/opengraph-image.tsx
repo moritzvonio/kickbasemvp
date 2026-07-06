@@ -2,7 +2,7 @@ import { ImageResponse } from "next/og";
 
 export const runtime = "edge";
 
-export const alt = "LigaBase — die smarteste Companion-App für deine Liga";
+export const alt = "Ligabase – Kontostände, Max-Gebote und Netto-Teamwert für deine Kickbase-Liga";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -70,7 +70,7 @@ export default async function Image() {
             letterSpacing: 3,
           }}
         >
-          LigaBase
+          Ligabase
         </div>
         <div
           style={{
@@ -82,8 +82,8 @@ export default async function Image() {
             display: "flex",
           }}
         >
-          Deine Liga,{" "}
-          <span style={{ color: "#10b981" }}>smarter gespielt.</span>
+          Sieh, was deine Liga{" "}
+          <span style={{ color: "#10b981" }}>bieten kann.</span>
         </div>
         <div
           style={{
@@ -93,7 +93,7 @@ export default async function Image() {
             maxWidth: 920,
           }}
         >
-          Liga-Dashboard · Marktwert-Insights · Transfer-Coach
+          Kontostände · Max-Gebote · Netto-Teamwert – für deine Kickbase-Liga
         </div>
       </div>
     ),

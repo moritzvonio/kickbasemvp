@@ -21,17 +21,17 @@ const PROFILE_META: Record<
   round: {
     label: "Round-Bidder",
     color: "bg-emerald-50 text-emerald-700 ring-emerald-200",
-    description: "Bietet meist auf volle Mio / halbe Mio — leicht zu schlagen",
+    description: "Bietet meist auf volle Mio / halbe Mio – leicht zu schlagen",
   },
   fine: {
     label: "Fine-Bidder",
     color: "bg-amber-50 text-amber-700 ring-amber-200",
-    description: "Bietet auf 100k-Schritte — moderat zu schlagen",
+    description: "Bietet auf 100k-Schritte – moderat zu schlagen",
   },
   sniper: {
     label: "Sniper",
     color: "bg-rose-50 text-rose-700 ring-rose-200",
-    description: "Krumme Bids — schwer zu antizipieren, defensiv bieten",
+    description: "Krumme Bids – schwer zu antizipieren, defensiv bieten",
   },
   unknown: {
     label: "Zu wenig Daten",
@@ -97,7 +97,7 @@ export function BidAdvisor({
         {marketValue > 0 ? (
           <div className="space-y-2">
             <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold mb-1">
-              Empfohlene Bids — pro Konkurrent
+              Empfohlene Bids – pro Konkurrent
             </div>
             {sorted.map((m) => {
               const meta = PROFILE_META[m.pattern.profile];

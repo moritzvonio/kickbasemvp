@@ -1,5 +1,5 @@
 /**
- * News-Aggregator — Orchestriert Fetch, Tag und Store für alle Quellen.
+ * News-Aggregator – Orchestriert Fetch, Tag und Store für alle Quellen.
  *
  * Performance-Optimierungen für Vercel-Hobby-60s-Function-Limit:
  *  - Player-Index EINMAL pro Run laden (nicht pro Item)
@@ -47,7 +47,7 @@ export async function refreshAllSources(): Promise<AggregateResult> {
   const start = Date.now();
   syncSourceRegistry();
 
-  // Player-Index EINMAL laden (statt pro Item) — heilt sich bei leerem/
+  // Player-Index EINMAL laden (statt pro Item) – heilt sich bei leerem/
   // stalem Index selbst via Service-Login (KICKBASE_EMAIL/PASSWORD-Env)
   const idx = await ensureFreshPlayerIndex();
 

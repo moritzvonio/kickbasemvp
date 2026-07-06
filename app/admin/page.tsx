@@ -37,7 +37,7 @@ export default async function AdminPage() {
       <header className="border-b border-border/60">
         <div className="mx-auto max-w-5xl px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Link href="/" aria-label="LigaBase Startseite">
+            <Link href="/" aria-label="Ligabase Startseite">
               <Logo size={30} />
             </Link>
             <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
@@ -74,7 +74,7 @@ export default async function AdminPage() {
             <Table head={["Manager", "User-ID", "Wann"]}>
               {stats.recentLogins.map((l, i) => (
                 <tr key={i} className="border-b border-border/30">
-                  <td className="py-2 pr-3 font-medium">{l.name ?? "—"}</td>
+                  <td className="py-2 pr-3 font-medium">{l.name ?? "–"}</td>
                   <td className="py-2 pr-3 font-mono text-xs text-muted-foreground">{l.userId}</td>
                   <td className="py-2 text-muted-foreground">{ago(l.ts)}</td>
                 </tr>

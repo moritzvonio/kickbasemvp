@@ -2,7 +2,7 @@
  * Bid-Pattern-Analyzer.
  *
  * Erkennt aus der Transfer-History eines Liga-Mitglieds, wie er typischerweise
- * bietet — auf welche Rundungs-Stufen, mit welchem Premium über Marktwert,
+ * bietet – auf welche Rundungs-Stufen, mit welchem Premium über Marktwert,
  * wie häufig. Ergebnis ist eine Heuristik-basierte Bid-Empfehlung der Form
  * „Biete X.X Mio + 1k um diesen Manager zu schlagen".
  */
@@ -115,7 +115,7 @@ export function analyzeBidPattern(
  * zu schlagen, gegeben einen Marktwert.
  *
  * Strategie pro Profil:
- *  - round   → biete `roundedUp + 1` (+1 €), schlägt auf den Cent — sehr knapp
+ *  - round   → biete `roundedUp + 1` (+1 €), schlägt auf den Cent – sehr knapp
  *  - fine    → biete `roundedUp + 50_000` (Schutzpolster für 50k-Steps)
  *  - sniper  → biete `mv + 5%` (defensiv, sniper kann ANYTHING)
  *  - unknown → biete `mv + 1%` (Default, leichte Über-MV-Marge)
@@ -123,7 +123,7 @@ export function analyzeBidPattern(
 export interface BidRecommendation {
   /** Empfohlener minimaler Bid um diesen Manager zu schlagen */
   minBidToBeat: number;
-  /** "Sicherer" Bid mit kleinem Polster — empfohlen */
+  /** "Sicherer" Bid mit kleinem Polster – empfohlen */
   safeBid: number;
   /** Reasoning für die UI */
   rationale: string;
@@ -174,7 +174,7 @@ export function recommendBid(
         safeBid,
         rationale: `Manager bietet "snipernd" (${Math.round(
           pattern.sniperPct * 100
-        )}% krumme Beträge). Schwer zu antizipieren — empfohlen: +5% über MV als Schutzpolster (${formatM(
+        )}% krumme Beträge). Schwer zu antizipieren – empfohlen: +5% über MV als Schutzpolster (${formatM(
           safeBid
         )}).`,
       };
@@ -186,7 +186,7 @@ export function recommendBid(
         safeBid: Math.ceil(marketValue * 1.05),
         rationale:
           pattern.buyCount === 0
-            ? "Keine Käufe analysierbar — Default-Empfehlung +1% über MV."
+            ? "Keine Käufe analysierbar – Default-Empfehlung +1% über MV."
             : `Zu wenige Käufe (${pattern.buyCount}) für robustes Profil. +1% über MV.`,
       };
     }

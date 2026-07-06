@@ -3,7 +3,7 @@ import { env } from "@/lib/env";
 
 let _stripe: Stripe | null = null;
 
-/** Lazy Stripe init. Returns null if STRIPE_SECRET_KEY is missing — callers handle. */
+/** Lazy Stripe init. Returns null if STRIPE_SECRET_KEY is missing – callers handle. */
 export function getStripe(): Stripe | null {
   if (_stripe) return _stripe;
   const key = env.STRIPE_SECRET_KEY;

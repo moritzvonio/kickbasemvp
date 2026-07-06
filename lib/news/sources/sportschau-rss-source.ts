@@ -1,5 +1,5 @@
 /**
- * Sportschau (ARD) — Sport-RSS, BL-übergreifend.
+ * Sportschau (ARD) – Sport-RSS, BL-übergreifend.
  * 50+ Items, frei zugänglich, sehr zuverlässig.
  */
 
@@ -17,7 +17,7 @@ export const sportschauSource: NewsSource = {
     const items = await fetchRssFeed(SPORTSCHAU_RSS, "sportschau", {
       maxItems: 20,
     });
-    // Sportschau ist breit (auch andere Sportarten) — wir filtern auf Fußball/BL
+    // Sportschau ist breit (auch andere Sportarten) – wir filtern auf Fußball/BL
     return items.filter((it) => {
       const text = `${it.title} ${it.body ?? ""}`.toLowerCase();
       return (

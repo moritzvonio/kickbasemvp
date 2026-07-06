@@ -8,7 +8,7 @@ const ALGO = "dir";
 const ENC = "A256GCM";
 
 function getKey(): Uint8Array {
-  // SHA-256 produces a uniform 32-byte key from any secret length —
+  // SHA-256 produces a uniform 32-byte key from any secret length –
   // robust gegen schwache/short/weak SESSION_SECRET-Werte (besser als
   // byte-modulo padding das die Entropie nicht erhöht).
   return new Uint8Array(createHash("sha256").update(env.SESSION_SECRET).digest());

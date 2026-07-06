@@ -1,5 +1,5 @@
 /**
- * Pro entitlement — cookie-based MVP.
+ * Pro entitlement – cookie-based MVP.
  *
  * After a successful Stripe checkout we set a JWE-encrypted cookie containing
  * the user id, plan, and an expiry timestamp. That's the source of truth until
@@ -85,7 +85,7 @@ const memTrial = new Map<string, string>();
 
 /**
  * Hält den Zeitpunkt des ersten Logins fest (nur wenn noch nicht vorhanden).
- * Best-effort — der Login darf hieran NIE scheitern.
+ * Best-effort – der Login darf hieran NIE scheitern.
  */
 export async function recordFirstLoginTrial(userId: string): Promise<void> {
   const iso = new Date().toISOString();

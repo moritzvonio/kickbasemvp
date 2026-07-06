@@ -6,7 +6,7 @@ import { useEffect } from "react";
 /**
  * Sendet bei jedem (Client-)Seitenwechsel einen leichten Beacon an /api/track.
  * Server ordnet ihn der eingeloggten Session zu (First-Party, cookiebasiert
- * über die bestehende Session — kein zusätzliches Tracking-Cookie).
+ * über die bestehende Session – kein zusätzliches Tracking-Cookie).
  */
 export function TrackPageView() {
   const pathname = usePathname();

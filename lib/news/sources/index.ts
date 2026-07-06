@@ -1,5 +1,5 @@
 /**
- * Source-Registry — alle aktiven News-Quellen.
+ * Source-Registry – alle aktiven News-Quellen.
  *
  * Mock-Sources werden über NEWS_DISABLE_MOCKS=1 deaktiviert (sobald echte
  * Twitter/RSS-Source live ist).

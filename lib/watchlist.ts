@@ -1,5 +1,5 @@
 /**
- * Watchlist persistence — cookie-based MVP.
+ * Watchlist persistence – cookie-based MVP.
  *
  * Stores a comma-separated list of player IDs in a non-httpOnly cookie so the
  * client can read it as well. Limited to ~50 IDs (cookie size budget). When we
