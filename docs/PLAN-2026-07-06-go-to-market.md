@@ -79,9 +79,8 @@ Deshalb: großzügiger Free-Tier, Pro nur für den Differenzierer, und ein sozia
 | **Free** | Liga-Dashboard, Top-50, News, Liga-Feed, Aufstellungs-Planer | 0 € |
 | **Testphase** | ALLES (inkl. Wettbewerb/Cash) | kostenlos bis einschl. **2. Spieltag** (bzw. 14 Tage ab Registrierung, was später endet) |
 | **Pro** | Wettbewerb (Cash/Max-Gebote aller Mitspieler), Bid-Advisor, Netto-Teamwert-Verlauf | **6 €/Halbserie** (Hinrunde bzw. Rückrunde) – Einmalzahlung, kein Abo |
-| **Liga-Pass** (Vorschlag, offen) | Pro für ALLE Manager einer Liga | **15 €/Halbserie** |
 
-**ENTSCHIEDEN (Mourice, 06.07.):** Testphase + 6 €/Halbserie.
+**ENTSCHIEDEN (Mourice, 06.07.):** Testphase + 6 €/Halbserie. **Kein Liga-Pass.**
 
 **Umsetzungsdetails:**
 - **Einmalzahlung statt Abo**: Stripe One-Time-Checkout, Entitlement bis Stichtag
@@ -94,14 +93,24 @@ Deshalb: großzügiger Free-Tier, Pro nur für den Differenzierer, und ein sozia
   Später-Einsteiger greift alternativ 14 Tage ab Registrierung.
 - **Psychologischer Anker**: 6 € ≈ anderthalb Bier pro Halbserie; Kickbase Pro selbst
   kostet 26,99 €/Jahr – wir sind die günstige Ergänzung, nicht das zweite Abo.
-- **Liga-Pass** (noch nicht entschieden): 15 €/Halbserie für die ganze Liga = ab 3 Käufern
-  günstiger als einzeln; nutzt die WhatsApp-Gruppen-Dynamik. Empfehlung: mit anbieten.
-- Creator-Codes: 30 % Rabatt für Käufer (4,20 €) + 30 % Rev-Share für den Creator (Stripe
-  Promotion Codes, sauber trackbar). Kein Wettbewerber hat so etwas.
+- Creator-Codes: 30 % Rabatt für Käufer (4,20 €) + 30 % Rev-Share für den Creator
+  (Stripe Promotion Codes, sauber trackbar). Kein Wettbewerber hat so etwas.
+  **Stufenmodell gegen Verwaltungs-Overhead**: Stufe 1 = Barter (Creator + Liga gratis)
+  + Rabattcode fürs Publikum, noch KEINE Auszahlung; Stufe 2 = ab 25 Käufen über den
+  Code beginnt der 30 %-Rev-Share (rückwirkend). So entsteht Auszahlungs-Bürokratie
+  nur da, wo ein Kanal nachweislich zieht.
 - Rückrunden-Reminder als natürlicher zweiter Kaufmoment (Januar) – E-Mail/Push an
   Hinrunden-Käufer.
-
-> **NOCH OFFEN:** Liga-Pass ja/nein + Preis, Rev-Share-Höhe.
+- **Steuer-Setup** (kein Steuerberatungs-Ersatz): Bei den realistischen Anfangsumsätzen
+  (dreistellig bis niedrig vierstellig pro Halbserie) greift die Kleinunternehmerregelung
+  (§ 19 UStG, seit 2025: Vorjahr ≤ 25.000 €) – dann KEINE Umsatzsteuer, keine
+  USt-Voranmeldungen, nur Einnahmen in der ESt. Voraussetzung: Ligabase läuft als
+  eigenes Einzelunternehmen/Gewerbe von Mourice, NICHT über die Vonio UG (deren Umsatz
+  die Grenze reißt). „Spenden statt Verkauf" löst das Steuerthema NICHT: Zahlung gegen
+  Pro-Freischaltung ist steuerlich ein Verkauf, egal wie man ihn nennt – und
+  Spenden-Modelle konvertieren in der Nische nachweislich schlecht (BaseXI/Kickly
+  bleiben Hobby-Projekte). Einmal kurz mit dem Steuerberater die Gewerbe-Anmeldung
+  klären, dann ist 6 €/Halbserie administrativ trivial.
 
 ---
 
@@ -214,10 +223,9 @@ Guardrails (teils erledigt, teils Pflicht vor Launch):
 2. API-Zugriff schonend halten: Caching (KV) aggressiv nutzen, keine Polling-Exzesse;
    Requests skalieren mit Ligen, nicht mit Seitenaufrufen
 3. Keine Features, die ins Spiel EINGREIFEN (kein Auto-Bieten o.ä.) – nur Lesen + Rechnen
-4. Vor der Creator-Welle: informelle, freundliche Mail an Kickbase Support/Partnerships
-   („Fan-Projekt, wir halten uns an X/Y, Ansprechpartner bei Bedenken") – schafft
-   dokumentierten guten Willen. **ENTSCHEIDUNG MOURICE: ja/nein** (Trade-off: schlafende
-   Hunde vs. Absicherung)
+4. ~~Kickbase proaktiv kontaktieren~~ **ENTSCHIEDEN 06.07.: NEIN** (keine schlafenden
+   Hunde wecken). Konsequenz: Guardrails 1–3 werden Pflicht statt Kür, und Plan B
+   (Punkt 5, v.a. die E-Mail-Liste ab Tag 1) bekommt höhere Priorität.
 5. Plan B, falls API-Zugang kippt: News-Layer + Content + Community sind API-unabhängig;
    E-Mail-Liste der User von Tag 1 an aufbauen (Kontaktkanal, den uns niemand nehmen kann)
 
@@ -255,14 +263,23 @@ geöffnet → Share/Invite → Kauf. Wöchentlicher Blick, keine Dashboards-Bast
 
 ---
 
-## 10. Offene Entscheidungen (Mourice)
+## 10. Entscheidungen (alle getroffen, 06.07.2026)
 
-1. ~~Pricing~~ **ENTSCHIEDEN 06.07.**: Testphase (bis einschl. Spieltag 2 bzw. 14 Tage) +
-   6 €/Halbserie als Einmalzahlung. Offen bleibt nur: **Liga-Pass ja/nein (Vorschlag 15 €/Halbserie)**
-2. **Rev-Share**: 30 % ok? (Alternative: 50 % im ersten Monat als Türöffner)
-3. **Kickbase proaktiv kontaktieren**: ja/nein (Abschnitt 7.4)
-4. **Markenschreibweise**: „Ligabase" oder „LigaBase" (dann überall konsistent)
-5. **Absender der Creator-Mails**: du persönlich (empfohlen – Indie-Maker-Story zieht) oder Team-Alias
+1. **Pricing**: Testphase (bis einschl. Spieltag 2 bzw. 14 Tage) + 6 €/Halbserie
+   als Einmalzahlung. **Kein Liga-Pass.**
+2. **Rev-Share**: 30 % – mit Stufenmodell (Auszahlung erst ab 25 Käufen pro Code,
+   s. Abschnitt 3) gegen Verwaltungs-Overhead. Spenden-Modell verworfen (löst weder
+   Steuer noch Conversion, s. Abschnitt 3).
+3. **Kickbase proaktiv kontaktieren**: NEIN.
+4. **Markenschreibweise**: „Ligabase" (Fließtext) / „LIGABASE" (Logo/Display) –
+   Landing, Manifest, Meta-Titles entsprechend vereinheitlichen (Teil von Slice S6).
+5. **Creator-Mails**: von Mourice persönlich (Indie-Maker-Story).
 
-Nach Freigabe: Slices S1–S5 als eigene /blueprint-Pläne, Creator-Mails als Drafts zur Durchsicht.
-Slice S0 (zuerst): Stripe-Umbau auf Halbserien-Einmalzahlung + Testphasen-Entitlement.
+**Build-Reihenfolge:**
+- **S0 – Monetarisierung**: Stripe-Umbau auf Halbserien-Einmalzahlung (2 Produkte:
+  Hinrunde/Rückrunde), Testphasen-Entitlement (Spieltag-2-Logik + 14-Tage-Fallback),
+  Paywall auf Wettbewerb/Bid-Advisor, Promotion-Codes-Support
+- **S1 – Share-Cards** · **S2 – Public Liga-Snapshot** · **S3 – Referral light**
+  · **S4 – Onboarding-TTW** · **S5 – Code-Tracking im /admin**
+- **S6 – Marken-/Landing-Refresh** (Ligabase/LIGABASE, Cash-Hook-Hero, Disclaimer)
+- Parallel (kein Code): GSC einrichten, Content-Serie starten, Creator-Mail-Drafts
