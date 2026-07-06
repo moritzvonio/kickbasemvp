@@ -4,8 +4,12 @@ import { notFound } from "next/navigation";
 import { getSession } from "@/lib/session";
 import { isAdmin } from "@/lib/auth";
 import { getAdminStats } from "@/lib/admin/analytics";
+import { getSalesStats } from "@/lib/admin/stripe-stats";
 import { Logo } from "@/components/ui/logo";
 import { Users, Activity, BarChart3, ExternalLink } from "lucide-react";
+
+const eur = (n: number) =>
+  n.toLocaleString("de-DE", { style: "currency", currency: "EUR" });
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = {
@@ -31,6 +35,7 @@ export default async function AdminPage() {
   if (!isAdmin(session?.userId)) notFound();
 
   const stats = await getAdminStats();
+  const sales = await getSalesStats();
 
   return (
     <div className="min-h-full bg-background">
@@ -59,6 +64,44 @@ export default async function AdminPage() {
           <Kpi icon={<Activity className="size-4" />} label="Aktiv (7 Tage)" value={stats.activeUsers7d} />
           <Kpi icon={<BarChart3 className="size-4" />} label="Letzte Logins" value={stats.recentLogins.length} />
         </div>
+
+        {/* Verkäufe & Codes (nur wenn Stripe konfiguriert) */}
+        {sales && (
+          <Section title="Verkäufe & Codes">
+            <div className="flex flex-wrap gap-x-8 gap-y-2 mb-4 text-sm">
+              <div>
+                <span className="text-muted-foreground">Käufe gesamt: </span>
+                <span className="font-bold tabular">{sales.totalSales}</span>
+              </div>
+              <div>
+                <span className="text-muted-foreground">Umsatz gesamt: </span>
+                <span className="font-bold tabular">{eur(sales.totalRevenue)}</span>
+              </div>
+            </div>
+            {Object.keys(sales.byCode).length === 0 ? (
+              <Empty text="Noch keine Käufe." />
+            ) : (
+              <Table head={["Code", "Käufe", "Umsatz", "Rev-Share (30 % ab 25)"]}>
+                {Object.entries(sales.byCode)
+                  .sort((a, b) => b[1].count - a[1].count)
+                  .map(([code, c]) => (
+                    <tr key={code} className="border-b border-border/30">
+                      <td className="py-2 pr-3 font-mono text-xs">{code}</td>
+                      <td className="py-2 pr-3 tabular">{c.count}</td>
+                      <td className="py-2 pr-3 tabular">{eur(c.revenue)}</td>
+                      <td className="py-2 tabular text-muted-foreground">
+                        {code === "ohne Code"
+                          ? "–"
+                          : c.count >= 25
+                          ? eur(c.revenue * 0.3)
+                          : `noch ${25 - c.count} bis zur Auszahlung`}
+                      </td>
+                    </tr>
+                  ))}
+              </Table>
+            )}
+          </Section>
+        )}
 
         {/* Externe Analytics */}
         <div className="grid sm:grid-cols-2 gap-4">

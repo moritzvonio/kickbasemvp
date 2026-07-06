@@ -310,8 +310,8 @@ verspricht Features, die nicht existieren, Rechtsseiten fehlen (404!), und auf M
 - **Edge-Cases:** >100 Sessions (paginieren bis `has_more` false, hart bei 1000 kappen),
   Sessions ohne Code (Bucket „ohne Code").
 - **Akzeptanzkriterien:**
-  - [ ] Ohne Stripe-Env rendert /admin unverändert ohne Fehler
-  - [ ] Mit Test-Kauf (Stripe-Testmode) erscheint der Kauf + Code in der Tabelle
+  - [x] Ohne Stripe-Env rendert /admin unverändert ohne Fehler (live: HTTP 200, Sektion ausgeblendet)
+  - [ ] Mit Test-Kauf (Stripe-Testmode) erscheint der Kauf + Code in der Tabelle — OFFEN: braucht Stripe-Testkeys (Ops §7.4); Code aggregiert korrekt nach `discounts.promotion_code`
 - **Verify:** lokal mit Stripe-Testkeys + Test-Checkout (Karte 4242…), /admin prüfen.
 
 ### Slice S6: Marke, Landing, Recht — ehrlich und konsistent (M)
@@ -608,3 +608,12 @@ wettbewerb/page.tsx — dort S0 zuerst, S7 danach).
 - **Lokale End-to-End-Grenze:** Login→Credit→getAccess ist lokal nicht curl-bar (kein zweiter echter
   Kickbase-Account; die Erstlogin-Erkennung des memTrial ist prozess-lokal). Abgedeckt durch Unit-Tests
   (Cap/Bonus/Erstlogin-nx) + Component-Checks (Account-Invite, Login akzeptiert ref); Prod-KV bestätigt.
+
+### S5 (2026-07-06)
+- **`getSalesStats`** paginiert `checkout.sessions.list({status:"complete"})` bis `has_more`=false (hart bei
+  10 Seiten/1000 Sessions), löst den Code über `expand: ["data.discounts.promotion_code"]` auf, zählt nur
+  `payment_status==="paid"`, Bucket „ohne Code" für codelose Käufe, 5-Min-KV-Cache (`admin:salesstats`).
+- **Admin-Sektion „Verkäufe & Codes"** mit Rev-Share-Spalte (30 % ab 25 Käufen/Code, sonst „noch X bis
+  Auszahlung") – direkt für die Creator-Abrechnung. Sektion nur sichtbar wenn Stripe konfiguriert.
+- **Test-Kauf-Kriterium lokal nicht verifizierbar** (keine Stripe-Testkeys) → nur der No-Stripe-Pfad live
+  belegt; der Testmode-Kauf ist Ops §7.4.
