@@ -236,7 +236,7 @@ export default async function WettbewerbPage({
                 key={t.key}
                 href={`?sort=${t.key}`}
                 className={cn(
-                  "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium border transition-colors",
+                  "inline-flex items-center gap-1.5 px-2.5 py-1.5 min-h-[36px] rounded-full text-[11px] font-medium border transition-colors",
                   active
                     ? "bg-primary text-primary-foreground border-primary shadow-sm"
                     : "border-border text-muted-foreground hover:text-foreground hover:bg-accent"
@@ -655,23 +655,31 @@ function CashValidationPanel({ stats }: { stats: ManagerComputedStats }) {
     { label: "Rest-Term (kalibriert)", value: stats.calibratedResidualBonus, color: "text-muted-foreground" },
   ];
 
+  const accurate = absErr < 1_000_000;
+  const tone = accurate ? "success" : absErr < 5_000_000 ? "muted" : "danger";
+
   return (
-    <div
-      className={cn(
-        "mt-4 rounded-lg border p-3",
-        absErr < 1_000_000
-          ? "border-emerald-300 bg-emerald-50/40"
-          : absErr < 5_000_000
-          ? "border-amber-300 bg-amber-50/40"
-          : "border-rose-300 bg-rose-50/40"
-      )}
-    >
-      <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-2 flex items-center gap-2">
-        📊 Modell-Validierung an deinem Konto
-        <Badge variant={absErr < 1_000_000 ? "success" : absErr < 5_000_000 ? "muted" : "danger"} className="text-[9px]">
-          {absErr < 1_000_000 ? "✓ Genau" : absErr < 5_000_000 ? "Akzeptabel" : "Modell-Drift!"}
+    <details className="mt-4 group">
+      <summary className="cursor-pointer list-none flex flex-wrap items-center gap-2 text-[11px] py-1.5 text-muted-foreground hover:text-foreground [&::-webkit-details-marker]:hidden">
+        <span className="font-medium">Wie genau ist das Modell?</span>
+        <Badge variant={tone} className="text-[9px]">
+          {accurate ? "✓ Validiert an deinem Konto" : "Abweichung"} · {err > 0 ? "+" : ""}
+          {formatEUR(err, { compact: true })}
         </Badge>
-      </div>
+      </summary>
+      <div
+        className={cn(
+          "mt-2 rounded-lg border p-3",
+          accurate
+            ? "border-emerald-300 bg-emerald-50/40"
+            : absErr < 5_000_000
+            ? "border-amber-300 bg-amber-50/40"
+            : "border-rose-300 bg-rose-50/40"
+        )}
+      >
+        <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-2 flex items-center gap-2">
+          📊 Modell-Validierung an deinem Konto
+        </div>
 
       <div className="grid grid-cols-3 gap-2 text-xs tabular mb-3">
         <div className="bg-white/70 rounded p-2 ring-1 ring-border">
@@ -726,7 +734,8 @@ function CashValidationPanel({ stats }: { stats: ManagerComputedStats }) {
         Dasselbe Strukturmodell schätzt die anderen Manager – die Abweichung oben
         zeigt, wie gut es aktuell trifft (Rest-Term wird daraus geeicht).
       </p>
-    </div>
+      </div>
+    </details>
   );
 }
 
@@ -781,12 +790,13 @@ function CompareTable({
 }) {
   return (
     <Card className="overflow-hidden mb-6">
-      <div className="overflow-x-auto">
-        <table className="w-full text-xs tabular">
+      <div className="relative">
+        <div className="overflow-x-auto">
+        <table className="w-full min-w-[720px] text-xs tabular">
           <thead>
             <tr className="border-b border-border bg-muted/40">
-              <th className="text-left pl-4 py-2.5 font-semibold w-10">#</th>
-              <th className="text-left py-2.5 font-semibold min-w-[140px]">
+              <th className="text-left pl-4 py-2.5 font-semibold w-10 sticky left-0 z-20 bg-muted">#</th>
+              <th className="text-left py-2.5 font-semibold min-w-[140px] sticky left-10 z-20 bg-muted">
                 Manager
               </th>
               <th className="text-right py-2.5 font-semibold">Punkte</th>
@@ -812,10 +822,20 @@ function CompareTable({
                     isMe && "bg-primary/[0.06] font-medium"
                   )}
                 >
-                  <td className="pl-4 py-2.5 text-muted-foreground">
+                  <td
+                    className={cn(
+                      "pl-4 py-2.5 text-muted-foreground sticky left-0 z-10",
+                      isMe ? "bg-emerald-50" : "bg-card"
+                    )}
+                  >
                     {i + 1}
                   </td>
-                  <td className="py-2.5">
+                  <td
+                    className={cn(
+                      "py-2.5 sticky left-10 z-10 shadow-[6px_0_6px_-4px_rgba(0,0,0,0.06)]",
+                      isMe ? "bg-emerald-50" : "bg-card"
+                    )}
+                  >
                     <div className="flex items-center gap-2 min-w-0">
                       <UserAvatar name={s.name} image={s.image} size="xs" />
                       <span className={cn("truncate", isMe && "font-semibold")}>
@@ -897,10 +917,10 @@ function CompareTable({
                 className="border-b border-border/40 last:border-0 select-none pointer-events-none"
                 aria-hidden
               >
-                <td className="pl-4 py-2.5 text-muted-foreground">
+                <td className="pl-4 py-2.5 text-muted-foreground sticky left-0 z-10 bg-card">
                   <span className="blur-sm">{stats.length + i + 1}</span>
                 </td>
-                <td className="py-2.5">
+                <td className="py-2.5 sticky left-10 z-10 bg-card shadow-[6px_0_6px_-4px_rgba(0,0,0,0.06)]">
                   <div className="flex items-center gap-2 min-w-0 blur-sm">
                     <span className="size-5 rounded-full bg-muted-foreground/30 shrink-0" />
                     <span className="truncate text-muted-foreground">Mitspieler</span>
@@ -918,6 +938,9 @@ function CompareTable({
             ))}
           </tbody>
         </table>
+        </div>
+        {/* Scroll-Affordance: weiche Fade-Kante rechts (nur < md, wo die Tabelle scrollt) */}
+        <div className="pointer-events-none absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-card to-transparent md:hidden" />
       </div>
       <p className="text-[10px] text-muted-foreground px-4 py-2 border-t border-border bg-muted/30">
         Sortierung folgt deiner Tab-Auswahl oben · Netto-TW = Teamwert + Cash

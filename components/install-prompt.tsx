@@ -92,7 +92,7 @@ export function InstallPrompt() {
 
   return (
     <div
-      className="fixed inset-x-3 bottom-3 z-50 sm:inset-x-auto sm:right-4 sm:max-w-sm"
+      className="fixed inset-x-3 bottom-20 md:bottom-3 z-50 sm:inset-x-auto sm:right-4 sm:max-w-sm"
       style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
       role="dialog"
       aria-label="Ligabase als App installieren"

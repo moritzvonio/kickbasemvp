@@ -63,7 +63,7 @@ export function LeagueTabs({ leagueId }: { leagueId: string }) {
   ];
 
   return (
-    <div className="mx-auto max-w-5xl px-4 pb-3">
+    <div className="mx-auto max-w-5xl px-4 pb-3 hidden md:block">
       <nav
         className="flex items-stretch max-w-full overflow-x-auto scrollbar-none gap-2"
         role="tablist"

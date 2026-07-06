@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { LogoutButton } from "@/components/logout-button";
 import { LeagueTabs } from "./LeagueTabs";
+import { BottomNav } from "@/components/bottom-nav";
 import { TrackPageView } from "@/components/track-page-view";
 import { Logo } from "@/components/ui/logo";
 import { UserAvatar } from "@/components/ui/user-avatar";
@@ -84,7 +85,10 @@ export default async function LeagueLayout({
         <LeagueTabs leagueId={id} />
       </header>
 
-      <main className="flex-1 mx-auto max-w-5xl w-full px-4 py-6 pb-24">{children}</main>
+      <main className="flex-1 mx-auto max-w-5xl w-full px-4 py-6 pb-24 md:pb-10">{children}</main>
+
+      {/* Mobile-Hauptnavigation (< md); ab md übernimmt die Tab-Leiste oben */}
+      <BottomNav />
     </div>
   );
 }

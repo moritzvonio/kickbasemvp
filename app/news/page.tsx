@@ -4,6 +4,7 @@ import { Newspaper } from "lucide-react";
 import { getRecentNews } from "@/lib/news/store";
 import { getPlayerIndex } from "@/lib/news/player-index";
 import { NewsStream } from "@/components/news/news-stream";
+import { AppHeader } from "@/components/app-header";
 
 export const metadata: Metadata = {
   title: "Bundesliga-News für Kickbase-Manager",
@@ -57,7 +58,9 @@ export default async function PublicNewsPage() {
   };
 
   return (
-    <main className="container mx-auto max-w-3xl py-8 px-4">
+    <>
+      <AppHeader />
+      <main className="container mx-auto max-w-3xl py-8 px-4">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
@@ -89,6 +92,7 @@ export default async function PublicNewsPage() {
         playerNameMap={playerNameMap}
         showFilters={false}
       />
-    </main>
+      </main>
+    </>
   );
 }

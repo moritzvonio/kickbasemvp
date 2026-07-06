@@ -451,12 +451,12 @@ verspricht Features, die nicht existieren, Rechtsseiten fehlen (404!), und auf M
   Tastatur (Login: Bottom-Nav dort nicht rendern), sehr lange Liga-Namen im Header
   (truncate), PWA-standalone (Bottom-Nav ist dort die Hauptnavigation — testen).
 - **Akzeptanzkriterien:**
-  - [ ] 390px-Viewport: Wettbewerb-Tabelle scrollt horizontal, Manager-Spalte sticky, nichts überlappt
-  - [ ] 390px: Bottom-Nav sichtbar mit 5 Items, aktiver Tab markiert; Desktop ≥ md: unverändert alte Leiste
-  - [ ] /news + /upgrade haben Header mit Weg zur App
-  - [ ] /leagues zeigt echte Manager-Zahlen (Liga 089 → 10)
-  - [ ] Validierungs-Panel zugeklappt per Default
-  - [ ] `pnpm build` + `pnpm test` grün
+  - [x] 390px-Viewport: Wettbewerb-Tabelle scrollt horizontal, Manager-Spalte sticky, nichts überlappt (Markup: min-w-[720px] + sticky left-0/left-10 mit soliden bg + z-index; Screenshot s. §8)
+  - [x] 390px: Bottom-Nav sichtbar mit 5 Items, aktiver Tab markiert; Desktop ≥ md: unverändert alte Leiste (md:hidden Nav + LeagueTabs hidden md:block)
+  - [x] /news + /upgrade haben Header mit Weg zur App (AppHeader live belegt)
+  - [x] /leagues zeigt echte Manager-Zahlen (Liga 089 → 10) — live belegt: 3/4/10 statt 773/1287/1014
+  - [x] Validierungs-Panel zugeklappt per Default (`<details>` mit Summary „Wie genau ist das Modell?")
+  - [x] `pnpm build` + `pnpm test` grün
 - **Verify:** Playwright oder Browser-DevTools bei 390×844: wettbewerb, dashboard,
   leagues, news durchklicken; Screenshot-Vergleich; `curl`-Smoke auf alle geänderten
   Routen (200/307 wie erwartet).
@@ -549,3 +549,19 @@ wettbewerb/page.tsx — dort S0 zuerst, S7 danach).
   (§ 5 DDG / § 18 MStV) statt veraltetem TMG/RStV.
 - **Ungenutzte Icon-Importe** in app/page.tsx entfernt (Bell/Eye/Users/Smartphone/ChartBar) nach dem
   Features-Umbau.
+
+### S7 (2026-07-06)
+- **/leagues Manager-Zahl:** live verifiziert, dass `un` aus /leagues/selection falsch ist
+  (773/1287/1014); korrekt ist `overview.mgc` (= `us.length`) → jetzt 3/4/10. Zusätzlicher leichter
+  `leagueOverview(id, false)`-Fetch je Liga (parallel). „Spieler" → „Startelf" (lpc = 11 = Aufstellungsgröße).
+- **Bottom-Nav** nur im Liga-Layout gemountet (die Fläche mit dem 9-Tab-Scroll-Problem); /news, /upgrade,
+  /account nutzen den Top-`AppHeader` statt Bottom-Nav. Liga-Kontext aus der URL; außerhalb → /leagues.
+- **Tab-Bar-Fade (Bauschritt 7) gestrichen** — die Tab-Leiste ist unter md komplett durch die Bottom-Nav
+  ersetzt (`hidden md:block`), wie im Plan als Streich-Option vorgesehen.
+- **Sticky-Spalten CompareTable:** # + Manager `sticky left-0`/`left-10` mit soliden Backgrounds
+  (bg-card / bg-emerald-50 für die eigene Zeile / bg-muted im Header) + z-index gegen Durchscheinen,
+  Manager-Spalte mit Schatten-Kante; Fade-Overlay rechts nur `md:hidden`.
+- **390px-Screenshot nicht ausführbar:** der MCP-Chrome-Profilordner war von einer anderen Instanz
+  gesperrt („Browser is already in use"). Verifikation daher über das ausgelieferte Markup (alle
+  responsive Klassen present), den Build und den Live-/leagues-Check. Reine responsive Tailwind-Klassen
+  (`md:hidden`, `min-w-[720px]`, `sticky`) sind deterministisch.

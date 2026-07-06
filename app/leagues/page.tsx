@@ -28,6 +28,17 @@ export default async function LeaguesPage() {
   const data = await withKbAuth("/leagues", () => kb.leagues(session.token));
   const leagues = data.it ?? [];
 
+  // Echte Manager-Zahl je Liga: `un` aus /leagues/selection ist NICHT die
+  // Mitgliederzahl (liefert z.B. 773/1287). Korrekt ist `mgc` aus dem Overview.
+  const memberCounts = await Promise.all(
+    leagues.map((l) =>
+      kb
+        .leagueOverview(session.token, l.i, false)
+        .then((ov) => (ov as { mgc?: number }).mgc)
+        .catch(() => undefined)
+    )
+  );
+
   return (
     <div className="flex-1 flex flex-col">
       <header className="sticky top-0 z-40 border-b border-border/60 glass">
@@ -86,6 +97,7 @@ export default async function LeaguesPage() {
           <div className="grid gap-3 sm:grid-cols-2">
             {leagues.map((l, i) => {
               const place = l.pl;
+              const memberCount = memberCounts[i];
               const animClass = `slide-up slide-up-${Math.min(i + 1, 4)}`;
               return (
                 <Link key={l.i} href={`/league/${l.i}`} className={`group block ${animClass}`}>
@@ -113,7 +125,7 @@ export default async function LeaguesPage() {
                             ) : place !== undefined ? (
                               <span>
                                 Platz <span className="font-semibold text-foreground">#{place}</span>
-                                {l.un !== undefined && ` von ${l.un}`}
+                                {memberCount !== undefined && ` von ${memberCount}`}
                               </span>
                             ) : (
                               <span>Liga-Übersicht</span>
@@ -134,13 +146,13 @@ export default async function LeaguesPage() {
                             {formatEUR(l.b, { compact: true })}
                           </Stat>
                         )}
-                        {l.un !== undefined && (
+                        {memberCount !== undefined && (
                           <Stat icon={<Users className="size-3.5" />} label="Manager">
-                            {l.un}
+                            {memberCount}
                           </Stat>
                         )}
                         {l.lpc !== undefined && (
-                          <Stat icon={<Layers className="size-3.5" />} label="Spieler">
+                          <Stat icon={<Layers className="size-3.5" />} label="Startelf">
                             {l.lpc}
                           </Stat>
                         )}

@@ -6,7 +6,7 @@ import { stripeConfigured } from "@/lib/stripe";
 import { currentHalfSeason } from "@/lib/season";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Logo } from "@/components/ui/logo";
+import { AppHeader } from "@/components/app-header";
 import { CheckoutButton } from "./CheckoutButton";
 
 export const metadata: Metadata = { title: "Pro freischalten" };
@@ -37,19 +37,7 @@ export default async function UpgradePage({
 
   return (
     <div className="flex-1 flex flex-col">
-      <header className="sticky top-0 z-40 border-b border-border/60 glass">
-        <div className="mx-auto max-w-4xl px-4 h-14 flex items-center justify-between">
-          <Link href="/" className="hover:opacity-90 transition">
-            <Logo size={28} />
-          </Link>
-          <Link
-            href="/leagues"
-            className="text-sm text-muted-foreground hover:text-foreground transition"
-          >
-            Zu deinen Ligen
-          </Link>
-        </div>
-      </header>
+      <AppHeader />
 
       <main className="flex-1 mx-auto max-w-2xl w-full px-4 py-12">
         <div className="text-center mb-10">
