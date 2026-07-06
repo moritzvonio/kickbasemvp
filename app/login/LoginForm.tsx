@@ -13,7 +13,7 @@ interface ApiError {
   message: string;
 }
 
-export function LoginForm({ next }: { next?: string }) {
+export function LoginForm({ next, refId }: { next?: string; refId?: string }) {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -26,7 +26,7 @@ export function LoginForm({ next }: { next?: string }) {
     const res = await fetch("/api/auth/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify({ email, password, ref: refId }),
     });
     if (!res.ok) {
       const data: ApiError = await res.json().catch(() => ({ error: "UNKNOWN", message: "Login fehlgeschlagen" }));

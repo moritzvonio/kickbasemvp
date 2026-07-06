@@ -16,6 +16,7 @@ import { createHash } from "node:crypto";
 import { kv } from "@vercel/kv";
 import { env, isProd } from "@/lib/env";
 import { trialEndFor } from "@/lib/season";
+import { getReferralBonusUntil } from "@/lib/referral";
 
 const COOKIE = "bb_entitlement";
 const ALGO = "dir";
@@ -85,18 +86,21 @@ const memTrial = new Map<string, string>();
 
 /**
  * Hält den Zeitpunkt des ersten Logins fest (nur wenn noch nicht vorhanden).
- * Best-effort – der Login darf hieran NIE scheitern.
+ * Best-effort – der Login darf hieran NIE scheitern. Gibt zurück, ob dies der
+ * ALLERERSTE Login war (für die Referral-Gutschrift).
  */
-export async function recordFirstLoginTrial(userId: string): Promise<void> {
+export async function recordFirstLoginTrial(userId: string): Promise<boolean> {
   const iso = new Date().toISOString();
   try {
     if (KV) {
-      await kv.set(`trial:${userId}`, iso, { nx: true });
-    } else if (!memTrial.has(userId)) {
-      memTrial.set(userId, iso);
+      const res = await kv.set(`trial:${userId}`, iso, { nx: true });
+      return res !== null; // "OK" = neu gesetzt = Erstlogin
     }
+    if (memTrial.has(userId)) return false;
+    memTrial.set(userId, iso);
+    return true;
   } catch {
-    // still ignorieren
+    return false;
   }
 }
 
@@ -127,8 +131,18 @@ export interface Access {
  */
 export async function getAccess(userId: string): Promise<Access> {
   const ent = await getEntitlement();
-  const pro = !!ent && ent.userId === userId;
-  const proUntil = pro ? new Date(ent!.exp * 1000) : undefined;
+  const paidPro = !!ent && ent.userId === userId;
+
+  // Referral-Bonus zählt wie Pro, solange das Bonus-Ende in der Zukunft liegt.
+  const bonusUntil = await getReferralBonusUntil(userId);
+  const bonusActive = !!bonusUntil && Date.now() < bonusUntil.getTime();
+
+  const pro = paidPro || bonusActive;
+  const proUntil = paidPro
+    ? new Date(ent!.exp * 1000)
+    : bonusActive
+    ? bonusUntil!
+    : undefined;
 
   const trialStartIso = await getTrialStart(userId);
   let trial = false;

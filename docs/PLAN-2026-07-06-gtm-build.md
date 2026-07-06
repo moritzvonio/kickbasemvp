@@ -258,9 +258,9 @@ verspricht Features, die nicht existieren, Rechtsseiten fehlen (404!), und auf M
 - **Edge-Cases:** Selbst-Referral (ignorieren), gleicher Neuuser zweimal (nur Erstlogin
   zählt — `nx`-Semantik des trial-Keys nutzen), KV weg (still no-op).
 - **Akzeptanzkriterien:**
-  - [ ] Erstlogin mit ?ref erhöht Zähler, Zweitlogin nicht
-  - [ ] Werber sieht Bonus auf /account, `getAccess().pro` ist true im Bonuszeitraum
-  - [ ] Cap: 4. Referral erhöht nichts mehr
+  - [x] Erstlogin mit ?ref erhöht Zähler, Zweitlogin nicht (isFirstLogin via nx; creditReferral inkrementiert – unit-getestet)
+  - [x] Werber sieht Bonus auf /account (Invite-Block + ?ref-Link live), `getAccess().pro` true im Bonuszeitraum (paidPro || bonusActive)
+  - [x] Cap: 4. Referral erhöht nichts mehr (tests/referral.test.ts)
 - **Verify:** vitest für die Bonus-Datums-Logik; manuell: Login-POST mit ref-Param via curl
   gegen frischen Fake-Userkey (KV-Keys vorher löschen, lokal in-memory: Server-Neustart).
 
@@ -597,3 +597,14 @@ wettbewerb/page.tsx — dort S0 zuerst, S7 danach).
   localStorage-Key `lb-seen-wettbewerb`, Default „gesehen" gegen Hydration-Flash.
 - **Login-Showcase (Wirtz-Karte, „Push-Alert"-Karte) bewusst NICHT angefasst** — nicht im S4-Scope
   (Anti-Scope-Creep). Als Follow-up im Abschluss-Report vermerkt.
+
+### S3 (2026-07-06)
+- **Bonus-Datums-Logik + Cap in reine `lib/referral.ts`** (KV + globalThis-In-Memory, keine next/headers-
+  Abhängigkeit → unit-testbar); `extendReferralBonus` = max(now, bestehendes Ende) + 14 Tage, Cap 3.
+- **`recordFirstLoginTrial` gibt jetzt einen Boolean zurück** (nx „OK"-Erkennung = Erstlogin) – Grundlage
+  der Referral-Gutschrift, ohne einen zweiten KV-Roundtrip.
+- **getAccess:** `pro = bezahltes Pro ODER aktiver Referral-Bonus`; `proUntil` entsprechend. Account-Anzeige
+  robust gemacht (Bonus-Pro ohne Entitlement-Cookie → „Pro (Freunde geworben)").
+- **Lokale End-to-End-Grenze:** Login→Credit→getAccess ist lokal nicht curl-bar (kein zweiter echter
+  Kickbase-Account; die Erstlogin-Erkennung des memTrial ist prozess-lokal). Abgedeckt durch Unit-Tests
+  (Cap/Bonus/Erstlogin-nx) + Component-Checks (Account-Invite, Login akzeptiert ref); Prod-KV bestätigt.

@@ -2,14 +2,17 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { requireSessionOrRedirect } from "@/lib/auth";
 import { getAccess, getEntitlement, type Plan } from "@/lib/entitlement";
+import { getReferral } from "@/lib/referral";
+import { env } from "@/lib/env";
 import { LogoutButton } from "@/components/logout-button";
 import { PushToggle } from "@/components/push-toggle";
+import { InviteBlock } from "@/components/invite-block";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { Logo } from "@/components/ui/logo";
-import { User, Crown, Bell, Sparkles, Settings, ChevronRight } from "lucide-react";
+import { Crown, Bell, Sparkles, Settings, ChevronRight, Gift } from "lucide-react";
 
 export const metadata: Metadata = { title: "Account" };
 export const dynamic = "force-dynamic";
@@ -34,6 +37,8 @@ export default async function AccountPage() {
   const access = await getAccess(session.userId);
   const ent = await getEntitlement();
   const isPro = access.pro;
+  const referral = await getReferral(session.userId);
+  const inviteUrl = `${env.NEXT_PUBLIC_APP_URL.replace(/\/$/, "")}/login?ref=${session.userId}`;
 
   return (
     <div className="flex-1 flex flex-col">
@@ -98,9 +103,12 @@ export default async function AccountPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3 text-sm">
-            {isPro && ent ? (
+            {isPro ? (
               <>
-                <Row label="Plan" value={PLAN_LABEL[ent.plan] ?? "Pro"} />
+                <Row
+                  label="Plan"
+                  value={ent ? (PLAN_LABEL[ent.plan] ?? "Pro") : "Pro (Freunde geworben)"}
+                />
                 {access.proUntil && (
                   <Row label="Aktiv bis" value={fmtDate(access.proUntil)} />
                 )}
@@ -148,6 +156,26 @@ export default async function AccountPage() {
           </CardHeader>
           <CardContent>
             <PushToggle />
+          </CardContent>
+        </Card>
+
+        {/* Freunde werben */}
+        <Card className="slide-up slide-up-3">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Gift className="size-4 text-primary" />
+              Mitspieler werben
+            </CardTitle>
+            <CardDescription>
+              Für jeden geworbenen Mitspieler +14 Tage Pro (max. 3).
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <InviteBlock
+              inviteUrl={inviteUrl}
+              count={referral.count}
+              bonusDays={referral.count * 14}
+            />
           </CardContent>
         </Card>
 

@@ -18,7 +18,7 @@ export const metadata: Metadata = {
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ next?: string }>;
+  searchParams: Promise<{ next?: string; ref?: string }>;
 }) {
   const sp = await searchParams;
   const session = await getSession();
@@ -48,7 +48,7 @@ export default async function LoginPage({
             <p className="text-sm text-muted-foreground mb-7">
               Mit deinem bestehenden Kickbase-Account – du brauchst kein neues Konto.
             </p>
-            <LoginForm next={sp.next} />
+            <LoginForm next={sp.next} refId={sp.ref} />
 
             <div className="mt-7 space-y-2.5 text-xs text-muted-foreground">
               <div className="flex items-start gap-2">

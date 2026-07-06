@@ -5,12 +5,14 @@ import { KickbaseError } from "@/lib/kickbase/client";
 import { decodeKickbaseToken, setSessionCookie } from "@/lib/session";
 import { recordLogin } from "@/lib/admin/analytics";
 import { recordFirstLoginTrial } from "@/lib/entitlement";
+import { creditReferral } from "@/lib/referral";
 
 export const runtime = "nodejs";
 
 const Body = z.object({
   email: z.string().email("Ungültige E-Mail-Adresse"),
   password: z.string().min(1, "Passwort fehlt"),
+  ref: z.string().optional(),
 });
 
 export async function POST(req: Request) {
@@ -75,8 +77,14 @@ export async function POST(req: Request) {
 
   // First-Party-Analytics: Login protokollieren (best-effort, blockiert nie)
   await recordLogin(userId, displayName).catch(() => {});
-  // Testphasen-Start festhalten (nur beim allerersten Login, best-effort)
-  await recordFirstLoginTrial(userId).catch(() => {});
+  // Testphasen-Start festhalten (nur beim allerersten Login, best-effort);
+  // Rückgabe = ob dies der Erstlogin war (für die Referral-Gutschrift).
+  const isFirstLogin = await recordFirstLoginTrial(userId).catch(() => false);
+
+  // Referral: nur beim Erstlogin, kein Selbst-Referral.
+  if (isFirstLogin && parsed.ref && parsed.ref !== userId) {
+    await creditReferral(parsed.ref).catch(() => {});
+  }
 
   // Onboarding: bei genau EINER Liga direkt ins Dashboard leiten (best-effort,
   // 2s-Timeout — der Login darf hieran NIE scheitern).
