@@ -6,7 +6,11 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test": "vitest run",
+    "cash:snapshot": "tsx scripts/cash-snapshot.ts",
+    "cash:analyze": "tsx scripts/cash-analyze.ts",
+    "cash:validate": "tsx scripts/cash-validate.ts"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
@@ -36,6 +40,8 @@
     "eslint": "^9",
     "eslint-config-next": "16.2.4",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "tsx": "^4.23.0",
+    "typescript": "^5",
+    "vitest": "^4.1.9"
   }
 }

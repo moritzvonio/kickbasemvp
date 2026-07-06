@@ -40,8 +40,13 @@ export const kb = {
     return kbFetch<KbLeagueSelection>("/v4/leagues/selection", { token });
   },
 
+  /** /v4/leagues antwortet mit `lins` (nicht `it`) — wird hier normalisiert. */
   async leaguesList(token: string) {
-    return kbFetch<KbLeaguesResponse>("/v4/leagues", { token });
+    const raw = await kbFetch<KbLeaguesResponse & { lins?: KbLeaguesResponse["it"] }>(
+      "/v4/leagues",
+      { token }
+    );
+    return { it: raw.it ?? raw.lins ?? [] } satisfies KbLeaguesResponse;
   },
 
   async leagueOverview(token: string, leagueId: string, includeManagers = true) {

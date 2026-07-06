@@ -9,12 +9,12 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { formatEUR, formatDelta, cn } from "@/lib/utils";
 import {
   computeManagerStats,
-  calibratePointDrivenRate,
+  calibrateFromOwnAccount,
+  calibrateResidualPerPoint,
   detectInitialBudget,
-  SELL_TO_BANK_FACTOR,
+  DEFAULT_CALIBRATION,
   type ManagerComputedStats,
 } from "@/lib/competitor";
-import type { KbActivity, KbRankingUser } from "@/lib/kickbase/types";
 import {
   Wallet,
   Target,
@@ -30,7 +30,6 @@ import {
 } from "lucide-react";
 import { Suspense } from "react";
 import { NetWorthChartSection } from "../NetWorthChartSection";
-import { ActivityTypeDebug } from "./activity-debug";
 
 export const metadata: Metadata = { title: "Wettbewerb" };
 export const dynamic = "force-dynamic";
@@ -57,15 +56,15 @@ export default async function WettbewerbPage({
     | "balance"
     | "points";
 
-  // Step 1: get ranking + overview + ALL activities + own achievements + REAL OWN BUDGET
-  const [ranking, overview, allActivitiesArr, ownAchievements, myRealBudget] = await Promise.all([
+  // Step 1: Ranking + Overview + eigene Achievements + eigener IST-Cash.
+  // Der Activity-Feed wird fürs Cash-Modell NICHT mehr gebraucht (trunkiert,
+  // Boni nur für eigenen User sichtbar — siehe docs/kickbase-bonus-regeln.md).
+  const [ranking, overview, ownAchievements, myRealBudget] = await Promise.all([
     withKbAuth(path, () => kb.ranking(session.token, leagueId)).catch(() => ({} as Awaited<ReturnType<typeof kb.ranking>>)),
     withKbAuth(path, () => kb.leagueOverviewWithManagers(session.token, leagueId)).catch(() => ({} as Awaited<ReturnType<typeof kb.leagueOverviewWithManagers>>)),
-    withKbAuth(path, () => kb.activitiesAll(session.token, leagueId)).catch(() => [] as KbActivity[]),
     withKbAuth(path, () => kb.userAchievementsTotal(session.token, leagueId)).catch(() => ({ items: [], total: 0 })),
     withKbAuth(path, () => kb.myBudget(session.token, leagueId)).catch(() => null),
   ]);
-  const activities: { af?: KbActivity[]; it?: KbActivity[] } = { af: allActivitiesArr };
 
   const members = ranking.us ?? ranking.it ?? [];
   if (members.length === 0) {
@@ -84,79 +83,79 @@ export default async function WettbewerbPage({
   }
 
   const ovRecord = overview as Record<string, unknown>;
-  const initialBudget = detectInitialBudget({
-    overviewBudget: typeof ovRecord.b === "number" ? ovRecord.b : undefined,
-  });
+  const initialBudget = detectInitialBudget();
+  const leagueStartMs =
+    typeof ovRecord.dt === "string" ? Date.parse(ovRecord.dt) : NaN;
+  const rankingRec = ranking as Record<string, unknown>;
+  const matchdaysPlayed = Number(rankingRec.nd ?? 34) || 34;
+  const seasonFinished =
+    Number(rankingRec.day ?? 0) >= matchdaysPlayed;
+  const leagueTotalPoints = members.reduce((s, u) => s + (u.sp ?? 0), 0);
 
-  const allActivities = activities.af ?? activities.it ?? [];
-
-  // Step 2: per-manager fetch squad + ALL transfers (paginated, parallel)
+  // Step 2: pro Manager Squad + ALLE Transfers + Dashboard (tp/mdw/pl)
   const memberData = await Promise.all(
     members.map(async (m) => {
-      const [squad, transfers] = await Promise.all([
+      const [squad, transfers, dashboard] = await Promise.all([
         withKbAuth(path, () => kb.managerSquad(session.token, leagueId, m.i)).catch(() => null),
         withKbAuth(path, () => kb.managerTransferAll(session.token, leagueId, m.i)).catch(() => []),
+        withKbAuth(path, () => kb.managerDashboard(session.token, leagueId, m.i)).catch(() => null),
       ]);
-      return {
-        manager: m,
-        squad: squad ?? null,
-        transfers,
-      };
+      return { manager: m, squad: squad ?? null, transfers, dashboard };
     })
   );
 
   const meRealCash = myRealBudget?.b !== undefined ? myRealBudget.b : undefined;
-
-  // Pass 1: eigenen User berechnen, um die ligaspezifische Punkt-Einkommens-Rate
-  // aus dem EXAKTEN IST-Cash zu eichen. Diese Rate bündelt Punkteprämie +
-  // Erfolge pro Saisonpunkt und wird auf alle anderen Manager angewandt.
   const meData = memberData.find((d) => d.manager.i === session.userId);
-  let pointDrivenRate: number | undefined;
-  if (meData && meRealCash !== undefined) {
-    const meStats = computeManagerStats({
-      userId: meData.manager.i,
-      name: meData.manager.n,
-      image: meData.manager.uim,
-      initialBudget,
-      transfers: meData.transfers,
-      squad: meData.squad,
-      activities: allActivities,
-      rankingEntry: meData.manager,
-      achievements: ownAchievements,
-      realCashFromApi: meRealCash,
-    });
-    pointDrivenRate = calibratePointDrivenRate({
-      realCash: meRealCash,
-      initialBudget,
-      totalBought: meStats.totalBought,
-      totalSold: meStats.totalSold,
-      loginBonus: meStats.estimatedLoginBonus,
-      seasonPoints: meStats.seasonPoints ?? 0,
-    });
-  }
 
-  // Pass 2: alle Manager mit der geeichten Rate (eigener User → exakter IST-Cash)
-  const stats: ManagerComputedStats[] = memberData.map((d) => {
+  // Kalibrierung aus dem eigenen Account:
+  //  1. weiche Raten (Tiers/Einzelspieler/Händchen) aus den ECHTEN Achievements
+  //  2. residualPerPoint aus IST-Cash − Strukturschätzung (Pass 1)
+  const ownTp = Number(
+    (meData?.dashboard as { tp?: number } | null)?.tp ?? meData?.manager.sp ?? 0
+  );
+  const ownSoldVolume = (meData?.transfers ?? [])
+    .filter((t) => t.tty === 2 && Date.parse(t.dt) > leagueStartMs)
+    .reduce((s, t) => s + (t.trp ?? 0), 0);
+  const calRaw =
+    ownAchievements.total > 0 && ownTp > 0
+      ? calibrateFromOwnAccount({ achievements: ownAchievements, ownTp, ownSoldVolume })
+      : DEFAULT_CALIBRATION;
+
+  const buildInput = (d: (typeof memberData)[number], cal: typeof DEFAULT_CALIBRATION) => {
     const isMe = d.manager.i === session.userId;
-    return computeManagerStats({
+    return {
       userId: d.manager.i,
       name: d.manager.n,
       image: d.manager.uim,
       initialBudget,
       transfers: d.transfers,
       squad: d.squad,
-      activities: allActivities,
       rankingEntry: d.manager,
-      achievements: isMe ? ownAchievements : undefined,
+      dashboard: d.dashboard as { tp?: number; mdw?: number; pl?: number } | null,
+      leagueStartMs,
+      seasonFinished,
+      matchdaysPlayed,
+      leagueTotalPoints,
+      calibration: cal,
+      achievements: isMe && ownAchievements.total > 0 ? ownAchievements : undefined,
       realCashFromApi: isMe ? meRealCash : undefined,
-      pointDrivenRate,
-    });
-  });
+    };
+  };
+
+  let residualRate = DEFAULT_CALIBRATION.residualPerPoint;
+  if (meData && meRealCash !== undefined) {
+    const pass1 = computeManagerStats(buildInput(meData, { ...calRaw, residualPerPoint: 0 }));
+    residualRate = calibrateResidualPerPoint(pass1) ?? DEFAULT_CALIBRATION.residualPerPoint;
+  }
+  const calibration = { ...calRaw, residualPerPoint: residualRate };
+
+  const stats: ManagerComputedStats[] = memberData.map((d) =>
+    computeManagerStats(buildInput(d, calibration))
+  );
 
   const me = stats.find((s) => s.userId === session.userId);
   const others = stats.filter((s) => s.userId !== session.userId);
 
-  // Sort others by selected key
   const sorters: Record<typeof sortKey, (a: ManagerComputedStats, b: ManagerComputedStats) => number> = {
     netto: (a, b) => b.netTeamValue - a.netTeamValue,
     cash: (a, b) => b.cashEstimate - a.cashEstimate,
@@ -178,16 +177,9 @@ export default async function WettbewerbPage({
     { key: "points", label: "Punkte", icon: Trophy },
   ];
 
-  // Step 3: Netto-Teamwert-Verlauf seit Liga-Start (exakte Reconstruction aus
-  // Transfer-Replay + gecachte MV-Historien). Anker = Liga-Erstellungsdatum.
-  const leagueStartMs =
-    typeof ovRecord.dt === "string" ? Date.parse(ovRecord.dt) : NaN;
-
-  // Chart-Input (günstig): pro Manager Kader/Transfers + Gesamt-Bonus bis jetzt.
-  // Die teure MV-Rekonstruktion läuft Suspense-gestreamt in NetWorthChartSection.
-  const statsById = new Map(stats.map((s) => [s.userId, s]));
+  // Netto-Teamwert-Verlauf (Suspense-gestreamt)
   const chartManagers = memberData.map((d) => {
-    const st = statsById.get(d.manager.i);
+    const st = stats.find((s) => s.userId === d.manager.i);
     return {
       id: d.manager.i,
       name: d.manager.n,
@@ -270,21 +262,6 @@ export default async function WettbewerbPage({
         </details>
       </section>
 
-      {/* Activity-Type Debug — zeigt was wirklich im Feed steht */}
-      <Card className="bg-amber-50/30 border-amber-200 slide-up slide-up-2">
-        <CardContent className="p-4">
-          <div className="flex items-center gap-2 text-foreground font-semibold text-sm mb-1">
-            🔬 Activity-Feed-Inspektor
-          </div>
-          <p className="text-xs text-muted-foreground mb-2">
-            Alle paginierten Aktivitäten ({allActivities.length} Events) gruppiert nach{" "}
-            <code className="font-mono">t</code>-Code mit allen numerischen Feldern.
-            Hilft Bonus-Kategorien zu finden die wir aktuell verpassen.
-          </p>
-          <ActivityTypeDebug activities={allActivities} />
-        </CardContent>
-      </Card>
-
       {/* Methodik-Hinweis */}
       <Card className="bg-primary/[0.04] border-primary/20 slide-up slide-up-2">
         <CardContent className="p-4 text-xs text-muted-foreground space-y-2.5">
@@ -293,24 +270,28 @@ export default async function WettbewerbPage({
             Methodik der Cash-Berechnung
           </div>
           <div>
-            <span className="font-medium text-foreground">Initial-Budget</span>:{" "}
-            <span className="font-mono text-foreground">{formatEUR(initialBudget, { compact: true })}</span>{" "}
-            (aus Liga-Setting). Cash = Initial − Käufe + Verkäufe + alle Boni.
+            Cash = <span className="font-mono text-foreground">{formatEUR(initialBudget, { compact: true })}</span> Start
+            + Transferbilanz + Punkteprämie (1.000 € × Punkt) + Spieltagssiege (1 Mio × Sieg)
+            + Tagesbonus (100k-Streak) + Erfolge. Regelwerk empirisch gegen den echten
+            Kontostand verifiziert — Details in{" "}
+            <code className="font-mono">docs/kickbase-bonus-regeln.md</code>.
           </div>
           <div className="grid sm:grid-cols-2 gap-x-4 gap-y-1.5">
             <div>
               <span className="font-medium text-foreground">📊 Exakt aus Kickbase:</span>
               <ul className="list-disc ml-4 mt-1">
-                <li><span className="text-emerald-700 font-semibold">Eigener Cash</span>: direkt aus <code className="font-mono">/me/budget</code> — keine Schätzung nötig</li>
+                <li><span className="text-emerald-700 font-semibold">Eigener Cash</span>: direkt aus <code className="font-mono">/me/budget</code></li>
                 <li>Alle Käufe + Verkäufe seit Liga-Start (paginiert)</li>
+                <li>Saisonpunkte + Spieltagssiege je Manager (Dashboard)</li>
                 <li>Eigene Erfolge: Σ ac × er aus <code className="font-mono">/user/achievements</code></li>
               </ul>
             </div>
             <div>
               <span className="font-medium text-foreground">🧮 Geschätzt (für andere Manager):</span>
               <ul className="list-disc ml-4 mt-1">
-                <li><span className="text-sky-700">Login-Bonus</span> = 100k × Tage seit erstem Transfer (~33 Mio/Saison)</li>
-                <li><span className="text-violet-700">Achievements</span>: nur Spieltagssieger + Team-Punkte-Tiers — Einzelspieler/Hand/MVP fehlen</li>
+                <li><span className="text-sky-700">Tagesbonus</span>: 100k/Tag bis zur letzten Aktivität</li>
+                <li><span className="text-violet-700">Erfolge</span>: exakte Teile (Teamwert, Meister) + Raten, die am eigenen Account geeicht sind</li>
+                <li><span className="text-amber-700">Rest-Term</span>: {residualRate.toFixed(0)} €/Punkt (aus deinem IST-Cash kalibriert)</li>
               </ul>
             </div>
           </div>
@@ -420,6 +401,14 @@ function ManagerCard({
               )}
               <span className="text-muted-foreground">·</span>
               <span>{stats.squadSize} Spieler</span>
+              {stats.matchdayWins > 0 && (
+                <>
+                  <span className="text-muted-foreground">·</span>
+                  <span className="text-amber-600 font-medium">
+                    {stats.matchdayWins}× Spieltagssieg
+                  </span>
+                </>
+              )}
             </div>
           </div>
           {/* Netto-Teamwert hero */}
@@ -454,6 +443,7 @@ function ManagerCard({
             }
             icon={<Wallet className="size-3" />}
             tone={stats.cashEstimate < 0 ? "danger" : undefined}
+            sub={stats.cashMethod === "ist" ? "exakt (API)" : "geschätzt"}
           />
           <Stat
             label="Max-Gebot"
@@ -512,15 +502,15 @@ function ManagerCard({
           />
         </div>
 
-        {/* Estimate-vs-Real Vergleich (nur eigener User) — Debug-Modus */}
+        {/* Estimate-vs-Real Vergleich (nur eigener User) — Validierung */}
         {stats.realCashFromApi !== undefined && (
-          <CashDebugPanel stats={stats} budget={budget} />
+          <CashValidationPanel stats={stats} />
         )}
 
         {/* Cash composition mini-bar */}
         <div className="mt-4 pt-3 border-t border-border/50">
           <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-1.5 flex items-center gap-2 flex-wrap">
-            Cash-Komposition (geschätzt)
+            Cash-Komposition {stats.cashMethod === "ist" ? "(Strukturmodell zur Kontrolle)" : "(geschätzt)"}
             <span className="text-muted-foreground/70 normal-case tracking-normal">
               ({stats.daysActive} Tage · {stats.transferCount} Transfers)
             </span>
@@ -535,34 +525,30 @@ function ManagerCard({
             <span className="text-emerald-600">
               + {formatEUR(stats.totalSold, { compact: true })} Verkäufe
             </span>
-            {stats.totalBonus > 0 && (
+            <span className="text-emerald-700">
+              + {formatEUR(stats.estimatedPointsBonus, { compact: true })} Punkteprämie
+            </span>
+            {stats.estimatedWinBonus > 0 && (
               <span className="text-amber-600">
-                + {formatEUR(stats.totalBonus, { compact: true })} Boni
+                + {formatEUR(stats.estimatedWinBonus, { compact: true })} Siege
               </span>
             )}
-            {stats.estimatedLoginBonus > 0 && (
-              <span className="text-sky-600">
-                + {formatEUR(stats.estimatedLoginBonus, { compact: true })} Login
-              </span>
-            )}
-            {/* Erfolge: für eigenen User exakt verfügbar, sonst Spieltag+Hand-Schätzung */}
+            <span className="text-sky-600">
+              + {formatEUR(stats.estimatedLoginBonus, { compact: true })} Tagesbonus
+            </span>
             {stats.realAchievementBonus !== undefined ? (
               <span className="text-violet-700 font-semibold">
                 + {formatEUR(stats.realAchievementBonus, { compact: true })} Erfolge (exakt)
               </span>
             ) : (
-              <>
-                {stats.estimatedMatchdayBonus > 0 && (
-                  <span className="text-violet-600">
-                    + ~{formatEUR(stats.estimatedMatchdayBonus, { compact: true })} Spieltag
-                  </span>
-                )}
-                {stats.estimatedHandBonus > 0 && (
-                  <span className="text-fuchsia-600">
-                    + {formatEUR(stats.estimatedHandBonus, { compact: true })} Hand
-                  </span>
-                )}
-              </>
+              <span className="text-violet-600">
+                + ~{formatEUR(stats.estimatedAchievementBonus, { compact: true })} Erfolge
+              </span>
+            )}
+            {stats.calibratedResidualBonus > 0 && (
+              <span className="text-muted-foreground">
+                + {formatEUR(stats.calibratedResidualBonus, { compact: true })} Rest
+              </span>
             )}
             {stats.cashUncertain && (
               <Badge variant="muted" className="text-[9px]">
@@ -570,33 +556,6 @@ function ManagerCard({
               </Badge>
             )}
           </div>
-          {/* Hand-Bonus-Breakdown — für alle Manager berechenbar */}
-          {stats.handBonusBreakdown.length > 0 && !stats.realAchievementBonus && (
-            <details className="mt-2 text-[10px]">
-              <summary className="cursor-pointer text-muted-foreground hover:text-foreground tabular">
-                Hand-Bonus-Trades ({stats.handBonusBreakdown.length})
-              </summary>
-              <div className="mt-1.5 grid sm:grid-cols-2 gap-x-3 gap-y-0.5 pl-2">
-                {stats.handBonusBreakdown.slice(0, 12).map((h) => (
-                  <div
-                    key={h.pid}
-                    className="flex items-center justify-between text-[10px] text-muted-foreground tabular"
-                  >
-                    <span className="truncate">
-                      <span className="text-fuchsia-700 font-bold mr-1">{h.tier}</span>
-                      {h.pn}
-                      <span className="text-foreground/60 ml-1">
-                        +{formatEUR(h.profit, { compact: true })}
-                      </span>
-                    </span>
-                    <span className="font-mono text-fuchsia-700 font-semibold">
-                      {formatEUR(h.payout, { compact: true })}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </details>
-          )}
 
           {/* Achievement-Breakdown — nur für eigenen User */}
           {stats.achievementBreakdown && stats.achievementBreakdown.length > 0 && (
@@ -630,112 +589,46 @@ function ManagerCard({
   );
 }
 
-/* ─── Debug-Panel: detaillierter Cash-Compare ──────────────────── */
-function CashDebugPanel({
-  stats,
-  budget,
-}: {
-  stats: ManagerComputedStats;
-  budget: number;
-}) {
+/* ─── Validierungs-Panel: Strukturmodell vs. echter Cash (eigener User) ── */
+function CashValidationPanel({ stats }: { stats: ManagerComputedStats }) {
   const real = stats.realCashFromApi ?? 0;
-  const estimate = stats.cashEstimate;
-  const diff = real - estimate;
-  const absDiff = Math.abs(diff);
+  const err = stats.cashEstimateError ?? 0;
+  const absErr = Math.abs(err);
+  const structural = real - err;
 
-  // Achievement-Bonus-Komponente (entweder real oder geschätzt)
-  const achievementSum =
-    stats.realAchievementBonus !== undefined
-      ? stats.realAchievementBonus
-      : stats.estimatedMatchdayBonus + stats.estimatedHandBonus;
-
-  // Punkteprämie als RESIDUUM: die übrigen Komponenten sind exakt bzw.
-  // modelliert (Initial, Transfers, Login, Erfolge), die Punkteprämie-Rate
-  // ist ligaspezifisch kalibriert. Wir zeigen sie als Differenz, damit die
-  // Schritt-für-Schritt-Summe IMMER exakt dem cashEstimate entspricht.
-  const bonusFeedValue =
-    stats.realAchievementBonus !== undefined ? 0 : stats.totalBonus;
-  const baseSum =
-    budget -
-    stats.totalBought +
-    stats.totalSold +
-    bonusFeedValue +
-    stats.estimatedLoginBonus +
-    achievementSum;
-  const calibratedPointsBonus = stats.cashEstimate - baseSum;
-  const ratePoints = stats.seasonPoints ?? 0;
-  const calibratedRate = ratePoints > 0 ? calibratedPointsBonus / ratePoints : 0;
-
-  // Show line-by-line breakdown
-  const lines: Array<{
-    label: string;
-    value: number;
-    note?: string;
-    color?: string;
-    sign?: "+" | "−";
-  }> = [
-    { label: "Initial-Budget", value: budget, sign: "+" },
-    { label: `Käufe (${stats.transferCount > 0 ? "alle" : "0"})`, value: -stats.totalBought, sign: "−", color: "text-rose-700" },
-    { label: "Verkäufe", value: stats.totalSold, sign: "+", color: "text-emerald-700" },
-    {
-      label:
-        stats.realAchievementBonus !== undefined
-          ? "Bonus-Feed (data.bn) — übersprungen (= redundant zu achievements/points/login)"
-          : "Bonus-Feed (data.bn)",
-      value: stats.realAchievementBonus !== undefined ? 0 : stats.totalBonus,
-      sign: "+",
-      color:
-        stats.realAchievementBonus !== undefined
-          ? "text-muted-foreground line-through"
-          : "text-amber-700",
-      note:
-        stats.realAchievementBonus !== undefined
-          ? `${stats.bonusEventCount} events ignoriert`
-          : `${stats.bonusEventCount} events`,
-    },
-    {
-      label: "Punkteprämie (kalibriert)",
-      value: calibratedPointsBonus,
-      sign: "+",
-      color: "text-emerald-700",
-      note: `${ratePoints.toLocaleString("de-DE")} Pkt × ${(calibratedRate / 1000).toFixed(2)}k €`,
-    },
-    { label: `Login-Bonus (geschätzt)`, value: stats.estimatedLoginBonus, sign: "+", color: "text-sky-700", note: `${stats.daysActive} Tage × 100k` },
-    {
-      label:
-        stats.realAchievementBonus !== undefined
-          ? "Erfolge (echt aus /user/achievements)"
-          : "Spieltag + Hand (geschätzt)",
-      value: achievementSum,
-      sign: "+",
-      color: "text-violet-700",
-    },
+  const lines: Array<{ label: string; value: number; color?: string; note?: string }> = [
+    { label: "Start-Budget", value: stats.initialBudget },
+    { label: "Transferbilanz", value: stats.transferBalance, color: stats.transferBalance < 0 ? "text-rose-700" : "text-emerald-700", note: `${stats.transferCount} Transfers` },
+    { label: "Punkteprämie", value: stats.estimatedPointsBonus, color: "text-emerald-700", note: `${stats.totalMatchdayPoints.toLocaleString("de-DE")} Pkt × 1k` },
+    { label: "Spieltagssiege", value: stats.estimatedWinBonus, color: "text-amber-700", note: `${stats.matchdayWins} × 1 Mio` },
+    { label: "Tagesbonus", value: stats.estimatedLoginBonus, color: "text-sky-700", note: `${stats.daysActive} Tage (Streak-Modell)` },
+    { label: stats.realAchievementBonus !== undefined ? "Erfolge (exakt, API)" : "Erfolge (geschätzt)", value: stats.estimatedAchievementBonus, color: "text-violet-700" },
+    { label: "Rest-Term (kalibriert)", value: stats.calibratedResidualBonus, color: "text-muted-foreground" },
   ];
 
   return (
     <div
       className={cn(
         "mt-4 rounded-lg border p-3",
-        absDiff < 1_000_000
+        absErr < 1_000_000
           ? "border-emerald-300 bg-emerald-50/40"
-          : absDiff < 5_000_000
+          : absErr < 5_000_000
           ? "border-amber-300 bg-amber-50/40"
           : "border-rose-300 bg-rose-50/40"
       )}
     >
       <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-2 flex items-center gap-2">
-        📊 Cash-Pipeline-Debug
-        <Badge variant={absDiff < 1_000_000 ? "success" : absDiff < 5_000_000 ? "muted" : "danger"} className="text-[9px]">
-          {absDiff < 1_000_000 ? "✓ Genau" : absDiff < 5_000_000 ? "Akzeptabel" : "Pipeline-Fehler!"}
+        📊 Modell-Validierung an deinem Konto
+        <Badge variant={absErr < 1_000_000 ? "success" : absErr < 5_000_000 ? "muted" : "danger"} className="text-[9px]">
+          {absErr < 1_000_000 ? "✓ Genau" : absErr < 5_000_000 ? "Akzeptabel" : "Modell-Drift!"}
         </Badge>
       </div>
 
-      {/* Compact 3-card top */}
       <div className="grid grid-cols-3 gap-2 text-xs tabular mb-3">
         <div className="bg-white/70 rounded p-2 ring-1 ring-border">
-          <div className="text-[10px] text-muted-foreground">Geschätzt</div>
+          <div className="text-[10px] text-muted-foreground">Strukturmodell</div>
           <div className="font-mono font-bold text-base">
-            {formatEUR(estimate, { compact: true })}
+            {formatEUR(structural, { compact: true })}
           </div>
         </div>
         <div className="bg-white/70 rounded p-2 ring-1 ring-emerald-200">
@@ -747,33 +640,22 @@ function CashDebugPanel({
         <div
           className={cn(
             "rounded p-2 ring-1",
-            diff > 0 ? "bg-rose-100/60 ring-rose-300" : "bg-emerald-100/60 ring-emerald-300"
+            absErr < 1_000_000 ? "bg-emerald-100/60 ring-emerald-300" : "bg-amber-100/60 ring-amber-300"
           )}
         >
-          <div className="text-[10px] text-muted-foreground">
-            {diff > 0 ? "Wir schätzen ZU NIEDRIG" : "Wir schätzen ZU HOCH"}
-          </div>
-          <div
-            className={cn(
-              "font-mono font-bold text-base",
-              diff > 0 ? "text-rose-700" : "text-emerald-700"
-            )}
-          >
-            {diff > 0 ? "+" : ""}
-            {formatEUR(diff, { compact: true })}
+          <div className="text-[10px] text-muted-foreground">Abweichung</div>
+          <div className="font-mono font-bold text-base">
+            {err > 0 ? "+" : ""}
+            {formatEUR(err, { compact: true })}
           </div>
         </div>
       </div>
 
-      {/* Pipeline-Lines */}
       <div className="text-[11px] tabular space-y-1">
-        <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
-          Schritt-für-Schritt
-        </div>
         {lines.map((l, i) => (
           <div key={i} className="flex items-center justify-between border-b border-border/30 pb-0.5">
             <span className="flex items-center gap-1.5">
-              <span className={cn("font-mono w-3", l.color)}>{l.sign}</span>
+              <span className={cn("font-mono w-3", l.color)}>{l.value < 0 ? "−" : "+"}</span>
               <span>{l.label}</span>
               {l.note && (
                 <span className="text-[10px] text-muted-foreground">({l.note})</span>
@@ -785,161 +667,16 @@ function CashDebugPanel({
           </div>
         ))}
         <div className="flex items-center justify-between pt-1.5 mt-1 border-t border-border">
-          <span className="font-semibold">= Schätzung</span>
-          <span className="font-mono font-bold">
-            {formatEUR(estimate, { compact: true })}
-          </span>
+          <span className="font-semibold">= Strukturmodell</span>
+          <span className="font-mono font-bold">{formatEUR(structural, { compact: true })}</span>
         </div>
-        <div className="flex items-center justify-between text-rose-700">
-          <span className="font-semibold">Was uns fehlt</span>
-          <span className="font-mono font-bold">
-            {diff > 0 ? "+" : ""}
-            {formatEUR(diff, { compact: true })}
-          </span>
-        </div>
-        {stats.openMatchdayPoints > 0 && (
-          <div className="flex items-center justify-between text-[10px] text-muted-foreground pt-1 italic">
-            <span>
-              ⏳ Laufender Spieltag: {stats.openMatchdayPoints.toLocaleString("de-DE")} Pkt
-              (= {formatEUR(stats.openMatchdayBonus, { compact: true })}) — von Kickbase
-              noch nicht ausgezahlt, daher NICHT in der Schätzung
-            </span>
-          </div>
-        )}
       </div>
-
-      {/* Hypothesen-Rechner: Was MÜSSTEN die Werte sein um real zu treffen? */}
-      {Math.abs(diff) > 1_000_000 && (
-        <div className="mt-3 pt-3 border-t border-rose-200">
-          <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-2">
-            🔍 Hypothesen-Rechner — Was schließt die {formatEUR(diff, { compact: true })}-Lücke?
-          </div>
-          <div className="grid sm:grid-cols-3 gap-2 text-[11px] tabular">
-            <HypothesisCard
-              title="A: Initial-Budget"
-              currentValue={budget}
-              targetValue={budget + diff}
-              unit="€"
-              hint="wenn bs > 1 oder Premium-Liga"
-            />
-            <HypothesisCard
-              title="B: Login pro Tag"
-              currentValue={100_000}
-              targetValue={100_000 + diff / Math.max(stats.daysActive, 1)}
-              unit="€/Tag"
-              hint={`bei ${stats.daysActive} Tagen`}
-            />
-            <HypothesisCard
-              title="C: Achievements"
-              currentValue={
-                stats.realAchievementBonus !== undefined
-                  ? stats.realAchievementBonus
-                  : stats.estimatedMatchdayBonus + stats.estimatedHandBonus
-              }
-              targetValue={
-                (stats.realAchievementBonus !== undefined
-                  ? stats.realAchievementBonus
-                  : stats.estimatedMatchdayBonus + stats.estimatedHandBonus) + diff
-              }
-              unit="€"
-              hint="falls API er-Werte zu niedrig liefert"
-            />
-          </div>
-          <p className="text-[10px] text-muted-foreground mt-2">
-            ☝️ Welche der drei Werte stimmt mit deinen Erwartungen am ehesten überein?
-            Das ist die wahrscheinliche Ursache.
-          </p>
-        </div>
-      )}
-
-      {/* Achievement-Detail wenn vorhanden */}
-      {stats.achievementBreakdown && stats.achievementBreakdown.length > 0 && (
-        <details className="mt-3 text-[11px]" open={absDiff >= 5_000_000}>
-          <summary className="cursor-pointer text-muted-foreground hover:text-foreground font-medium">
-            Achievement-Komponente — alle {stats.achievementBreakdown.length} Typen aus
-            /user/achievements (auch er=0)
-          </summary>
-          <div className="mt-2 grid sm:grid-cols-2 gap-x-3 gap-y-0.5 pl-2 max-h-72 overflow-auto">
-            {stats.achievementBreakdown
-              .slice()
-              .sort((a, b) => b.total - a.total)
-              .map((a) => (
-                <div
-                  key={a.t}
-                  className={cn(
-                    "flex items-center justify-between text-[10px] tabular py-0.5",
-                    a.ac > 0 && a.er === 0
-                      ? "text-rose-700 font-semibold"
-                      : a.ac === 0
-                      ? "text-muted-foreground/50"
-                      : "text-muted-foreground"
-                  )}
-                >
-                  <span className="truncate">
-                    <span className="text-foreground/70 font-mono mr-1">[t={a.t}]</span>
-                    {a.n} <span className="text-foreground/60">×{a.ac}</span>
-                    {a.ac > 0 && a.er === 0 && (
-                      <span className="text-rose-600 ml-1">⚠ er=0!</span>
-                    )}
-                  </span>
-                  <span className="font-mono">
-                    {a.er > 0 ? formatEUR(a.er, { compact: true }) : "—"} ×{a.ac} ={" "}
-                    {formatEUR(a.total, { compact: true })}
-                  </span>
-                </div>
-              ))}
-          </div>
-          <p className="text-[10px] text-muted-foreground mt-2">
-            🚨 Zeilen mit{" "}
-            <span className="text-rose-700 font-semibold">⚠ er=0!</span> haben{" "}
-            <code className="font-mono">ac &gt; 0</code> aber wir kennen den Belohnungsbetrag
-            nicht — das sind Kandidaten für die fehlenden Mio.
-          </p>
-        </details>
-      )}
 
       <p className="text-[10px] text-muted-foreground mt-3 italic">
-        Dein Cash ist exakt (aus <code className="font-mono">/me/budget</code>). Die
-        Punkteprämie-Rate wird daraus für die Liga geeicht und auf die anderen
-        Manager angewandt — deren Cash bleibt eine an dir kalibrierte Schätzung
-        (ihr IST-Cash ist per API nicht abrufbar).
+        Dein Kontostand kommt exakt aus <code className="font-mono">/me/budget</code>.
+        Dasselbe Strukturmodell schätzt die anderen Manager — die Abweichung oben
+        zeigt, wie gut es aktuell trifft (Rest-Term wird daraus geeicht).
       </p>
-    </div>
-  );
-}
-
-function HypothesisCard({
-  title,
-  currentValue,
-  targetValue,
-  unit,
-  hint,
-}: {
-  title: string;
-  currentValue: number;
-  targetValue: number;
-  unit: string;
-  hint: string;
-}) {
-  const fmt = (v: number) => {
-    if (unit === "€") return formatEUR(v, { compact: true });
-    if (unit === "€/Tag") return `${Math.round(v / 1000)}k €/Tag`;
-    return String(v);
-  };
-  return (
-    <div className="rounded-md bg-white/70 ring-1 ring-border p-2">
-      <div className="text-[10px] font-semibold text-muted-foreground mb-0.5">
-        {title}
-      </div>
-      <div className="flex items-baseline justify-between gap-1">
-        <span className="text-muted-foreground line-through text-[10px]">
-          {fmt(currentValue)}
-        </span>
-        <span className="text-base font-mono font-bold text-rose-700">
-          {fmt(targetValue)}
-        </span>
-      </div>
-      <div className="text-[9px] text-muted-foreground mt-0.5">{hint}</div>
     </div>
   );
 }
@@ -1001,7 +738,7 @@ function CompareTable({
                 Manager
               </th>
               <th className="text-right py-2.5 font-semibold">Punkte</th>
-              <th className="text-right py-2.5 font-semibold">Spieltag</th>
+              <th className="text-right py-2.5 font-semibold">Siege</th>
               <th className="text-right py-2.5 font-semibold">Teamwert</th>
               <th className="text-right py-2.5 font-semibold">Cash</th>
               <th className="text-right py-2.5 font-semibold bg-primary/[0.04]">
@@ -1042,10 +779,8 @@ function CompareTable({
                   <td className="text-right py-2.5 font-mono font-semibold">
                     {s.seasonPoints?.toLocaleString("de-DE") ?? "—"}
                   </td>
-                  <td className="text-right py-2.5 font-mono text-emerald-700">
-                    {s.estimatedMatchdayBonus
-                      ? `+${(s.estimatedMatchdayBonus / 1_000_000).toFixed(1).replace(".", ",")}M`
-                      : "—"}
+                  <td className="text-right py-2.5 font-mono text-amber-700">
+                    {s.matchdayWins > 0 ? `${s.matchdayWins}×` : "—"}
                   </td>
                   <td className="text-right py-2.5 font-mono">
                     {formatEUR(s.teamValue, { compact: true })}
@@ -1057,6 +792,11 @@ function CompareTable({
                     )}
                   >
                     {formatEUR(s.cashEstimate, { compact: true })}
+                    {s.cashMethod === "ist" && (
+                      <span className="text-emerald-600 ml-0.5" title="exakt aus API">
+                        ✓
+                      </span>
+                    )}
                   </td>
                   <td className="text-right py-2.5 font-mono font-semibold bg-primary/[0.04]">
                     {formatEUR(s.netTeamValue, { compact: true })}
