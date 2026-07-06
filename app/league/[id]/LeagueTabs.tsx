@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import {
   LayoutDashboard,
@@ -29,6 +30,17 @@ interface TabGroup {
 
 export function LeagueTabs({ leagueId }: { leagueId: string }) {
   const pathname = usePathname();
+  // Puls-Badge auf „Wettbewerb", bis der User es einmal geöffnet hat.
+  const [seenWettbewerb, setSeenWettbewerb] = useState(true);
+  useEffect(() => {
+    setSeenWettbewerb(localStorage.getItem("lb-seen-wettbewerb") === "1");
+  }, []);
+  useEffect(() => {
+    if (pathname.includes("/wettbewerb")) {
+      localStorage.setItem("lb-seen-wettbewerb", "1");
+      setSeenWettbewerb(true);
+    }
+  }, [pathname]);
 
   const groups: TabGroup[] = [
     {
@@ -114,6 +126,14 @@ export function LeagueTabs({ leagueId }: { leagueId: string }) {
                     >
                       <Icon className="size-3.5" />
                       {t.label}
+                      {t.label === "Wettbewerb" && !seenWettbewerb && !active && (
+                        <span className="ml-0.5 inline-flex items-center gap-1">
+                          <span className="size-1.5 rounded-full bg-primary pulse-dot" />
+                          <span className="text-[8px] font-bold text-primary uppercase tracking-wide">
+                            Neu
+                          </span>
+                        </span>
+                      )}
                     </Link>
                   );
                 })}

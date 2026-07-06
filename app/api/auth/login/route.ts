@@ -78,8 +78,28 @@ export async function POST(req: Request) {
   // Testphasen-Start festhalten (nur beim allerersten Login, best-effort)
   await recordFirstLoginTrial(userId).catch(() => {});
 
+  // Onboarding: bei genau EINER Liga direkt ins Dashboard leiten (best-effort,
+  // 2s-Timeout — der Login darf hieran NIE scheitern).
+  let leagueCount: number | undefined;
+  let firstLeagueId: string | undefined;
+  try {
+    const list = await Promise.race([
+      kb.leagues(token),
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error("leagues-timeout")), 2000)
+      ),
+    ]);
+    const items = (list as { it?: Array<{ i: string }> }).it ?? [];
+    leagueCount = items.length;
+    firstLeagueId = items[0]?.i;
+  } catch {
+    // ignorieren — Fallback ist /leagues
+  }
+
   return NextResponse.json({
     ok: true,
     user: { id: userId, name: decoded.name ?? user.n ?? user.name ?? null },
+    leagueCount,
+    firstLeagueId,
   });
 }

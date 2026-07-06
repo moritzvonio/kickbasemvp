@@ -286,9 +286,9 @@ verspricht Features, die nicht existieren, Rechtsseiten fehlen (404!), und auf M
 - **Edge-Cases:** kb.leagues schlägt fehl → Fallback /leagues; 0 Ligen → /leagues
   (dort existiert Empty-State).
 - **Akzeptanzkriterien:**
-  - [ ] Login mit Mourice-Account (3 Ligen) → /leagues wie bisher
-  - [ ] leagueCount===1-Pfad per Unit-Test der Redirect-Logik abgedeckt
-  - [ ] Puls-Punkt verschwindet nach erstem Wettbewerb-Besuch
+  - [x] Login mit Mourice-Account (3 Ligen) → /leagues wie bisher (live: leagueCount=3 → loginDest → /leagues)
+  - [x] leagueCount===1-Pfad per Unit-Test der Redirect-Logik abgedeckt (tests/login-dest.test.ts, 5 Fälle)
+  - [x] Puls-Punkt verschwindet nach erstem Wettbewerb-Besuch (localStorage `lb-seen-wettbewerb`, in LeagueTabs + Bottom-Nav)
 - **Verify:** Login-POST via curl → Response-JSON prüfen; UI-Klickpfad im Dev-Server.
 
 ### Slice S5: Creator-Code-Tracking im Admin (S)
@@ -587,3 +587,13 @@ wettbewerb/page.tsx — dort S0 zuerst, S7 danach).
 - **Snapshot-Payload bewusst minimal:** nur name/seasonPoints/matchdayWins/teamValue/cashEstimate/
   maxBidSingleSell/netTeamValue – KEIN Kickbase-Token, KEINE User-IDs (Live-Check: 0 Token-Leak im HTML).
 - **/s-Seite nutzt den geteilten `AppHeader`** (zeigt für anonyme Empfänger den Login-Button = die Conversion).
+
+### S4 (2026-07-06)
+- **Redirect-Logik in reine `lib/login-dest.ts`** extrahiert (`loginDest(next, count, first)`) und unit-getestet;
+  LoginForm ruft sie auf.
+- **Login-Route:** `kb.leagues` mit 2s-Timeout (`Promise.race`), best-effort — Login scheitert nie daran;
+  Response um `leagueCount` + `firstLeagueId` erweitert.
+- **Puls-Badge auf „Wettbewerb"** in BEIDEN Navs (LeagueTabs Desktop + Bottom-Nav Mobile), gemeinsamer
+  localStorage-Key `lb-seen-wettbewerb`, Default „gesehen" gegen Hydration-Flash.
+- **Login-Showcase (Wirtz-Karte, „Push-Alert"-Karte) bewusst NICHT angefasst** — nicht im S4-Scope
+  (Anti-Scope-Creep). Als Follow-up im Abschluss-Report vermerkt.

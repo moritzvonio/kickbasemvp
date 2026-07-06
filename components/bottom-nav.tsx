@@ -8,7 +8,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import {
   LayoutDashboard,
@@ -28,6 +28,16 @@ import {
 export function BottomNav() {
   const pathname = usePathname();
   const [moreOpen, setMoreOpen] = useState(false);
+  const [seenWettbewerb, setSeenWettbewerb] = useState(true);
+  useEffect(() => {
+    setSeenWettbewerb(localStorage.getItem("lb-seen-wettbewerb") === "1");
+  }, []);
+  useEffect(() => {
+    if (pathname.includes("/wettbewerb")) {
+      localStorage.setItem("lb-seen-wettbewerb", "1");
+      setSeenWettbewerb(true);
+    }
+  }, [pathname]);
 
   const m = pathname.match(/^\/league\/([^/]+)/);
   const leagueId = m?.[1];
@@ -137,6 +147,9 @@ export function BottomNav() {
               >
                 {it.active && (
                   <span className="absolute top-0 h-0.5 w-8 rounded-full bg-primary" />
+                )}
+                {it.label === "Wettbewerb" && !seenWettbewerb && !it.active && (
+                  <span className="absolute top-2 right-1/2 mr-2 size-2 rounded-full bg-primary pulse-dot" />
                 )}
                 <Icon className="size-5" />
                 {it.label}

@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Loader2 } from "lucide-react";
+import { loginDest } from "@/lib/login-dest";
 
 interface ApiError {
   error: string;
@@ -32,8 +33,13 @@ export function LoginForm({ next }: { next?: string }) {
       setError(data.message ?? "Login fehlgeschlagen");
       return;
     }
+    const data: { leagueCount?: number; firstLeagueId?: string } = await res
+      .json()
+      .catch(() => ({}));
+    // Bei genau einer Liga direkt ins Dashboard; next-Param hat Vorrang.
+    const dest = loginDest(next, data.leagueCount, data.firstLeagueId);
     startTransition(() => {
-      router.push(next ?? "/leagues");
+      router.push(dest);
       router.refresh();
     });
   }

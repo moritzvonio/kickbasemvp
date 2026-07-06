@@ -44,9 +44,9 @@ export default async function LoginPage({
             <div className="size-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center mb-5 ring-1 ring-primary/20">
               <Trophy className="size-6" />
             </div>
-            <h1 className="text-3xl font-bold tracking-tight mb-2">Willkommen zurück</h1>
+            <h1 className="text-3xl font-bold tracking-tight mb-2">Log dich mit Kickbase ein</h1>
             <p className="text-sm text-muted-foreground mb-7">
-              Login mit deinem Kickbase-Account. Du brauchst kein neues Konto.
+              Mit deinem bestehenden Kickbase-Account – du brauchst kein neues Konto.
             </p>
             <LoginForm next={sp.next} />
 
