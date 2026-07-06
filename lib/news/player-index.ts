@@ -150,3 +150,44 @@ export function isIndexStale(idx: PlayerIndex): boolean {
   const ageMs = Date.now() - new Date(idx.refreshedAt).getTime();
   return ageMs > 24 * 60 * 60 * 1000;
 }
+
+/**
+ * Liefert einen frischen Index — mit Service-Account-Selbstheilung:
+ * Ist der gecachte Index leer/stale und KICKBASE_EMAIL/KICKBASE_PASSWORD
+ * sind gesetzt (Vercel-Env), loggt sich der Aufrufer (typisch der
+ * News-Cron) selbst bei Kickbase ein und rebuildet den Index.
+ * Ohne Service-Account oder bei Login-Fehlern: Fallback auf den
+ * Cache-Stand (Tagger läuft dann ggf. ohne Spieler-Tags weiter).
+ *
+ * Login passiert nur wenn stale (~1× pro Tag), nicht bei jedem Cron-Run.
+ */
+export async function ensureFreshPlayerIndex(): Promise<PlayerIndex> {
+  const idx = await getPlayerIndex();
+  if (!isIndexStale(idx)) return idx;
+
+  const em = process.env.KICKBASE_EMAIL;
+  const pass = process.env.KICKBASE_PASSWORD;
+  if (!em || !pass) {
+    if (idx.count === 0) {
+      console.warn(
+        "[player-index] Index leer/stale und kein Service-Account (KICKBASE_EMAIL/KICKBASE_PASSWORD) konfiguriert — Tagger läuft ohne Spieler-Tags"
+      );
+    }
+    return idx;
+  }
+
+  try {
+    const login = await kb.login({ em, pass });
+    const token = login.token ?? login.tkn;
+    if (!token) {
+      console.warn("[player-index] Service-Login ohne Token-Response");
+      return idx;
+    }
+    const fresh = await rebuildPlayerIndex(token);
+    console.log(`[player-index] Service-Rebuild ok: ${fresh.count} Spieler`);
+    return fresh;
+  } catch (e) {
+    console.warn("[player-index] Service-Login/Rebuild fehlgeschlagen:", e);
+    return idx;
+  }
+}

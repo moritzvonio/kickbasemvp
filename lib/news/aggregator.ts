@@ -10,7 +10,7 @@
 import { allSources } from "./sources";
 import { tagItem, registerSource } from "./tagger";
 import { storeIfNew, recordFetch } from "./store";
-import { getPlayerIndex } from "./player-index";
+import { ensureFreshPlayerIndex } from "./player-index";
 
 export interface AggregateResult {
   fetched: number;
@@ -47,8 +47,9 @@ export async function refreshAllSources(): Promise<AggregateResult> {
   const start = Date.now();
   syncSourceRegistry();
 
-  // Player-Index EINMAL laden (statt pro Item)
-  const idx = await getPlayerIndex();
+  // Player-Index EINMAL laden (statt pro Item) — heilt sich bei leerem/
+  // stalem Index selbst via Service-Login (KICKBASE_EMAIL/PASSWORD-Env)
+  const idx = await ensureFreshPlayerIndex();
 
   let fetched = 0;
   let stored = 0;
