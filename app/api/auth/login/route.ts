@@ -87,7 +87,7 @@ export async function POST(req: Request) {
   }
 
   // Onboarding: bei genau EINER Liga direkt ins Dashboard leiten (best-effort,
-  // 2s-Timeout — der Login darf hieran NIE scheitern).
+  // 2s-Timeout – der Login darf hieran NIE scheitern).
   let leagueCount: number | undefined;
   let firstLeagueId: string | undefined;
   try {
@@ -101,7 +101,7 @@ export async function POST(req: Request) {
     leagueCount = items.length;
     firstLeagueId = items[0]?.i;
   } catch {
-    // ignorieren — Fallback ist /leagues
+    // ignorieren – Fallback ist /leagues
   }
 
   return NextResponse.json({

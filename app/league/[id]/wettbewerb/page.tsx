@@ -47,7 +47,10 @@ export default async function WettbewerbPage({
   // Free (Testphase abgelaufen, nicht Pro) → Teaser statt Vollansicht.
   const locked = !access.pro && !access.trial;
 
-  const sortKey = (sp.sort ?? "netto") as
+  // Free-User (locked) bekommt eine FIXE Sortierung – sonst könnte er über die
+  // Sort-Tabs (?sort=cash|maxbid|…) nacheinander jedes Top-2-Paar im Klartext
+  // aufdecken und so die ganze Liga gratis auslesen.
+  const requestedSort = (sp.sort ?? "netto") as
     | "netto"
     | "cash"
     | "maxbid"
@@ -55,6 +58,7 @@ export default async function WettbewerbPage({
     | "daygain"
     | "balance"
     | "points";
+  const sortKey = locked ? "netto" : requestedSort;
 
   const data = await assembleCompetitionStats(session.token, leagueId, session.userId);
   if (!data) {
@@ -86,6 +90,12 @@ export default async function WettbewerbPage({
     points: (a, b) => (b.seasonPoints ?? 0) - (a.seasonPoints ?? 0),
   };
   const sortedOthers = others.slice().sort(sorters[sortKey] ?? sorters.netto);
+
+  // Wie viele Konkurrenten-Zeilen der Free-Teaser klar zeigt: 2 – aber nur,
+  // wenn danach noch etwas gesperrt bleibt. Bei ≤2 Konkurrenten würde der
+  // Teaser sonst die komplette Liga gratis offenlegen.
+  const TEASER_ROWS = 2;
+  const teaserVisible = sortedOthers.length > TEASER_ROWS ? TEASER_ROWS : 0;
 
   const SORT_TABS: Array<{ key: typeof sortKey; label: string; icon: typeof Wallet }> = [
     { key: "netto", label: "Netto-Teamwert", icon: TrendingUp },
@@ -125,48 +135,52 @@ export default async function WettbewerbPage({
         </Suspense>
       )}
 
-      {/* Sort tabs */}
+      {/* Sort tabs – nur für freigeschaltete Nutzer (locked = fixe Sortierung) */}
       <section className="slide-up slide-up-2">
-        <div className="flex items-center gap-1.5 flex-wrap mb-3">
-          <span className="text-xs uppercase tracking-wider text-muted-foreground font-semibold mr-1">
-            Sortieren
-          </span>
-          {SORT_TABS.map((t) => {
-            const active = sortKey === t.key;
-            const Icon = t.icon;
-            return (
-              <Link
-                key={t.key}
-                href={`?sort=${t.key}`}
-                className={cn(
-                  "inline-flex items-center gap-1.5 px-2.5 py-1.5 min-h-[36px] rounded-full text-[11px] font-medium border transition-colors",
-                  active
-                    ? "bg-primary text-primary-foreground border-primary shadow-sm"
-                    : "border-border text-muted-foreground hover:text-foreground hover:bg-accent"
-                )}
-              >
-                <Icon className="size-3" />
-                {t.label}
-              </Link>
-            );
-          })}
-        </div>
+        {!locked && (
+          <div className="flex items-center gap-1.5 flex-wrap mb-3">
+            <span className="text-xs uppercase tracking-wider text-muted-foreground font-semibold mr-1">
+              Sortieren
+            </span>
+            {SORT_TABS.map((t) => {
+              const active = sortKey === t.key;
+              const Icon = t.icon;
+              return (
+                <Link
+                  key={t.key}
+                  href={`?sort=${t.key}`}
+                  className={cn(
+                    "inline-flex items-center gap-1.5 px-2.5 py-1.5 min-h-[36px] rounded-full text-[11px] font-medium border transition-colors",
+                    active
+                      ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                      : "border-border text-muted-foreground hover:text-foreground hover:bg-accent"
+                  )}
+                >
+                  <Icon className="size-3" />
+                  {t.label}
+                </Link>
+              );
+            })}
+          </div>
+        )}
         {!locked && (
           <div className="mb-3">
             <ShareButtons leagueId={leagueId} snapshotEnabled={snapshotConfigured()} />
           </div>
         )}
         {/* Große Vergleichs-Tabelle (alle Manager, alle Stats nebeneinander).
-            Free-Teaser: eigene Zeile + 2 Konkurrenten klar, Rest gesperrt. */}
+            Free-Teaser: eigene Zeile + 2 Konkurrenten klar, Rest gesperrt.
+            Bei ≤2 Konkurrenten würden 2 Teaser-Zeilen die ganze Liga zeigen –
+            dann alle Konkurrenten sperren, damit die Paywall greift. */}
         <CompareTable
           stats={
             (locked
-              ? [me, ...sortedOthers.slice(0, 2)]
+              ? [me, ...sortedOthers.slice(0, teaserVisible)]
               : [me, ...sortedOthers]
             ).filter(Boolean) as ManagerComputedStats[]
           }
           myUserId={session.userId}
-          lockedRows={locked ? Math.max(0, sortedOthers.length - 2) : 0}
+          lockedRows={locked ? sortedOthers.length - teaserVisible : 0}
         />
 
         {locked ? (

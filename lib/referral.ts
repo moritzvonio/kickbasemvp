@@ -51,18 +51,23 @@ async function getReferralBonusIso(id: string): Promise<string | null> {
 /** Schreibt einem Werber eine Gutschrift zu (Cap 3). Über dem Cap: No-op. */
 export async function creditReferral(referrerId: string): Promise<void> {
   try {
-    const count = await getReferralCount(referrerId);
-    if (count >= REFERRAL_CAP) return;
-    const nextIso = extendReferralBonus(await getReferralBonusIso(referrerId), new Date());
     if (KV) {
-      await kv.incr(`referral:${referrerId}`);
+      // Atomar zählen: kv.incr liefert den NEUEN Wert. So kann der Cap auch
+      // bei parallelen Erstlogins (mehrere Lambda-Instanzen) nicht überschritten
+      // werden – ein Read-then-Write-Check wäre hier eine TOCTOU-Lücke.
+      const newCount = await kv.incr(`referral:${referrerId}`);
+      if (newCount > REFERRAL_CAP) return; // über Cap: Zähler steht, aber kein Bonus
+      const nextIso = extendReferralBonus(await getReferralBonusIso(referrerId), new Date());
       await kv.set(`probonus:${referrerId}`, nextIso);
     } else {
+      const count = store.counts.get(referrerId) ?? 0;
+      if (count >= REFERRAL_CAP) return;
+      const nextIso = extendReferralBonus(store.bonus.get(referrerId) ?? null, new Date());
       store.counts.set(referrerId, count + 1);
       store.bonus.set(referrerId, nextIso);
     }
   } catch {
-    // still — Referral darf den Login nie stören
+    // still – Referral darf den Login nie stören
   }
 }
 

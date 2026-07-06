@@ -2,13 +2,14 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/session";
+import { safeNext } from "@/lib/login-dest";
 import { LoginForm } from "./LoginForm";
 import { Logo } from "@/components/ui/logo";
 import { TeamCrest } from "@/components/ui/team-tag";
 import { Sparkline } from "@/components/ui/sparkline";
 import { FormDots } from "@/components/ui/form-dots";
 import { Card } from "@/components/ui/card";
-import { Lock, Sparkles, Trophy, ShieldCheck, ArrowLeft, Bell, TrendingUp } from "lucide-react";
+import { Lock, Sparkles, Trophy, ShieldCheck, ArrowLeft, Bell } from "lucide-react";
 
 export const metadata: Metadata = {
   title: "Login",
@@ -22,7 +23,7 @@ export default async function LoginPage({
 }) {
   const sp = await searchParams;
   const session = await getSession();
-  if (session) redirect(sp.next ?? "/leagues");
+  if (session) redirect(safeNext(sp.next) ?? "/leagues");
 
   return (
     <div className="flex-1 grid lg:grid-cols-2 min-h-screen">
@@ -117,8 +118,8 @@ export default async function LoginPage({
             <div className="flex items-start gap-3">
               <TeamCrest tid="3" size={44} />
               <div className="flex-1 min-w-0">
-                <div className="font-semibold text-sm">Florian Wirtz</div>
-                <div className="text-[11px] text-muted-foreground">FCB · MID</div>
+                <div className="font-semibold text-sm">Serhou Guirassy</div>
+                <div className="text-[11px] text-muted-foreground">BVB · ST</div>
               </div>
               <div className="text-right shrink-0">
                 <div className="font-bold text-sm tabular">18,4 Mio €</div>

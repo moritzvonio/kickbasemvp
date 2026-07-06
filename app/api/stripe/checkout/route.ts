@@ -21,7 +21,7 @@ export async function POST(req: Request) {
     return NextResponse.json(
       {
         error: "STRIPE_NOT_CONFIGURED",
-        message: "Stripe ist noch nicht eingerichtet. Bitte STRIPE_SECRET_KEY setzen.",
+        message: "Der Kauf ist gerade nicht verfügbar. Schau später vorbei.",
       },
       { status: 503 }
     );
