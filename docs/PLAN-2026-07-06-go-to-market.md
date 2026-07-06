@@ -77,21 +77,31 @@ Deshalb: großzügiger Free-Tier, Pro nur für den Differenzierer, und ein sozia
 | Tier | Inhalt | Preis (Vorschlag) |
 |---|---|---|
 | **Free** | Liga-Dashboard, Top-50, News, Liga-Feed, Aufstellungs-Planer | 0 € |
-| **Pro** | Wettbewerb (Cash/Max-Gebote aller Mitspieler), Bid-Advisor, Netto-Teamwert-Verlauf | **14,99 €/Saison** (Early-Bird bis 28.08.: 9,99 €) oder 2,99 €/Monat |
-| **Liga-Pass** | Pro für ALLE Manager einer Liga | **29,99 €/Saison** |
+| **Testphase** | ALLES (inkl. Wettbewerb/Cash) | kostenlos bis einschl. **2. Spieltag** (bzw. 14 Tage ab Registrierung, was später endet) |
+| **Pro** | Wettbewerb (Cash/Max-Gebote aller Mitspieler), Bid-Advisor, Netto-Teamwert-Verlauf | **6 €/Halbserie** (Hinrunde bzw. Rückrunde) – Einmalzahlung, kein Abo |
+| **Liga-Pass** (Vorschlag, offen) | Pro für ALLE Manager einer Liga | **15 €/Halbserie** |
 
-**Warum Liga-Pass das Kernprodukt ist:** Einer zahlt, die ganze Liga ist freigeschaltet –
-bei 10 Managern sind das 3 €/Person/Saison, das organisiert jede WhatsApp-Gruppe in
-5 Minuten. Gleichzeitig zwingt es das Produkt in die Gruppe („wir haben jetzt alle Ligabase").
-Psychologisch: Der Zahler ist meist der Liga-Admin/Nerd – unsere Kernpersona.
+**ENTSCHIEDEN (Mourice, 06.07.):** Testphase + 6 €/Halbserie.
 
-- Saison-Pricing vor Monats-Abo bewerben (Kickbase ist ein Saisonprodukt; Churn im Juni ist
-  sonst strukturell).
-- Anker: Kickbase Pro selbst kostet 26,99 €/Jahr – wir bleiben sichtbar darunter.
-- Creator-Codes: 30 % Rabatt für Käufer + 30 % Rev-Share für den Creator (Stripe Promotion
-  Codes, sauber trackbar). Kein Wettbewerber hat so etwas.
+**Umsetzungsdetails:**
+- **Einmalzahlung statt Abo**: Stripe One-Time-Checkout, Entitlement bis Stichtag
+  (Hinrunde 26/27: bis letzter Hinrunden-Spieltag ~Dez/Jan; Rückrunde: bis 22.05.2027).
+  Kein Churn-Management, keine Kündigungs-UX, DSGVO-/SEPA-einfach. `lib/entitlement.ts`
+  von Plan-Logik auf Ablaufdatum umstellen (Teil von Slice S0/Stripe).
+- **Testphase saisonal gedacht**: „Komplett kostenlos bis Spieltag 2" ist zugleich das
+  Launch-Messaging – null Risiko für Creator-Communities, und die Paywall landet genau
+  dann, wenn der erste Bieterkrieg gelaufen ist und der Wert bewiesen wurde. Für
+  Später-Einsteiger greift alternativ 14 Tage ab Registrierung.
+- **Psychologischer Anker**: 6 € ≈ anderthalb Bier pro Halbserie; Kickbase Pro selbst
+  kostet 26,99 €/Jahr – wir sind die günstige Ergänzung, nicht das zweite Abo.
+- **Liga-Pass** (noch nicht entschieden): 15 €/Halbserie für die ganze Liga = ab 3 Käufern
+  günstiger als einzeln; nutzt die WhatsApp-Gruppen-Dynamik. Empfehlung: mit anbieten.
+- Creator-Codes: 30 % Rabatt für Käufer (4,20 €) + 30 % Rev-Share für den Creator (Stripe
+  Promotion Codes, sauber trackbar). Kein Wettbewerber hat so etwas.
+- Rückrunden-Reminder als natürlicher zweiter Kaufmoment (Januar) – E-Mail/Push an
+  Hinrunden-Käufer.
 
-> **ENTSCHEIDUNG MOURICE:** Preise final, Rev-Share-Höhe, Early-Bird ja/nein.
+> **NOCH OFFEN:** Liga-Pass ja/nein + Preis, Rev-Share-Höhe.
 
 ---
 
@@ -247,10 +257,12 @@ geöffnet → Share/Invite → Kauf. Wöchentlicher Blick, keine Dashboards-Bast
 
 ## 10. Offene Entscheidungen (Mourice)
 
-1. **Pricing**: Zahlen aus Abschnitt 3 ok? Early-Bird ja/nein?
+1. ~~Pricing~~ **ENTSCHIEDEN 06.07.**: Testphase (bis einschl. Spieltag 2 bzw. 14 Tage) +
+   6 €/Halbserie als Einmalzahlung. Offen bleibt nur: **Liga-Pass ja/nein (Vorschlag 15 €/Halbserie)**
 2. **Rev-Share**: 30 % ok? (Alternative: 50 % im ersten Monat als Türöffner)
 3. **Kickbase proaktiv kontaktieren**: ja/nein (Abschnitt 7.4)
 4. **Markenschreibweise**: „Ligabase" oder „LigaBase" (dann überall konsistent)
 5. **Absender der Creator-Mails**: du persönlich (empfohlen – Indie-Maker-Story zieht) oder Team-Alias
 
 Nach Freigabe: Slices S1–S5 als eigene /blueprint-Pläne, Creator-Mails als Drafts zur Durchsicht.
+Slice S0 (zuerst): Stripe-Umbau auf Halbserien-Einmalzahlung + Testphasen-Entitlement.
