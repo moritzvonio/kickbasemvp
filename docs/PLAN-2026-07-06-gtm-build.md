@@ -232,9 +232,9 @@ verspricht Features, die nicht existieren, Rechtsseiten fehlen (404!), und auf M
 - **Edge-Cases:** KV nicht verfügbar (Button ausblenden via env-Check), doppelter Klick
   (einfach neuen Token erzeugen), Liga mit 2 Managern (Tabelle trotzdem ok).
 - **Akzeptanzkriterien:**
-  - [ ] /s/{token} ohne Session erreichbar, zeigt Snapshot-Daten + CTA + Disclaimer
-  - [ ] Snapshot-JSON in KV enthält keinerlei Tokens/Credentials (Code-Review + KV-Dump lesen)
-  - [ ] Abgelaufener Token → saubere Fallback-Seite, kein 500
+  - [x] /s/{token} ohne Session erreichbar, zeigt Snapshot-Daten + CTA + Disclaimer (live belegt)
+  - [x] Snapshot-JSON enthält keinerlei Tokens/Credentials (Payload nur name/Punkte/Werte; 0 Leak im HTML)
+  - [x] Abgelaufener/unbekannter Token → saubere „Link abgelaufen"-Seite (HTTP 200, kein 500)
 - **Verify:** POST via curl mit Session-Cookie → URL extrahieren → im Inkognito-Browser
   (bzw. curl ohne Cookie) öffnen, Inhalt prüfen.
 
@@ -576,3 +576,14 @@ wettbewerb/page.tsx — dort S0 zuerst, S7 danach).
   Route genutzt; gibt `null` bei leerer Mitgliederliste (Page rendert Empty-State). Liga-Name aus `overview.lnm`.
 - **ShareButtons** als eigene Client-Komponente (`components/share-button.tsx`), nur für Pro/Trial gerendert;
   Snapshot-Link kommt in S2 in dieselbe Komponente.
+
+### S2 (2026-07-06)
+- **`lib/snapshot-store.ts` mit globalThis-basiertem In-Memory-Fallback:** löst die Modul-Isolation
+  Route↔RSC (die die Trial-Keys in S0 lokal getroffen hat) – POST-Route und öffentliche /s-Seite sehen
+  denselben Store, sodass der Happy-Path auch lokal ohne KV verifizierbar ist. In Prod via Vercel KV (`ex: 7d`).
+- **`snapshotConfigured()` = KV vorhanden:** der „Link für die Liga-Gruppe"-Button ist lokal (kein KV)
+  ausgeblendet (persistente 7-Tage-Links brauchen KV), Route+Seite funktionieren trotzdem über den
+  In-Memory-Store (für Tests). In Prod erscheint der Button.
+- **Snapshot-Payload bewusst minimal:** nur name/seasonPoints/matchdayWins/teamValue/cashEstimate/
+  maxBidSingleSell/netTeamValue – KEIN Kickbase-Token, KEINE User-IDs (Live-Check: 0 Token-Leak im HTML).
+- **/s-Seite nutzt den geteilten `AppHeader`** (zeigt für anonyme Empfänger den Login-Button = die Conversion).

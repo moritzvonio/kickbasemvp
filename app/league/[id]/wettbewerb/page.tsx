@@ -3,6 +3,7 @@ import Link from "next/link";
 import { requireSessionOrRedirect } from "@/lib/auth";
 import { getAccess } from "@/lib/entitlement";
 import { assembleCompetitionStats } from "@/lib/competition-data";
+import { snapshotConfigured } from "@/lib/snapshot-store";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { UserAvatar } from "@/components/ui/user-avatar";
@@ -152,7 +153,7 @@ export default async function WettbewerbPage({
         </div>
         {!locked && (
           <div className="mb-3">
-            <ShareButtons leagueId={leagueId} />
+            <ShareButtons leagueId={leagueId} snapshotEnabled={snapshotConfigured()} />
           </div>
         )}
         {/* Große Vergleichs-Tabelle (alle Manager, alle Stats nebeneinander).
