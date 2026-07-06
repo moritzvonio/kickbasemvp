@@ -76,7 +76,6 @@ export async function getPlayerIndex(): Promise<PlayerIndex> {
  * Returns refreshten Index.
  */
 export async function rebuildPlayerIndex(token: string): Promise<PlayerIndex> {
-  const positions = [1, 2, 3, 4]; // GK, DEF, MID, FWD
   const all: Array<{
     pi: string;
     n: string;
@@ -86,15 +85,15 @@ export async function rebuildPlayerIndex(token: string): Promise<PlayerIndex> {
     pim?: string;
   }> = [];
 
-  for (const pos of positions) {
-    try {
-      const res = await kb.competitionPlayers(token, "1", { position: pos });
-      for (const p of res.it ?? []) {
-        all.push(p);
-      }
-    } catch (e) {
-      console.warn(`[player-index] competitionPlayers pos=${pos} failed:`, e);
+  // Vollständiger Pool via Team-Sweep (alle Vereinskader) — die alten
+  // per-Position-Abfragen kappten bei ~25 Spielern pro Position.
+  try {
+    const res = await kb.competitionPlayersAll(token, "1");
+    for (const p of res.it ?? []) {
+      all.push(p);
     }
+  } catch (e) {
+    console.warn(`[player-index] competitionPlayersAll failed:`, e);
   }
 
   const byName: PlayerIndex["byName"] = {};

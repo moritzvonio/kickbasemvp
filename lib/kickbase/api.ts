@@ -273,47 +273,83 @@ export const kb = {
   },
 
   /**
-   * Vollständigen Spielerpool holen: Der `/players`-Endpoint ohne Position
-   * liefert nur eine gekappte Teilmenge. Wir fragen daher pro Position
-   * (1=TW, 2=ABW, 3=MIT, 4=STU) parallel ab und mergen (dedupe per pi) —
-   * so bekommen wir alle Bundesliga-Spieler statt nur eine Handvoll.
+   * VOLLSTÄNDIGEN Spielerpool holen — via Team-Sweep:
+   * /table → für jedes der 18 Teams /teams/{tid}/teamprofile (~21 Spieler).
+   *
+   * Der `/players`-Endpoint kappt hart bei ~25 Spielern pro Abfrage
+   * (start/max/page werden ignoriert) und verliert off-season sogar
+   * Top-Spieler (Olise-Bug 2026-07). Der Team-Sweep liefert stattdessen
+   * den kompletten Kader aller Vereine (~380 Spieler) mit mv + ap.
    */
   async competitionPlayersAll(
     token: string,
     competitionId = "1"
   ): Promise<import("./types").KbCompetitionPlayersResponse> {
     type CP = import("./types").KbCompetitionPlayer;
-    // Der Endpoint liefert pro Abfrage hart nur ~25 Spieler (keine Pagination,
-    // start/max/page werden ignoriert — per Exploration verifiziert). Maximale
-    // Abdeckung = Gesamt-Abfrage (Top-25 gesamt) + je Position (Top-25/Position),
-    // jeweils nach Punkten. Ergibt ~100-125 punktstärkste Spieler.
-    const queries: Array<{ position?: number }> = [
-      {},
-      { position: 1 },
-      { position: 2 },
-      { position: 3 },
-      { position: 4 },
-    ];
-    const results = await Promise.all(
-      queries.map((q) =>
-        kbFetch<import("./types").KbCompetitionPlayersResponse>(
-          `/v4/competitions/${competitionId}/players`,
-          { token, query: { position: q.position } }
-        )
-          .then((r) => r.it ?? [])
-          .catch(() => [] as CP[])
-      )
-    );
+
+    const table = await kbFetch<import("./types").KbCompetitionTable>(
+      `/v4/competitions/${competitionId}/table`,
+      { token }
+    ).catch(() => null);
+    const teamIds = (table?.it ?? [])
+      .map((t) => t.tid)
+      .filter((tid): tid is string => Boolean(tid));
+
     const seen = new Set<string>();
     const merged: CP[] = [];
-    for (const arr of results) {
-      for (const p of arr) {
-        if (p?.pi && !seen.has(p.pi)) {
-          seen.add(p.pi);
-          merged.push(p);
+
+    if (teamIds.length > 0) {
+      const profiles = await Promise.all(
+        teamIds.map((tid) =>
+          kbFetch<import("./types").KbTeamProfile>(
+            `/v4/competitions/${competitionId}/teams/${tid}/teamprofile`,
+            { token }
+          ).catch(() => null)
+        )
+      );
+      for (const prof of profiles) {
+        for (const p of prof?.it ?? []) {
+          if (!p?.i || seen.has(p.i)) continue;
+          seen.add(p.i);
+          merged.push({
+            pi: p.i,
+            n: p.n,
+            tid: p.tid ?? prof?.tid ?? "",
+            pos: p.pos,
+            st: p.st,
+            pim: p.pim,
+            mv: p.mv,
+            ap: p.ap,
+            il: p.lst === 2 ? true : undefined,
+          });
         }
       }
     }
+
+    // Fallback (Team-Sweep leer): alte per-Position-Merge-Logik — liefert
+    // wenigstens die ~100 punktstärksten Spieler.
+    if (merged.length === 0) {
+      const queries: Array<{ position?: number }> = [{}, { position: 1 }, { position: 2 }, { position: 3 }, { position: 4 }];
+      const results = await Promise.all(
+        queries.map((q) =>
+          kbFetch<import("./types").KbCompetitionPlayersResponse>(
+            `/v4/competitions/${competitionId}/players`,
+            { token, query: { position: q.position } }
+          )
+            .then((r) => r.it ?? [])
+            .catch(() => [] as CP[])
+        )
+      );
+      for (const arr of results) {
+        for (const p of arr) {
+          if (p?.pi && !seen.has(p.pi)) {
+            seen.add(p.pi);
+            merged.push(p);
+          }
+        }
+      }
+    }
+
     return { it: merged };
   },
 

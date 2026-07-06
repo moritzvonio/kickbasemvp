@@ -632,6 +632,40 @@ export interface KbCompetitionTable {
   it: KbCompetitionTableEntry[];
 }
 
+/** GET /v4/competitions/{id}/teams/{tid}/teamprofile — Kader eines Vereins */
+export interface KbTeamProfile {
+  tid?: string;
+  /** Team name */
+  tn?: string;
+  /** Placement */
+  pl?: number;
+  /** Team value (Σ Spieler-MV) */
+  tv?: number;
+  it?: KbTeamProfilePlayer[];
+  [k: string]: unknown;
+}
+
+export interface KbTeamProfilePlayer {
+  /** Player id (heißt hier `i`, nicht `pi`!) */
+  i: string;
+  n: string;
+  /** Position 1-4 */
+  pos: number;
+  /** Market value */
+  mv?: number;
+  /** Market value trend */
+  mvt?: number;
+  /** Average points */
+  ap?: number;
+  /** Status (0 = fit) */
+  st?: number;
+  /** Loan status (beobachtet: 1 = normal) */
+  lst?: number;
+  tid?: string;
+  pim?: string;
+  [k: string]: unknown;
+}
+
 export interface KbCompetitionTableEntry {
   /** Team id */
   tid: string;

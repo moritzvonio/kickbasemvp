@@ -44,24 +44,28 @@ export default async function TopSpielerPage({
     ? Number(sp.limit)
     : 50;
 
-  // "Alle": vollständigen Pool über alle Positionen mergen (der Endpoint ohne
-  // Position liefert nur eine gekappte Teilmenge → es fehlten viele Spieler).
+  // Vollständiger Pool via Team-Sweep (alle 18 Vereinskader, ~380 Spieler) —
+  // Positions-Filter läuft über denselben Pool, weil der per-Position-Endpoint
+  // genauso hart bei ~25 Spielern kappt (fehlende Stars, Olise-Bug 2026-07).
   const data = await withKbAuth(path, () =>
-    posFilter.value === undefined
-      ? kb.competitionPlayersAll(session.token, "1")
-      : kb.competitionPlayers(session.token, "1", { position: posFilter.value })
+    kb.competitionPlayersAll(session.token, "1")
   ).catch(() => ({ it: [] as KbCompetitionPlayer[] }));
+  const poolAll = data.it ?? [];
+  const pool =
+    posFilter.value === undefined
+      ? poolAll
+      : poolAll.filter((p) => p.pos === posFilter.value);
 
-  // Erster Sort nach competitionPlayer.p — das ist aber bei der Kickbase-API
-  // NICHT konsistent die Gesamtsaison-Punkte (manchmal nur letzter Spieltag
-  // oder Aggregat). Wir holen für die Top-(limit) Spieler die wirklichen
-  // Saison-Punkte via Detail-Endpoint (tp) und sortieren final danach.
-  const preSorted = (data.it ?? []).slice().sort((a, b) => (b.p ?? 0) - (a.p ?? 0));
+  // Vorsortierung: p (Saisonpunkte, wenn vorhanden) bzw. ap × 34 als Proxy —
+  // der Team-Sweep liefert nur den Punkteschnitt (ap), keine Gesamtpunkte.
+  const preSortKey = (p: KbCompetitionPlayer): number =>
+    p.p ?? Math.round((p.ap ?? 0) * 34);
+  const preSorted = pool.slice().sort((a, b) => preSortKey(b) - preSortKey(a));
   const candidates = preSorted.slice(0, Math.min(limit + 20, preSorted.length));
 
   // Detail-Calls (echte Saison-Punkte tp) auf die Top-Kandidaten begrenzen,
-  // damit große Limits (z.B. 250) bei vollem Pool nicht hunderte Calls auslösen.
-  const toDetail = candidates.slice(0, 80);
+  // damit große Limits bei vollem Pool nicht hunderte Calls auslösen.
+  const toDetail = candidates.slice(0, Math.min(candidates.length, 120));
   const detailMap = new Map<
     string,
     { tp?: number; ap?: number; g?: number; a?: number }
@@ -82,10 +86,10 @@ export default async function TopSpielerPage({
     })
   );
 
-  // Helper: liefert tp wenn Detail vorhanden, sonst cp.p als Fallback
+  // Helper: liefert tp wenn Detail vorhanden, sonst p bzw. ap×34 als Fallback
   const seasonPoints = (cp: KbCompetitionPlayer): number => {
     const d = detailMap.get(cp.pi);
-    return d?.tp ?? cp.p ?? 0;
+    return d?.tp ?? preSortKey(cp);
   };
 
   // Final-Sort nach echten Saison-Punkten
