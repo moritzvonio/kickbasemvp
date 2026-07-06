@@ -1,21 +1,15 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { kb } from "@/lib/kickbase/api";
-import { requireSessionOrRedirect, withKbAuth } from "@/lib/auth";
+import { requireSessionOrRedirect } from "@/lib/auth";
 import { getAccess } from "@/lib/entitlement";
+import { assembleCompetitionStats } from "@/lib/competition-data";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { EmptyState } from "@/components/ui/empty-state";
 import { formatEUR, formatDelta, cn } from "@/lib/utils";
-import {
-  computeManagerStats,
-  calibrateFromOwnAccount,
-  calibrateResidualPerPoint,
-  detectInitialBudget,
-  DEFAULT_CALIBRATION,
-  type ManagerComputedStats,
-} from "@/lib/competitor";
+import { ShareButtons } from "@/components/share-button";
+import type { ManagerComputedStats } from "@/lib/competitor";
 import {
   Wallet,
   Target,
@@ -61,18 +55,8 @@ export default async function WettbewerbPage({
     | "balance"
     | "points";
 
-  // Step 1: Ranking + Overview + eigene Achievements + eigener IST-Cash.
-  // Der Activity-Feed wird fürs Cash-Modell NICHT mehr gebraucht (trunkiert,
-  // Boni nur für eigenen User sichtbar – siehe docs/kickbase-bonus-regeln.md).
-  const [ranking, overview, ownAchievements, myRealBudget] = await Promise.all([
-    withKbAuth(path, () => kb.ranking(session.token, leagueId)).catch(() => ({} as Awaited<ReturnType<typeof kb.ranking>>)),
-    withKbAuth(path, () => kb.leagueOverviewWithManagers(session.token, leagueId)).catch(() => ({} as Awaited<ReturnType<typeof kb.leagueOverviewWithManagers>>)),
-    withKbAuth(path, () => kb.userAchievementsTotal(session.token, leagueId)).catch(() => ({ items: [], total: 0 })),
-    withKbAuth(path, () => kb.myBudget(session.token, leagueId)).catch(() => null),
-  ]);
-
-  const members = ranking.us ?? ranking.it ?? [];
-  if (members.length === 0) {
+  const data = await assembleCompetitionStats(session.token, leagueId, session.userId);
+  if (!data) {
     return (
       <div className="space-y-6">
         <Header />
@@ -86,77 +70,7 @@ export default async function WettbewerbPage({
       </div>
     );
   }
-
-  const ovRecord = overview as Record<string, unknown>;
-  const initialBudget = detectInitialBudget();
-  const leagueStartMs =
-    typeof ovRecord.dt === "string" ? Date.parse(ovRecord.dt) : NaN;
-  const rankingRec = ranking as Record<string, unknown>;
-  const matchdaysPlayed = Number(rankingRec.nd ?? 34) || 34;
-  const seasonFinished =
-    Number(rankingRec.day ?? 0) >= matchdaysPlayed;
-  const leagueTotalPoints = members.reduce((s, u) => s + (u.sp ?? 0), 0);
-
-  // Step 2: pro Manager Squad + ALLE Transfers + Dashboard (tp/mdw/pl)
-  const memberData = await Promise.all(
-    members.map(async (m) => {
-      const [squad, transfers, dashboard] = await Promise.all([
-        withKbAuth(path, () => kb.managerSquad(session.token, leagueId, m.i)).catch(() => null),
-        withKbAuth(path, () => kb.managerTransferAll(session.token, leagueId, m.i)).catch(() => []),
-        withKbAuth(path, () => kb.managerDashboard(session.token, leagueId, m.i)).catch(() => null),
-      ]);
-      return { manager: m, squad: squad ?? null, transfers, dashboard };
-    })
-  );
-
-  const meRealCash = myRealBudget?.b !== undefined ? myRealBudget.b : undefined;
-  const meData = memberData.find((d) => d.manager.i === session.userId);
-
-  // Kalibrierung aus dem eigenen Account:
-  //  1. weiche Raten (Tiers/Einzelspieler/Händchen) aus den ECHTEN Achievements
-  //  2. residualPerPoint aus IST-Cash − Strukturschätzung (Pass 1)
-  const ownTp = Number(
-    (meData?.dashboard as { tp?: number } | null)?.tp ?? meData?.manager.sp ?? 0
-  );
-  const ownSoldVolume = (meData?.transfers ?? [])
-    .filter((t) => t.tty === 2 && Date.parse(t.dt) > leagueStartMs)
-    .reduce((s, t) => s + (t.trp ?? 0), 0);
-  const calRaw =
-    ownAchievements.total > 0 && ownTp > 0
-      ? calibrateFromOwnAccount({ achievements: ownAchievements, ownTp, ownSoldVolume })
-      : DEFAULT_CALIBRATION;
-
-  const buildInput = (d: (typeof memberData)[number], cal: typeof DEFAULT_CALIBRATION) => {
-    const isMe = d.manager.i === session.userId;
-    return {
-      userId: d.manager.i,
-      name: d.manager.n,
-      image: d.manager.uim,
-      initialBudget,
-      transfers: d.transfers,
-      squad: d.squad,
-      rankingEntry: d.manager,
-      dashboard: d.dashboard as { tp?: number; mdw?: number; pl?: number } | null,
-      leagueStartMs,
-      seasonFinished,
-      matchdaysPlayed,
-      leagueTotalPoints,
-      calibration: cal,
-      achievements: isMe && ownAchievements.total > 0 ? ownAchievements : undefined,
-      realCashFromApi: isMe ? meRealCash : undefined,
-    };
-  };
-
-  let residualRate = DEFAULT_CALIBRATION.residualPerPoint;
-  if (meData && meRealCash !== undefined) {
-    const pass1 = computeManagerStats(buildInput(meData, { ...calRaw, residualPerPoint: 0 }));
-    residualRate = calibrateResidualPerPoint(pass1) ?? DEFAULT_CALIBRATION.residualPerPoint;
-  }
-  const calibration = { ...calRaw, residualPerPoint: residualRate };
-
-  const stats: ManagerComputedStats[] = memberData.map((d) =>
-    computeManagerStats(buildInput(d, calibration))
-  );
+  const { stats, chartManagers, leagueStartMs, initialBudget, residualRate } = data;
 
   const me = stats.find((s) => s.userId === session.userId);
   const others = stats.filter((s) => s.userId !== session.userId);
@@ -181,18 +95,6 @@ export default async function WettbewerbPage({
     { key: "balance", label: "Transferbilanz", icon: ArrowUp },
     { key: "points", label: "Punkte", icon: Trophy },
   ];
-
-  // Netto-Teamwert-Verlauf (Suspense-gestreamt)
-  const chartManagers = memberData.map((d) => {
-    const st = stats.find((s) => s.userId === d.manager.i);
-    return {
-      id: d.manager.i,
-      name: d.manager.n,
-      squad: d.squad,
-      transfers: d.transfers,
-      currentCash: st ? st.cashEstimate : initialBudget,
-    };
-  });
 
   return (
     <div className="space-y-6">
@@ -248,6 +150,11 @@ export default async function WettbewerbPage({
             );
           })}
         </div>
+        {!locked && (
+          <div className="mb-3">
+            <ShareButtons leagueId={leagueId} />
+          </div>
+        )}
         {/* Große Vergleichs-Tabelle (alle Manager, alle Stats nebeneinander).
             Free-Teaser: eigene Zeile + 2 Konkurrenten klar, Rest gesperrt. */}
         <CompareTable

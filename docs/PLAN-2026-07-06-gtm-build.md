@@ -201,9 +201,9 @@ verspricht Features, die nicht existieren, Rechtsseiten fehlen (404!), und auf M
   Share-API abgelehnt/abgebrochen (kein Fehler-Toast nötig, still), Edge-Runtime-Limits
   (keine Node-APIs im route.tsx).
 - **Akzeptanzkriterien:**
-  - [ ] GET share-image liefert PNG 1080×1350 mit echten Liga-Daten
-  - [ ] Kein Zugriff ohne Session (401/Redirect) und ohne Pro/Trial (403)
-  - [ ] Button auf Desktop lädt Datei herunter (kein navigator.share) — kein Crash
+  - [x] GET share-image liefert PNG 1080×1350 mit echten Liga-Daten (live: 200, PNG 1080x1350, Liga 089, Sichtprüfung ok)
+  - [x] Kein Zugriff ohne Session (307-Redirect via Middleware) und ohne Pro/Trial (403) — live belegt
+  - [x] Button auf Desktop lädt Datei herunter (navigator.canShare-Check → Download-Fallback), kein Crash
 - **Verify:** `curl -H "Cookie: bb_session=..." -o /tmp/share.png localhost:3000/league/6871934/wettbewerb/share-image && file /tmp/share.png`
   (muss „PNG image data, 1080 x 1350" zeigen); Bild öffnen und Sichtprüfung.
 
@@ -565,3 +565,14 @@ wettbewerb/page.tsx — dort S0 zuerst, S7 danach).
   gesperrt („Browser is already in use"). Verifikation daher über das ausgelieferte Markup (alle
   responsive Klassen present), den Build und den Live-/leagues-Check. Reine responsive Tailwind-Klassen
   (`md:hidden`, `min-w-[720px]`, `sticky`) sind deterministisch.
+
+### S1 (2026-07-06)
+- **share-image-Route ist `runtime = "nodejs"`** (nicht Edge wie das OG-Image): die Session-
+  Entschlüsselung nutzt `node:crypto`, das im Edge-Runtime fehlt. `ImageResponse` läuft auch unter Node.
+- **Satori-Gotcha:** next/og verlangt `display:flex` auf jedem `<div>` mit >1 Kind. Die „max {Wert}"-Zelle
+  hatte zwei Text-Kinder ohne flex → zu einem einzelnen Template-String zusammengefasst. (Fehler war erst
+  zur Laufzeit sichtbar, nicht im Build — Live-Render ist bei og-Images Pflicht.)
+- **Daten-Assembly extrahiert** nach `lib/competition-data.ts` (`assembleCompetitionStats`), von Page +
+  Route genutzt; gibt `null` bei leerer Mitgliederliste (Page rendert Empty-State). Liga-Name aus `overview.lnm`.
+- **ShareButtons** als eigene Client-Komponente (`components/share-button.tsx`), nur für Pro/Trial gerendert;
+  Snapshot-Link kommt in S2 in dieselbe Komponente.
