@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { requireSessionOrRedirect } from "@/lib/auth";
-import { hasPro, getEntitlement } from "@/lib/entitlement";
+import { getAccess, getEntitlement, type Plan } from "@/lib/entitlement";
 import { LogoutButton } from "@/components/logout-button";
 import { PushToggle } from "@/components/push-toggle";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -14,10 +14,26 @@ import { User, Crown, Bell, Sparkles, Settings, ChevronRight } from "lucide-reac
 export const metadata: Metadata = { title: "Account" };
 export const dynamic = "force-dynamic";
 
+const PLAN_LABEL: Record<Plan, string> = {
+  "hinrunde-2627": "Pro Hinrunde 26/27",
+  "rueckrunde-2627": "Pro Rückrunde 26/27",
+  season: "Pro Saison",
+  monthly: "Pro Monatlich",
+};
+
+function fmtDate(d: Date) {
+  return d.toLocaleDateString("de-DE", {
+    day: "2-digit",
+    month: "long",
+    year: "numeric",
+  });
+}
+
 export default async function AccountPage() {
   const session = await requireSessionOrRedirect("/account");
-  const isPro = await hasPro(session.userId);
+  const access = await getAccess(session.userId);
   const ent = await getEntitlement();
+  const isPro = access.pro;
 
   return (
     <div className="flex-1 flex flex-col">
@@ -51,11 +67,15 @@ export default async function AccountPage() {
                 ID: {session.userId}
               </div>
             </div>
-            {isPro && (
+            {isPro ? (
               <Badge variant="success" className="gap-1 py-1 px-3 shrink-0">
                 <Crown className="size-3" /> Pro
               </Badge>
-            )}
+            ) : access.trial ? (
+              <Badge variant="muted" className="gap-1 py-1 px-3 shrink-0">
+                <Sparkles className="size-3" /> Testphase
+              </Badge>
+            ) : null}
           </CardContent>
         </Card>
 
@@ -67,33 +87,43 @@ export default async function AccountPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Sparkles className="size-4 text-primary" />
-              Abo
+              Zugang
             </CardTitle>
             <CardDescription>
-              {isPro ? "Du bist Pro 🎉" : "Upgrade auf Pro für alle Features"}
+              {isPro
+                ? "Du hast Pro 🎉"
+                : access.trial
+                ? "Kostenlose Testphase läuft"
+                : "Schalte die Pro-Flächen frei"}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3 text-sm">
             {isPro && ent ? (
               <>
-                <Row
-                  label="Plan"
-                  value={ent.plan === "season" ? "Pro Saison" : "Pro Monatlich"}
-                />
-                <Row
-                  label="Aktiv bis"
-                  value={new Date(ent.exp * 1000).toLocaleDateString("de-DE", {
-                    day: "2-digit",
-                    month: "long",
-                    year: "numeric",
-                  })}
-                />
+                <Row label="Plan" value={PLAN_LABEL[ent.plan] ?? "Pro"} />
+                {access.proUntil && (
+                  <Row label="Aktiv bis" value={fmtDate(access.proUntil)} />
+                )}
+              </>
+            ) : access.trial && access.trialEnd ? (
+              <>
+                <Row label="Status" value="Testphase (alles frei)" />
+                <Row label="Läuft bis" value={fmtDate(access.trialEnd)} />
+                <p className="text-muted-foreground">
+                  Danach bleiben Wettbewerb und Bid-Advisor mit Pro frei –
+                  6 € pro Halbserie, einmalig.
+                </p>
+                <Button asChild>
+                  <Link href="/upgrade">
+                    Jetzt Pro sichern <ChevronRight className="size-4" />
+                  </Link>
+                </Button>
               </>
             ) : (
               <>
                 <p className="text-muted-foreground">
-                  Du bist auf dem kostenlosen Tier. Pro entsperrt Liga-Sozial-Layer,
-                  AI-Coach und Push-Alerts.
+                  Du bist auf dem kostenlosen Tier. Pro entsperrt die Kontostände
+                  und Max-Gebote aller Manager (Wettbewerb) und den Bid-Advisor.
                 </p>
                 <Button asChild>
                   <Link href="/upgrade">

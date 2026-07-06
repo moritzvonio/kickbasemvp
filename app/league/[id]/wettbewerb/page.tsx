@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { kb } from "@/lib/kickbase/api";
 import { requireSessionOrRedirect, withKbAuth } from "@/lib/auth";
+import { getAccess } from "@/lib/entitlement";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { UserAvatar } from "@/components/ui/user-avatar";
@@ -27,6 +28,7 @@ import {
   Trophy,
   Info,
   Swords,
+  Lock,
 } from "lucide-react";
 import { Suspense } from "react";
 import { NetWorthChartSection } from "../NetWorthChartSection";
@@ -46,6 +48,9 @@ export default async function WettbewerbPage({
   const sp = await searchParams;
   const path = `/league/${leagueId}/wettbewerb`;
   const session = await requireSessionOrRedirect(path);
+  const access = await getAccess(session.userId);
+  // Free (Testphase abgelaufen, nicht Pro) → Teaser statt Vollansicht.
+  const locked = !access.pro && !access.trial;
 
   const sortKey = (sp.sort ?? "netto") as
     | "netto"
@@ -191,7 +196,7 @@ export default async function WettbewerbPage({
 
   return (
     <div className="space-y-6">
-      <Header />
+      <Header trialEnd={access.trial && !access.pro ? access.trialEnd : undefined} />
 
       {/* My own card (highlighted) */}
       {me && (
@@ -204,7 +209,7 @@ export default async function WettbewerbPage({
       )}
 
       {/* Netto-Teamwert chart — Suspense-gestreamt, blockiert die Seite nicht */}
-      {Number.isFinite(leagueStartMs) && (
+      {!locked && Number.isFinite(leagueStartMs) && (
         <Suspense fallback={<ChartSkeleton startMs={leagueStartMs} />}>
           <NetWorthChartSection
             leagueId={leagueId}
@@ -243,23 +248,34 @@ export default async function WettbewerbPage({
             );
           })}
         </div>
-        {/* Große Vergleichs-Tabelle (alle Manager, alle Stats nebeneinander) */}
+        {/* Große Vergleichs-Tabelle (alle Manager, alle Stats nebeneinander).
+            Free-Teaser: eigene Zeile + 2 Konkurrenten klar, Rest gesperrt. */}
         <CompareTable
-          stats={[me, ...sortedOthers].filter(Boolean) as ManagerComputedStats[]}
+          stats={
+            (locked
+              ? [me, ...sortedOthers.slice(0, 2)]
+              : [me, ...sortedOthers]
+            ).filter(Boolean) as ManagerComputedStats[]
+          }
           myUserId={session.userId}
+          lockedRows={locked ? Math.max(0, sortedOthers.length - 2) : 0}
         />
 
-        {/* Detail-Cards (klassische Card-Ansicht für Drill-Down) */}
-        <details className="mt-6">
-          <summary className="cursor-pointer text-xs uppercase tracking-wider text-muted-foreground font-semibold hover:text-foreground py-2">
-            Detail-Karten anzeigen ({sortedOthers.length} Manager)
-          </summary>
-          <div className="grid gap-3 mt-3">
-            {sortedOthers.map((s) => (
-              <ManagerCard key={s.userId} stats={s} budget={initialBudget} />
-            ))}
-          </div>
-        </details>
+        {locked ? (
+          <UpgradeTeaser count={sortedOthers.length} />
+        ) : (
+          /* Detail-Cards (klassische Card-Ansicht für Drill-Down) */
+          <details className="mt-6">
+            <summary className="cursor-pointer text-xs uppercase tracking-wider text-muted-foreground font-semibold hover:text-foreground py-2">
+              Detail-Karten anzeigen ({sortedOthers.length} Manager)
+            </summary>
+            <div className="grid gap-3 mt-3">
+              {sortedOthers.map((s) => (
+                <ManagerCard key={s.userId} stats={s} budget={initialBudget} />
+              ))}
+            </div>
+          </details>
+        )}
       </section>
 
       {/* Methodik-Hinweis */}
@@ -331,20 +347,54 @@ function ChartSkeleton({ startMs }: { startMs: number }) {
   );
 }
 
-function Header() {
+function Header({ trialEnd }: { trialEnd?: Date }) {
   return (
     <div className="slide-up">
-      <h1 className="text-2xl sm:text-3xl font-bold tracking-tight flex items-center gap-3">
+      <h1 className="text-2xl sm:text-3xl font-bold tracking-tight flex items-center gap-3 flex-wrap">
         <span className="inline-flex size-10 items-center justify-center rounded-xl bg-primary/10 text-primary ring-1 ring-primary/20">
           <Swords className="size-5" />
         </span>
         Wettbewerb
+        {trialEnd && (
+          <Badge variant="muted" className="text-[10px] font-medium">
+            Testphase bis {trialEnd.toLocaleDateString("de-DE")}
+          </Badge>
+        )}
       </h1>
       <p className="text-sm text-muted-foreground mt-2">
-        Kontostände, Max-Gebote und Transferbilanzen aller Manager — zurückgerechnet
+        Kontostände, Max-Gebote und Transferbilanzen aller Manager – zurückgerechnet
         aus den öffentlichen Liga-Daten.
       </p>
     </div>
+  );
+}
+
+/* Free-Teaser: prominenter CTA-Block unter der (gesperrten) Vergleichstabelle. */
+function UpgradeTeaser({ count }: { count: number }) {
+  return (
+    <Card className="mt-6 border-primary/40 bg-primary/[0.05] overflow-hidden">
+      <CardContent className="p-6 text-center">
+        <div className="size-11 rounded-full bg-primary/15 mx-auto flex items-center justify-center mb-3">
+          <Lock className="size-5 text-primary" />
+        </div>
+        <h3 className="font-semibold text-base mb-1">
+          Sieh alle Kontostände + Max-Gebote
+        </h3>
+        <p className="text-sm text-muted-foreground max-w-md mx-auto mb-4">
+          {count > 2
+            ? `${count - 2} weitere Mitspieler sind gesperrt. `
+            : ""}
+          Schalte die kompletten Kontostände, Max-Gebote und den
+          Netto-Teamwert-Verlauf deiner Liga frei – Pro für 6 € pro Halbserie.
+        </p>
+        <Link
+          href="/upgrade"
+          className="inline-flex items-center justify-center gap-1.5 h-10 px-5 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition"
+        >
+          Pro freischalten
+        </Link>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -723,9 +773,12 @@ function Stat({
 function CompareTable({
   stats,
   myUserId,
+  lockedRows = 0,
 }: {
   stats: ManagerComputedStats[];
   myUserId: string;
+  /** Anzahl gesperrter Platzhalterzeilen (Free-Teaser) — enthalten KEINE echten Daten. */
+  lockedRows?: number;
 }) {
   return (
     <Card className="overflow-hidden mb-6">
@@ -837,6 +890,33 @@ function CompareTable({
                 </tr>
               );
             })}
+            {/* Gesperrte Platzhalterzeilen — bewusst OHNE echte Manager-Werte
+                (kein View-Source-Leak), nur geblurrte Punkte. */}
+            {Array.from({ length: lockedRows }).map((_, i) => (
+              <tr
+                key={`locked-${i}`}
+                className="border-b border-border/40 last:border-0 select-none pointer-events-none"
+                aria-hidden
+              >
+                <td className="pl-4 py-2.5 text-muted-foreground">
+                  <span className="blur-sm">{stats.length + i + 1}</span>
+                </td>
+                <td className="py-2.5">
+                  <div className="flex items-center gap-2 min-w-0 blur-sm">
+                    <span className="size-5 rounded-full bg-muted-foreground/30 shrink-0" />
+                    <span className="truncate text-muted-foreground">Mitspieler</span>
+                  </div>
+                </td>
+                {Array.from({ length: 7 }).map((_, j) => (
+                  <td key={j} className="text-right py-2.5 font-mono text-muted-foreground">
+                    <span className="blur-sm">•••</span>
+                  </td>
+                ))}
+                <td className="text-right pr-4 py-2.5 font-mono text-muted-foreground">
+                  <span className="blur-sm">•••</span>
+                </td>
+              </tr>
+            ))}
           </tbody>
         </table>
       </div>

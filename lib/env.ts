@@ -11,6 +11,11 @@ const Env = z.object({
   CRON_SECRET: z.string().min(16).optional(),
   DISCORD_INGEST_SECRET: z.string().optional(),
   NEWS_DISABLE_MOCKS: z.string().optional(),
+  // Stripe (optional — leer lassen deaktiviert den Pro-Checkout)
+  STRIPE_SECRET_KEY: z.string().optional(),
+  STRIPE_WEBHOOK_SECRET: z.string().optional(),
+  STRIPE_PRICE_HINRUNDE_2627: z.string().optional(),
+  STRIPE_PRICE_RUECKRUNDE_2627: z.string().optional(),
 });
 
 // Production: KEIN Fallback — fehlt SESSION_SECRET wird der Build crashen
@@ -30,6 +35,10 @@ export const env = Env.parse({
   CRON_SECRET: process.env.CRON_SECRET,
   DISCORD_INGEST_SECRET: process.env.DISCORD_INGEST_SECRET,
   NEWS_DISABLE_MOCKS: process.env.NEWS_DISABLE_MOCKS,
+  STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY,
+  STRIPE_WEBHOOK_SECRET: process.env.STRIPE_WEBHOOK_SECRET,
+  STRIPE_PRICE_HINRUNDE_2627: process.env.STRIPE_PRICE_HINRUNDE_2627,
+  STRIPE_PRICE_RUECKRUNDE_2627: process.env.STRIPE_PRICE_RUECKRUNDE_2627,
 });
 
 export const isProd = env.NODE_ENV === "production";

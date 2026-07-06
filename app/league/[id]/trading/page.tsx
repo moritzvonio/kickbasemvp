@@ -12,6 +12,8 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { BatteryBar } from "@/components/ui/point-bar";
 import { formatEUR, formatDelta, cn } from "@/lib/utils";
 import { analyzeBidPattern } from "@/lib/bid-analyzer";
+import { getAccess } from "@/lib/entitlement";
+import { ProUpsell } from "@/components/pro-gate";
 import { BidAdvisor, type ManagerPattern } from "./BidAdvisor";
 import type { KbRankingUser, KbManagerTransfer } from "@/lib/kickbase/types";
 import {
@@ -40,6 +42,7 @@ export default async function TradingPage({
   const { id: leagueId } = await params;
   const path = `/league/${leagueId}/trading`;
   const session = await requireSessionOrRedirect(path);
+  const access = await getAccess(session.userId);
 
   const [squad, market, budget, ranking] = await Promise.all([
     withKbAuth(path, () => kb.squad(session.token, leagueId)).catch(() => ({ it: [] } as Awaited<ReturnType<typeof kb.squad>>)),
@@ -146,10 +149,17 @@ export default async function TradingPage({
         />
       </section>
 
-      {/* Bid-Advisor: Konkurrenten-Bietverhalten + Empfehlung */}
+      {/* Bid-Advisor: Konkurrenten-Bietverhalten + Empfehlung (Pro-Fläche) */}
       {managerPatterns.length > 0 && (
         <section className="slide-up slide-up-2">
-          <BidAdvisor managerPatterns={managerPatterns} />
+          {access.pro || access.trial ? (
+            <BidAdvisor managerPatterns={managerPatterns} />
+          ) : (
+            <ProUpsell
+              title="Bid-Advisor"
+              description="Sieh das Bietverhalten deiner Konkurrenten und wie hoch du realistisch bieten musst. Pro – 6 € pro Halbserie."
+            />
+          )}
         </section>
       )}
 

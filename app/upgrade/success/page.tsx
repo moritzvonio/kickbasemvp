@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { requireSessionOrRedirect } from "@/lib/auth";
 import { getStripe } from "@/lib/stripe";
 import { setEntitlement, type Plan } from "@/lib/entitlement";
+import { currentHalfSeason, halfSeasonEnd } from "@/lib/season";
 import { Button } from "@/components/ui/button";
 import { Sparkles } from "lucide-react";
 
@@ -23,36 +24,34 @@ export default async function UpgradeSuccessPage({
     redirect("/upgrade");
   }
 
-  // Verify checkout session and set entitlement
-  let plan: Plan = "monthly";
-  let exp = Math.floor(Date.now() / 1000) + 60 * 60 * 24 * 30;
+  // Checkout-Session prüfen und Entitlement setzen.
+  let plan: Plan = currentHalfSeason().key;
+  let exp = Math.floor(currentHalfSeason().end.getTime() / 1000);
   try {
-    const cs = await stripe.checkout.sessions.retrieve(sp.session_id, {
-      expand: ["subscription"],
-    });
+    const cs = await stripe.checkout.sessions.retrieve(sp.session_id);
     if (cs.client_reference_id !== session.userId) {
       throw new Error("Session belongs to a different user");
     }
-    const meta = cs.metadata?.plan;
-    if (meta === "season" || meta === "monthly") plan = meta;
-
-    if (cs.mode === "subscription" && cs.subscription) {
-      const sub = typeof cs.subscription === "string"
-        ? await stripe.subscriptions.retrieve(cs.subscription)
-        : cs.subscription;
-      const periodEnd = (sub.items?.data?.[0] as { current_period_end?: number } | undefined)?.current_period_end;
-      if (periodEnd) exp = periodEnd;
-    } else if (cs.mode === "payment") {
-      // Season pass — give until end of May next year (rough)
-      const now = new Date();
-      const nextMay = new Date(now.getFullYear() + (now.getMonth() > 4 ? 1 : 0), 4, 31);
-      exp = Math.floor(nextMay.getTime() / 1000);
+    if (cs.status !== "complete" || cs.payment_status !== "paid") {
+      throw new Error("Checkout nicht abgeschlossen");
     }
+    const meta = cs.metadata?.plan;
+    if (meta === "hinrunde-2627" || meta === "rueckrunde-2627") plan = meta;
+
+    // Zugang gilt bis zum Ende der gekauften Halbserie (exakt, nicht „rough").
+    const end =
+      plan === "hinrunde-2627" || plan === "rueckrunde-2627"
+        ? halfSeasonEnd(plan)
+        : currentHalfSeason().end;
+    exp = Math.floor(end.getTime() / 1000);
 
     await setEntitlement({ userId: session.userId, plan, exp });
   } catch {
     redirect("/upgrade");
   }
+
+  const planLabel =
+    plan === "rueckrunde-2627" ? "Pro Rückrunde 26/27" : "Pro Hinrunde 26/27";
 
   return (
     <div className="flex-1 mx-auto max-w-md px-4 py-20 text-center">
@@ -61,7 +60,7 @@ export default async function UpgradeSuccessPage({
       </div>
       <h1 className="text-3xl font-bold mb-2">Willkommen bei Pro</h1>
       <p className="text-muted-foreground mb-8">
-        Plan: <span className="text-foreground font-medium">{plan === "season" ? "Pro Saison" : "Pro Monatlich"}</span>
+        Plan: <span className="text-foreground font-medium">{planLabel}</span>
         <br />
         Zugang bis {new Date(exp * 1000).toLocaleDateString("de-DE")}.
       </p>

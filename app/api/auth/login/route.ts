@@ -4,6 +4,7 @@ import { kb } from "@/lib/kickbase/api";
 import { KickbaseError } from "@/lib/kickbase/client";
 import { decodeKickbaseToken, setSessionCookie } from "@/lib/session";
 import { recordLogin } from "@/lib/admin/analytics";
+import { recordFirstLoginTrial } from "@/lib/entitlement";
 
 export const runtime = "nodejs";
 
@@ -74,6 +75,8 @@ export async function POST(req: Request) {
 
   // First-Party-Analytics: Login protokollieren (best-effort, blockiert nie)
   await recordLogin(userId, displayName).catch(() => {});
+  // Testphasen-Start festhalten (nur beim allerersten Login, best-effort)
+  await recordFirstLoginTrial(userId).catch(() => {});
 
   return NextResponse.json({
     ok: true,

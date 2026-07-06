@@ -7,7 +7,7 @@ import { env } from "@/lib/env";
 export const runtime = "nodejs";
 
 const Body = z.object({
-  plan: z.enum(["monthly", "season"]),
+  plan: z.enum(["hinrunde-2627", "rueckrunde-2627"]),
 });
 
 export async function POST(req: Request) {
@@ -42,16 +42,14 @@ export async function POST(req: Request) {
     return NextResponse.json(
       {
         error: "PRICE_NOT_CONFIGURED",
-        message: `Stripe price id fehlt: STRIPE_PRICE_PRO_${plan.toUpperCase()}`,
+        message: "Der Kauf ist gerade nicht verfügbar. Schau später vorbei.",
       },
       { status: 503 }
     );
   }
 
-  const isSubscription = plan === "monthly";
-
   const checkout = await stripe.checkout.sessions.create({
-    mode: isSubscription ? "subscription" : "payment",
+    mode: "payment",
     line_items: [{ price: priceId, quantity: 1 }],
     success_url: `${env.NEXT_PUBLIC_APP_URL}/upgrade/success?session_id={CHECKOUT_SESSION_ID}`,
     cancel_url: `${env.NEXT_PUBLIC_APP_URL}/upgrade?canceled=1`,

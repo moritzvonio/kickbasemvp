@@ -3,19 +3,26 @@
  *
  * After a successful Stripe checkout we set a JWE-encrypted cookie containing
  * the user id, plan, and an expiry timestamp. That's the source of truth until
- * we wire up Supabase or another DB.
+ * we wire up a DB.
+ *
+ * Zugang = Pro (bezahlt, Cookie) ODER Testphase (erster Login + Fristen aus
+ * lib/season.ts). Der Erst-Login-Zeitpunkt liegt in KV (`trial:{userId}`) mit
+ * In-Memory-Fallback fürs lokale Dev (Muster wie lib/admin/analytics.ts).
  */
 
 import { cookies } from "next/headers";
 import { jwtDecrypt, EncryptJWT } from "jose";
 import { createHash } from "node:crypto";
+import { kv } from "@vercel/kv";
 import { env, isProd } from "@/lib/env";
+import { trialEndFor } from "@/lib/season";
 
 const COOKIE = "bb_entitlement";
 const ALGO = "dir";
 const ENC = "A256GCM";
 
-export type Plan = "monthly" | "season";
+// Neue Halbserien-Pläne + Legacy-Werte (monthly/season) für Abwärtskompatibilität.
+export type Plan = "hinrunde-2627" | "rueckrunde-2627" | "monthly" | "season";
 
 export interface Entitlement {
   userId: string;
@@ -69,4 +76,67 @@ export async function hasPro(forUserId?: string): Promise<boolean> {
   if (!e) return false;
   if (forUserId && e.userId !== forUserId) return false;
   return true;
+}
+
+/* ─── Testphase (Trial) ────────────────────────────────────────────────── */
+
+const KV = !!(process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN);
+const memTrial = new Map<string, string>();
+
+/**
+ * Hält den Zeitpunkt des ersten Logins fest (nur wenn noch nicht vorhanden).
+ * Best-effort — der Login darf hieran NIE scheitern.
+ */
+export async function recordFirstLoginTrial(userId: string): Promise<void> {
+  const iso = new Date().toISOString();
+  try {
+    if (KV) {
+      await kv.set(`trial:${userId}`, iso, { nx: true });
+    } else if (!memTrial.has(userId)) {
+      memTrial.set(userId, iso);
+    }
+  } catch {
+    // still ignorieren
+  }
+}
+
+/** ISO-Zeitpunkt des ersten Logins (Basis der Testphasen-Frist) oder null. */
+export async function getTrialStart(userId: string): Promise<string | null> {
+  try {
+    if (KV) return (await kv.get<string>(`trial:${userId}`)) ?? null;
+    return memTrial.get(userId) ?? null;
+  } catch {
+    return null;
+  }
+}
+
+export interface Access {
+  /** Bezahlter Pro-Zugang (Cookie) aktiv. */
+  pro: boolean;
+  /** Kostenlose Testphase aktiv. */
+  trial: boolean;
+  /** Ende der Testphase (falls ein Erst-Login bekannt ist). */
+  trialEnd?: Date;
+  /** Pro gültig bis (falls bezahlt). */
+  proUntil?: Date;
+}
+
+/**
+ * Kombinierter Zugriffs-Status: bezahltes Pro ODER laufende Testphase.
+ * Gate-Flächen (Wettbewerb, Bid-Advisor) sind frei, solange `pro || trial`.
+ */
+export async function getAccess(userId: string): Promise<Access> {
+  const ent = await getEntitlement();
+  const pro = !!ent && ent.userId === userId;
+  const proUntil = pro ? new Date(ent!.exp * 1000) : undefined;
+
+  const trialStartIso = await getTrialStart(userId);
+  let trial = false;
+  let trialEnd: Date | undefined;
+  if (trialStartIso) {
+    trialEnd = trialEndFor(trialStartIso);
+    trial = Date.now() < trialEnd.getTime();
+  }
+
+  return { pro, trial, trialEnd, proUntil };
 }

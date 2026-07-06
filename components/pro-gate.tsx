@@ -17,7 +17,7 @@ export async function ProGate({
   userId,
   children,
   title = "Pro-Feature",
-  description = "Schalte den Liga-Sozial-Layer, AI-Coach und Push-Alerts frei.",
+  description = "Sieh die Kontostände und Max-Gebote aller Manager – 6 € pro Halbserie.",
 }: ProGateProps) {
   const ok = await hasPro(userId);
   if (ok) return <>{children}</>;
@@ -26,7 +26,7 @@ export async function ProGate({
 
 export function ProUpsell({
   title = "Pro-Feature",
-  description = "Schalte den Liga-Sozial-Layer, AI-Coach und Push-Alerts frei.",
+  description = "Sieh die Kontostände und Max-Gebote aller Manager – 6 € pro Halbserie.",
 }: {
   title?: string;
   description?: string;

@@ -6,10 +6,12 @@ import { Loader2 } from "lucide-react";
 
 export function CheckoutButton({
   plan,
+  label = "Jetzt freischalten",
   disabled,
   variant = "default",
 }: {
-  plan: "monthly" | "season";
+  plan: "hinrunde-2627" | "rueckrunde-2627";
+  label?: string;
   disabled?: boolean;
   variant?: "default" | "outline" | "secondary";
 }) {
@@ -41,11 +43,9 @@ export function CheckoutButton({
         }}
       >
         {pending ? <Loader2 className="size-4 animate-spin" /> : null}
-        {plan === "monthly" ? "Monatlich starten" : "Saison sichern"}
+        {label}
       </Button>
-      {error && (
-        <p className="text-xs text-destructive text-center">{error}</p>
-      )}
+      {error && <p className="text-xs text-destructive text-center">{error}</p>}
     </div>
   );
 }
